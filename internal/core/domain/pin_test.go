@@ -26,24 +26,46 @@ func TestUserPin_IsSet(t *testing.T) {
 }
 
 func TestUserPin_Timestamps(t *testing.T) {
-	now := time.Now().UTC()
-	p := &UserPin{
-		UserID:    1,
-		Code:      "hashed_pin",
-		CreatedAt: now,
-		UpdatedAt: now,
+	tests := []struct {
+		name        string
+		userID      int64
+		code        string
+		checkField  string
+	}{
+		{"UserID is set correctly", 1, "hashed_pin", "UserID"},
+		{"Code is set correctly", 1, "hashed_pin", "Code"},
+		{"CreatedAt is set", 1, "hashed_pin", "CreatedAt"},
+		{"UpdatedAt is set", 1, "hashed_pin", "UpdatedAt"},
 	}
 
-	if p.UserID != 1 {
-		t.Errorf("UserPin.UserID = %v, want 1", p.UserID)
-	}
-	if p.Code != "hashed_pin" {
-		t.Errorf("UserPin.Code = %v, want 'hashed_pin'", p.Code)
-	}
-	if p.CreatedAt.IsZero() {
-		t.Error("UserPin.CreatedAt is zero")
-	}
-	if p.UpdatedAt.IsZero() {
-		t.Error("UserPin.UpdatedAt is zero")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			now := time.Now().UTC()
+			p := &UserPin{
+				UserID:    tt.userID,
+				Code:      tt.code,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+
+			switch tt.checkField {
+			case "UserID":
+				if p.UserID != tt.userID {
+					t.Errorf("UserPin.UserID = %v, want %v", p.UserID, tt.userID)
+				}
+			case "Code":
+				if p.Code != tt.code {
+					t.Errorf("UserPin.Code = %v, want %v", p.Code, tt.code)
+				}
+			case "CreatedAt":
+				if p.CreatedAt.IsZero() {
+					t.Error("UserPin.CreatedAt is zero")
+				}
+			case "UpdatedAt":
+				if p.UpdatedAt.IsZero() {
+					t.Error("UserPin.UpdatedAt is zero")
+				}
+			}
+		})
 	}
 }

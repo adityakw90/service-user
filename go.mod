@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/adityakw90/service-user-proto v0.0.0-00010101000000-000000000000
+	github.com/alexedwards/argon2id v1.0.0
 	github.com/jackc/pgx/v5 v5.7.3
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11

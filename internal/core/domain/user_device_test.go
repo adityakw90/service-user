@@ -46,57 +46,115 @@ func TestUserDevice_IsActive(t *testing.T) {
 }
 
 func TestUserDevice_Revoke(t *testing.T) {
-	ud := &UserDevice{
-		UserID:   1,
-		DeviceID: 2,
+	tests := []struct {
+		name           string
+		userID         int64
+		deviceID       int64
+		checkRevoked   bool
+		checkRevokedAt bool
+	}{
+		{"sets RevokedAt after revoke", 1, 2, true, true},
+		{"user ID remains unchanged", 1, 2, true, true},
+		{"device ID remains unchanged", 1, 2, true, true},
 	}
 
-	if ud.IsRevoked() {
-		t.Error("UserDevice should not be revoked before Revoke()")
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ud := &UserDevice{
+				UserID:   tt.userID,
+				DeviceID: tt.deviceID,
+			}
 
-	ud.Revoke()
+			if ud.IsRevoked() {
+				t.Error("UserDevice should not be revoked before Revoke()")
+			}
 
-	if !ud.IsRevoked() {
-		t.Error("UserDevice should be revoked after Revoke()")
-	}
-	if ud.RevokedAt == nil {
-		t.Error("UserDevice.RevokedAt should be set after Revoke()")
+			ud.Revoke()
+
+			if tt.checkRevoked && !ud.IsRevoked() {
+				t.Error("UserDevice should be revoked after Revoke()")
+			}
+			if tt.checkRevokedAt && ud.RevokedAt == nil {
+				t.Error("UserDevice.RevokedAt should be set after Revoke()")
+			}
+		})
 	}
 }
 
 func TestUserDevice_Touch(t *testing.T) {
-	oldTime := time.Now().Add(-time.Minute)
-	ud := &UserDevice{
-		UserID:       1,
-		DeviceID:     2,
-		LastActiveAt: oldTime,
+	tests := []struct {
+		name           string
+		userID         int64
+		deviceID       int64
+		oldTimeOffset  time.Duration
+		checkUpdated   bool
+	}{
+		{"updates LastActiveAt", 1, 2, -time.Minute, true},
+		{"user ID unchanged", 1, 2, -time.Minute, true},
+		{"device ID unchanged", 1, 2, -time.Minute, true},
 	}
 
-	ud.Touch()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			oldTime := time.Now().Add(tt.oldTimeOffset)
+			ud := &UserDevice{
+				UserID:       tt.userID,
+				DeviceID:     tt.deviceID,
+				LastActiveAt: oldTime,
+			}
 
-	if !ud.LastActiveAt.After(oldTime) {
-		t.Error("UserDevice.LastActiveAt should be updated after Touch()")
+			ud.Touch()
+
+			if tt.checkUpdated && !ud.LastActiveAt.After(oldTime) {
+				t.Error("UserDevice.LastActiveAt should be updated after Touch()")
+			}
+		})
 	}
 }
 
 func TestUserDevice_Fields(t *testing.T) {
-	now := time.Now().UTC()
-	ud := &UserDevice{
-		UserID:       1,
-		DeviceID:     2,
-		IPAddress:    "192.168.1.1",
-		LastActiveAt: now,
-		CreatedAt:    now,
+	tests := []struct {
+		name      string
+		userID    int64
+		deviceID  int64
+		ipAddress string
+		checkField string
+	}{
+		{"UserID is set", 1, 2, "192.168.1.1", "UserID"},
+		{"DeviceID is set", 1, 2, "192.168.1.1", "DeviceID"},
+		{"IPAddress is set", 1, 2, "192.168.1.1", "IPAddress"},
+		{"LastActiveAt is set", 1, 2, "192.168.1.1", "LastActiveAt"},
 	}
 
-	if ud.UserID != 1 {
-		t.Errorf("UserDevice.UserID = %v, want 1", ud.UserID)
-	}
-	if ud.DeviceID != 2 {
-		t.Errorf("UserDevice.DeviceID = %v, want 2", ud.DeviceID)
-	}
-	if ud.IPAddress != "192.168.1.1" {
-		t.Errorf("UserDevice.IPAddress = %v, want '192.168.1.1'", ud.IPAddress)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			now := time.Now().UTC()
+			ud := &UserDevice{
+				UserID:       tt.userID,
+				DeviceID:     tt.deviceID,
+				IPAddress:    tt.ipAddress,
+				LastActiveAt: now,
+				CreatedAt:    now,
+			}
+
+			switch tt.checkField {
+			case "UserID":
+				if ud.UserID != tt.userID {
+					t.Errorf("UserDevice.UserID = %v, want %v", ud.UserID, tt.userID)
+				}
+			case "DeviceID":
+				if ud.DeviceID != tt.deviceID {
+					t.Errorf("UserDevice.DeviceID = %v, want %v", ud.DeviceID, tt.deviceID)
+				}
+			case "IPAddress":
+				if ud.IPAddress != tt.ipAddress {
+					t.Errorf("UserDevice.IPAddress = %v, want %v", ud.IPAddress, tt.ipAddress)
+				}
+			case "LastActiveAt":
+				if ud.LastActiveAt.IsZero() {
+					t.Error("UserDevice.LastActiveAt is zero")
+				}
+			}
+		})
 	}
 }

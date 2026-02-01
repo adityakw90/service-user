@@ -3,6 +3,8 @@ package domain
 import (
 	"testing"
 	"time"
+
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 func TestUserProfile_HasAvatar(t *testing.T) {
@@ -12,8 +14,8 @@ func TestUserProfile_HasAvatar(t *testing.T) {
 		want         bool
 	}{
 		{"no avatar", nil, false},
-		{"zero avatar file id", int64Ptr(0), false},
-		{"valid avatar file id", int64Ptr(123), true},
+		{"zero avatar file id", util.Ptr(int64(0)), false},
+		{"valid avatar file id", util.Ptr(int64(123)), true},
 	}
 
 	for _, tt := range tests {
@@ -28,10 +30,10 @@ func TestUserProfile_HasAvatar(t *testing.T) {
 
 func TestUserProfile_FullName(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		firstName string
 		lastName  string
-		want     string
+		want      string
 	}{
 		{"both empty", "", "", ""},
 		{"only first name", "John", "", "John"},
@@ -50,41 +52,62 @@ func TestUserProfile_FullName(t *testing.T) {
 }
 
 func TestUserProfile_Timestamps(t *testing.T) {
-	now := time.Now().UTC()
-	p := &UserProfile{
-		UserID:    1,
-		CreatedAt: now,
-		UpdatedAt: now,
-		Attributes: make(map[string]any),
+	tests := []struct {
+		name       string
+		userID     int64
+		checkField string
+	}{
+		{"UserID is set correctly", 1, "UserID"},
+		{"CreatedAt is set", 1, "CreatedAt"},
+		{"UpdatedAt is set", 1, "UpdatedAt"},
 	}
 
-	if p.UserID != 1 {
-		t.Errorf("UserProfile.UserID = %v, want 1", p.UserID)
-	}
-	if p.CreatedAt.IsZero() {
-		t.Error("UserProfile.CreatedAt is zero")
-	}
-	if p.UpdatedAt.IsZero() {
-		t.Error("UserProfile.UpdatedAt is zero")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			now := time.Now().UTC()
+			p := &UserProfile{
+				UserID:     tt.userID,
+				CreatedAt:  now,
+				UpdatedAt:  now,
+				Attributes: make(map[string]any),
+			}
+
+			switch tt.checkField {
+			case "UserID":
+				if p.UserID != tt.userID {
+					t.Errorf("UserProfile.UserID = %v, want %v", p.UserID, tt.userID)
+				}
+			case "CreatedAt":
+				if p.CreatedAt.IsZero() {
+					t.Error("UserProfile.CreatedAt is zero")
+				}
+			case "UpdatedAt":
+				if p.UpdatedAt.IsZero() {
+					t.Error("UserProfile.UpdatedAt is zero")
+				}
+			}
+		})
 	}
 }
 
 func TestUserProfile_Attributes(t *testing.T) {
-	attrs := map[string]any{
-		"key1": "value1",
-		"key2": 123,
+	tests := []struct {
+		name        string
+		attrs       map[string]any
+		key         string
+		expectedVal any
+	}{
+		{"string value", map[string]any{"key1": "value1"}, "key1", "value1"},
+		{"int value", map[string]any{"key2": 123}, "key2", 123},
+		{"multiple keys", map[string]any{"key1": "value1", "key2": 123}, "key1", "value1"},
 	}
-	p := &UserProfile{Attributes: attrs}
 
-	if p.Attributes["key1"] != "value1" {
-		t.Error("UserProfile.Attributes key1 mismatch")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &UserProfile{Attributes: tt.attrs}
+			if p.Attributes[tt.key] != tt.expectedVal {
+				t.Errorf("UserProfile.Attributes[%s] = %v, want %v", tt.key, p.Attributes[tt.key], tt.expectedVal)
+			}
+		})
 	}
-	if p.Attributes["key2"] != 123 {
-		t.Error("UserProfile.Attributes key2 mismatch")
-	}
-}
-
-// Helper function
-func int64Ptr(v int64) *int64 {
-	return &v
 }

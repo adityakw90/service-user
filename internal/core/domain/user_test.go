@@ -71,10 +71,10 @@ func TestUser_CanLogin(t *testing.T) {
 
 func TestUser_Activate(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		initialStatus UserStatus
-		wantErr     bool
-		wantStatus  UserStatus
+		wantErr      bool
+		wantStatus   UserStatus
 	}{
 		{"activate inactive user", UserStatusInactive, false, UserStatusActive},
 		{"activate active user", UserStatusActive, false, UserStatusActive},
@@ -96,10 +96,24 @@ func TestUser_Activate(t *testing.T) {
 }
 
 func TestUser_Deactivate(t *testing.T) {
-	u := &User{Status: UserStatusActive}
-	u.Deactivate()
-	if u.Status != UserStatusInactive {
-		t.Errorf("User.Deactivate() = %v, want %v", u.Status, UserStatusInactive)
+	tests := []struct {
+		name         string
+		initialStatus UserStatus
+		wantStatus   UserStatus
+	}{
+		{"deactivate active user", UserStatusActive, UserStatusInactive},
+		{"deactivate inactive user", UserStatusInactive, UserStatusInactive},
+		{"deactivate banned user", UserStatusBanned, UserStatusInactive},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u := &User{Status: tt.initialStatus}
+			u.Deactivate()
+			if u.Status != tt.wantStatus {
+				t.Errorf("User.Deactivate() = %v, want %v", u.Status, tt.wantStatus)
+			}
+		})
 	}
 }
 
@@ -126,13 +140,21 @@ func TestUser_Ban(t *testing.T) {
 }
 
 func TestUserStatus_Values(t *testing.T) {
-	if UserStatusInactive != 0 {
-		t.Errorf("UserStatusInactive = %v, want 0", UserStatusInactive)
+	tests := []struct {
+		name  string
+		got   UserStatus
+		want  UserStatus
+	}{
+		{"UserStatusInactive is 0", UserStatusInactive, 0},
+		{"UserStatusActive is 1", UserStatusActive, 1},
+		{"UserStatusBanned is -1", UserStatusBanned, -1},
 	}
-	if UserStatusActive != 1 {
-		t.Errorf("UserStatusActive = %v, want 1", UserStatusActive)
-	}
-	if UserStatusBanned != -1 {
-		t.Errorf("UserStatusBanned = %v, want -1", UserStatusBanned)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("UserStatus = %v, want %v", tt.got, tt.want)
+			}
+		})
 	}
 }
