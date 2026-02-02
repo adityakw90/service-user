@@ -1,10 +1,11 @@
 package model
 
 import (
-	"errors"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
 )
 
 const (
@@ -12,17 +13,6 @@ const (
 	PINLength = 6
 	// PINMaxAttempts is the maximum failed PIN verification attempts.
 	PINMaxAttempts = 5
-)
-
-var (
-	// ErrInvalidPINLength indicates PIN does not have exactly 6 digits.
-	ErrInvalidPINLength = errors.New("pin: must be exactly 6 digits")
-	// ErrInvalidPINFormat indicates PIN contains non-digit characters.
-	ErrInvalidPINFormat = errors.New("pin: must contain only digits")
-	// ErrPINTooManyAttempts indicates maximum verification attempts exceeded.
-	ErrPINTooManyAttempts = errors.New("pin: too many failed attempts")
-	// ErrPINContainsCommonPattern indicates PIN contains common patterns.
-	ErrPINContainsCommonPattern = errors.New("pin: contains common pattern")
 )
 
 // PIN represents a validated PIN value object.
@@ -60,16 +50,16 @@ func (p *PIN) Compare(provided string) bool {
 // validatePIN validates a 6-digit PIN.
 func validatePIN(value string) error {
 	if len(value) != PINLength {
-		return ErrInvalidPINLength
+		return errors.ErrInvalidPINLength
 	}
 
 	if !regexp.MustCompile(`^\d+$`).MatchString(value) {
-		return ErrInvalidPINFormat
+		return errors.ErrInvalidPINFormat
 	}
 
 	// Check for common weak patterns
 	if isCommonPINPattern(value) {
-		return ErrPINContainsCommonPattern
+		return errors.ErrPINContainsCommonPattern
 	}
 
 	return nil
@@ -133,7 +123,7 @@ func isCommonPINPattern(pin string) bool {
 // ValidateForAttempt validates PIN and tracks attempts.
 func (p *PIN) ValidateForAttempt(provided string, attempts *int) (bool, error) {
 	if *attempts >= PINMaxAttempts {
-		return false, ErrPINTooManyAttempts
+		return false, errors.ErrPINTooManyAttempts
 	}
 
 	*attempts++
