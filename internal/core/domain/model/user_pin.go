@@ -1,11 +1,11 @@
-package domain
+package model
 
 import "time"
 
-// UserPin represents a hashed PIN for security.
+// UserPin represents a user's PIN entity.
 type UserPin struct {
 	UserID    int64
-	Code      string // Hashed PIN, never expose
+	Code      string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

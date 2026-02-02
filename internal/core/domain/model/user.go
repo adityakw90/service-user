@@ -1,6 +1,10 @@
-package domain
+package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
+)
 
 // UserStatus represents the status of a user account.
 type UserStatus int32
@@ -44,7 +48,7 @@ func (u *User) CanLogin() bool {
 // Returns error if user is already banned (critical invariant).
 func (u *User) Activate() error {
 	if u.Status == UserStatusBanned {
-		return ErrUserInactive
+		return errors.ErrUserInactive
 	}
 	u.Status = UserStatusActive
 	return nil

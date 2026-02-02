@@ -1,4 +1,4 @@
-package domain
+package model
 
 import (
 	"testing"
@@ -27,10 +27,10 @@ func TestUserPin_IsSet(t *testing.T) {
 
 func TestUserPin_Timestamps(t *testing.T) {
 	tests := []struct {
-		name        string
-		userID      int64
-		code        string
-		checkField  string
+		name       string
+		userID     int64
+		code       string
+		checkField string
 	}{
 		{"UserID is set correctly", 1, "hashed_pin", "UserID"},
 		{"Code is set correctly", 1, "hashed_pin", "Code"},
