@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/port"
+	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/adityakw90/service-user/pkg/util"
 )
 
@@ -247,7 +247,7 @@ func TestSHA256Hasher_ImplementsPortHasher(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var _ port.Hasher = (*SHA256Hasher)(nil)
+			var _ portsec.Hasher = (*SHA256Hasher)(nil)
 		})
 	}
 }

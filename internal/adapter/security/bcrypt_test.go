@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/port"
+	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/adityakw90/service-user/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -70,12 +70,12 @@ func TestBCryptHasher_Hash(t *testing.T) {
 
 func TestBCryptHasher_Compare(t *testing.T) {
 	tests := []struct {
-		name         string
-		password     string
-		wrongPass    string
-		wantCorrect  bool
-		wantWrong    bool
-		cost         *int
+		name        string
+		password    string
+		wrongPass   string
+		wantCorrect bool
+		wantWrong   bool
+		cost        *int
 	}{
 		{
 			name:        "correct password matches, wrong does not",
@@ -296,7 +296,7 @@ func TestBCryptHasher_ImplementsPortHasher(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var _ port.Hasher = (*BCryptHasher)(nil)
+			var _ portsec.Hasher = (*BCryptHasher)(nil)
 		})
 	}
 }

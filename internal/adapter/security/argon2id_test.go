@@ -4,14 +4,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/port"
+	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 )
 
 func TestArgon2Hasher_Hash(t *testing.T) {
 	tests := []struct {
-		name      string
-		password  string
-		wantFn    func(string) bool
+		name     string
+		password string
+		wantFn   func(string) bool
 	}{
 		{
 			name:     "hashes simple password",
@@ -277,7 +277,7 @@ func TestArgon2Hasher_ImplementsPortHasher(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var _ port.Hasher = (*Argon2Hasher)(nil)
+			var _ portsec.Hasher = (*Argon2Hasher)(nil)
 		})
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
-	"github.com/adityakw90/service-user/internal/core/port"
+	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/adityakw90/service-user/pkg/util"
 )
 
@@ -45,4 +45,4 @@ func (h *SHA256Hasher) Compare(hashed, plain string) bool {
 }
 
 // Ensure SHA256Hasher implements port.Hasher
-var _ port.Hasher = (*SHA256Hasher)(nil)
+var _ portsec.Hasher = (*SHA256Hasher)(nil)
