@@ -21,10 +21,11 @@ func (e *OAuthError) IsRetryable() bool {
 
 var (
 	// token errors
-	ErrTokenRevoked     = errors.New("token: token has been revoked")
-	ErrTokenBlacklisted = errors.New("token: token is blacklisted")
-	ErrTokenInvalid     = errors.New("token: invalid token")
-	ErrTokenExpired     = errors.New("token: token expired")
+	ErrTokenRevoked      = errors.New("token: token has been revoked")
+	ErrTokenBlacklisted  = errors.New("token: token is blacklisted")
+	ErrTokenInvalid      = errors.New("token: invalid token")
+	ErrTokenInvalidClaim = errors.New("token: invalid token claim")
+	ErrTokenExpired      = errors.New("token: token expired")
 
 	// auth errors
 	ErrInvalidCredentials = errors.New("invalid credentials")

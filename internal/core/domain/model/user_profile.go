@@ -6,6 +6,7 @@ import "time"
 // 1:1 relationship with User.
 type UserProfile struct {
 	UserID       int64
+	UserUID      string
 	FirstName    string
 	LastName     string
 	Bio          string
@@ -32,4 +33,9 @@ func (p *UserProfile) FullName() string {
 	default:
 		return p.FirstName + " " + p.LastName
 	}
+}
+
+type UserProfiles struct {
+	Items []UserProfile
+	Meta  Meta
 }

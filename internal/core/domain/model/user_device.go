@@ -6,11 +6,14 @@ import "time"
 // This tracks device usage including IP, activity, and revocation status.
 type UserDevice struct {
 	UserID       int64
+	UserUID      string
 	DeviceID     int64
+	DeviceUID    string
 	IPAddress    string
 	LastActiveAt time.Time
 	RevokedAt    *time.Time
 	CreatedAt    time.Time
+	Device       *Device
 }
 
 // IsRevoked returns true if access from this device has been revoked.
@@ -32,4 +35,9 @@ func (ud *UserDevice) Revoke() {
 // Touch updates the last_active_at timestamp.
 func (ud *UserDevice) Touch() {
 	ud.LastActiveAt = time.Now().UTC()
+}
+
+type UserDevices struct {
+	Items []UserDevice
+	Meta  Meta
 }

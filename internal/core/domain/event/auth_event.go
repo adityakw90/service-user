@@ -6,17 +6,17 @@ import (
 
 // AuthEvent represents an authentication domain event.
 type AuthEvent struct {
-	ID               string
-	Type             EventType
-	UserUID          string
-	Identifier       string
-	IdentifierType   string
-	Success          bool
-	FailureReason    string
+	ID                string
+	Type              EventType
+	UserUID           string
+	Identifier        string
+	IdentifierType    string
+	Success           bool
+	FailureReason     string
 	DeviceFingerprint string
-	IPAddress        string
-	Metadata         map[string]any
-	Timestamp        time.Time
+	IPAddress         string
+	Metadata          map[string]any
+	Timestamp         time.Time
 }
 
 // NewAuthEvent creates a new authentication event.

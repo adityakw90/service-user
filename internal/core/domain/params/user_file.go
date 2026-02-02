@@ -1,18 +1,18 @@
 package params
 
-type FileListFilterParam struct {
+type UserFileListFilterParam struct {
 	Uids       []string // file uids
 	UserUid    *string
 	FileType   *string
 	Visibility *string
 }
 
-type FileListParam struct {
+type UserFileListParam struct {
 	Pagination *PaginationParam
-	Filter     *FileListFilterParam
+	Filter     *UserFileListFilterParam
 }
 
-type FileCreateParam struct {
+type UserFileCreateParam struct {
 	UserUID    string
 	FileType   string
 	FileName   string
@@ -22,7 +22,7 @@ type FileCreateParam struct {
 	Visibility string
 }
 
-type FileUpdateParam struct {
+type UserFileUpdateParam struct {
 	FileName   *string
 	FilePath   *string
 	MimeType   *string

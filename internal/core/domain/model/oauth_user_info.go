@@ -63,13 +63,13 @@ func (t *OAuthTokens) IsExpired() bool {
 
 // OAuthState represents the state parameter for OAuth flow.
 type OAuthState struct {
-	State        string
-	RedirectURI  string
-	Nonce        string
-	CreatedAt    time.Time
-	ExpiresAt    time.Time
-	IsValid      bool
-	UserUID      string // For account linking scenarios
+	State       string
+	RedirectURI string
+	Nonce       string
+	CreatedAt   time.Time
+	ExpiresAt   time.Time
+	IsValid     bool
+	UserUID     string // For account linking scenarios
 }
 
 // NewOAuthState creates a new OAuth state.

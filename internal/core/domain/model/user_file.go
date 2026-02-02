@@ -13,6 +13,7 @@ type UserFile struct {
 	ID         int64
 	UID        string
 	UserID     int64
+	UserUID    string
 	FileType   string
 	FileName   string
 	FilePath   string
@@ -33,7 +34,7 @@ func (f *UserFile) IsPrivate() bool {
 }
 
 // Files contains the list of files and metadata for pagination.
-type Files struct {
+type UserFiles struct {
 	Items []UserFile
 	Meta  Meta
 }

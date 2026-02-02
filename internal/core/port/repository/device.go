@@ -1,0 +1,21 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/adityakw90/service-user/internal/core/domain/model"
+	"github.com/adityakw90/service-user/internal/core/domain/params"
+)
+
+type DeviceRepository interface {
+	Create(ctx context.Context, device *model.Device) (*model.Device, error)
+	Update(ctx context.Context, device *model.Device) error
+	Delete(ctx context.Context, device *model.Device) error
+	GetByID(ctx context.Context, id int64) (*model.Device, error)
+	GetByUID(ctx context.Context, uid string) (*model.Device, error)
+	GetByFingerprint(ctx context.Context, fingerprint string) (*model.Device, error)
+	List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
+	ListByUserID(ctx context.Context, userId int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
+	MapIDsByUIDs(ctx context.Context, deviceUIDs []string) (map[string]int64, error)
+	MapUIDsByIDs(ctx context.Context, deviceIDs []int64) (map[int64]string, error)
+}
