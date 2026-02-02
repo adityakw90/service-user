@@ -31,3 +31,9 @@ func (f *UserFile) IsPublic() bool {
 func (f *UserFile) IsPrivate() bool {
 	return f.Visibility == FileVisibilityPrivate
 }
+
+// Files contains the list of files and metadata for pagination.
+type Files struct {
+	Items []UserFile
+	Meta  Meta
+}

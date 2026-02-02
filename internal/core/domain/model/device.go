@@ -1,13 +1,20 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
-// Device represents a user device.
-// This is the device identity table with no tracking columns.
+// Device represents a device.
 type Device struct {
 	ID                int64
 	UID               string
 	DeviceFingerprint string
 	DeviceName        string
 	CreatedAt         time.Time
+}
+
+// Devices contains the list of devices and metadata for pagination.
+type Devices struct {
+	Items []Device
+	Meta  Meta
 }

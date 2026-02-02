@@ -22,7 +22,7 @@ type User struct {
 	UID       string
 	Username  string
 	Email     string
-	Password  string // Never expose password
+	Password  string
 	Status    UserStatus
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -62,4 +62,10 @@ func (u *User) Deactivate() {
 // Ban marks the user as banned.
 func (u *User) Ban() {
 	u.Status = UserStatusBanned
+}
+
+// Users contains the list of users and metadata for pagination.
+type Users struct {
+	Items []User
+	Meta  Meta
 }
