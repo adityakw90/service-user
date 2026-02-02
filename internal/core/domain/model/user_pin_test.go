@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestUserPin_IsSet(t *testing.T) {
+func TestCore_Domain_UserPin_IsSet(t *testing.T) {
 	tests := []struct {
 		name string
 		code string
@@ -25,7 +25,7 @@ func TestUserPin_IsSet(t *testing.T) {
 	}
 }
 
-func TestUserPin_Timestamps(t *testing.T) {
+func TestCore_Domain_UserPin_Timestamps(t *testing.T) {
 	tests := []struct {
 		name       string
 		userID     int64

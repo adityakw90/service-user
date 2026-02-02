@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestUser_IsActive(t *testing.T) {
+func TestCore_Domain_User_IsActive(t *testing.T) {
 	tests := []struct {
 		name   string
 		status UserStatus
@@ -26,7 +26,7 @@ func TestUser_IsActive(t *testing.T) {
 	}
 }
 
-func TestUser_IsDeleted(t *testing.T) {
+func TestCore_Domain_User_IsDeleted(t *testing.T) {
 	tests := []struct {
 		name      string
 		deletedAt *time.Time
@@ -46,7 +46,7 @@ func TestUser_IsDeleted(t *testing.T) {
 	}
 }
 
-func TestUser_CanLogin(t *testing.T) {
+func TestCore_Domain_User_CanLogin(t *testing.T) {
 	tests := []struct {
 		name      string
 		status    UserStatus
@@ -69,12 +69,12 @@ func TestUser_CanLogin(t *testing.T) {
 	}
 }
 
-func TestUser_Activate(t *testing.T) {
+func TestCore_Domain_User_Activate(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		initialStatus UserStatus
-		wantErr      bool
-		wantStatus   UserStatus
+		wantErr       bool
+		wantStatus    UserStatus
 	}{
 		{"activate inactive user", UserStatusInactive, false, UserStatusActive},
 		{"activate active user", UserStatusActive, false, UserStatusActive},
@@ -95,11 +95,11 @@ func TestUser_Activate(t *testing.T) {
 	}
 }
 
-func TestUser_Deactivate(t *testing.T) {
+func TestCore_Domain_User_Deactivate(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		initialStatus UserStatus
-		wantStatus   UserStatus
+		wantStatus    UserStatus
 	}{
 		{"deactivate active user", UserStatusActive, UserStatusInactive},
 		{"deactivate inactive user", UserStatusInactive, UserStatusInactive},
@@ -117,11 +117,11 @@ func TestUser_Deactivate(t *testing.T) {
 	}
 }
 
-func TestUser_Ban(t *testing.T) {
+func TestCore_Domain_User_Ban(t *testing.T) {
 	tests := []struct {
-		name         string
+		name          string
 		initialStatus UserStatus
-		wantStatus   UserStatus
+		wantStatus    UserStatus
 	}{
 		{"ban active user", UserStatusActive, UserStatusBanned},
 		{"ban inactive user", UserStatusInactive, UserStatusBanned},
@@ -139,11 +139,11 @@ func TestUser_Ban(t *testing.T) {
 	}
 }
 
-func TestUserStatus_Values(t *testing.T) {
+func TestCore_Domain_UserStatus_Values(t *testing.T) {
 	tests := []struct {
-		name  string
-		got   UserStatus
-		want  UserStatus
+		name string
+		got  UserStatus
+		want UserStatus
 	}{
 		{"UserStatusInactive is 0", UserStatusInactive, 0},
 		{"UserStatusActive is 1", UserStatusActive, 1},

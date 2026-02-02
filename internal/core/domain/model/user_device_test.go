@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func TestUserDevice_IsRevoked(t *testing.T) {
+func TestCore_Domain_UserDevice_IsRevoked(t *testing.T) {
 	tests := []struct {
 		name      string
 		revokedAt *time.Time
@@ -25,7 +25,7 @@ func TestUserDevice_IsRevoked(t *testing.T) {
 	}
 }
 
-func TestUserDevice_IsActive(t *testing.T) {
+func TestCore_Domain_UserDevice_IsActive(t *testing.T) {
 	tests := []struct {
 		name      string
 		revokedAt *time.Time
@@ -45,7 +45,7 @@ func TestUserDevice_IsActive(t *testing.T) {
 	}
 }
 
-func TestUserDevice_Revoke(t *testing.T) {
+func TestCore_Domain_UserDevice_Revoke(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         int64
@@ -81,13 +81,13 @@ func TestUserDevice_Revoke(t *testing.T) {
 	}
 }
 
-func TestUserDevice_Touch(t *testing.T) {
+func TestCore_Domain_UserDevice_Touch(t *testing.T) {
 	tests := []struct {
-		name           string
-		userID         int64
-		deviceID       int64
-		oldTimeOffset  time.Duration
-		checkUpdated   bool
+		name          string
+		userID        int64
+		deviceID      int64
+		oldTimeOffset time.Duration
+		checkUpdated  bool
 	}{
 		{"updates LastActiveAt", 1, 2, -time.Minute, true},
 		{"user ID unchanged", 1, 2, -time.Minute, true},
@@ -112,12 +112,12 @@ func TestUserDevice_Touch(t *testing.T) {
 	}
 }
 
-func TestUserDevice_Fields(t *testing.T) {
+func TestCore_Domain_UserDevice_Fields(t *testing.T) {
 	tests := []struct {
-		name      string
-		userID    int64
-		deviceID  int64
-		ipAddress string
+		name       string
+		userID     int64
+		deviceID   int64
+		ipAddress  string
 		checkField string
 	}{
 		{"UserID is set", 1, 2, "192.168.1.1", "UserID"},

@@ -7,7 +7,7 @@ import (
 	"github.com/adityakw90/service-user/pkg/util"
 )
 
-func TestUserProfile_HasAvatar(t *testing.T) {
+func TestCore_Domain_UserProfile_HasAvatar(t *testing.T) {
 	tests := []struct {
 		name         string
 		avatarFileID *int64
@@ -28,7 +28,7 @@ func TestUserProfile_HasAvatar(t *testing.T) {
 	}
 }
 
-func TestUserProfile_FullName(t *testing.T) {
+func TestCore_Domain_UserProfile_FullName(t *testing.T) {
 	tests := []struct {
 		name      string
 		firstName string
@@ -51,7 +51,7 @@ func TestUserProfile_FullName(t *testing.T) {
 	}
 }
 
-func TestUserProfile_Timestamps(t *testing.T) {
+func TestCore_Domain_UserProfile_Timestamps(t *testing.T) {
 	tests := []struct {
 		name       string
 		userID     int64
@@ -90,7 +90,7 @@ func TestUserProfile_Timestamps(t *testing.T) {
 	}
 }
 
-func TestUserProfile_Attributes(t *testing.T) {
+func TestCore_Domain_UserProfile_Attributes(t *testing.T) {
 	tests := []struct {
 		name        string
 		attrs       map[string]any

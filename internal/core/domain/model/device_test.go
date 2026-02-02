@@ -3,90 +3,57 @@ package model
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestDevice_Fields(t *testing.T) {
+/* test completed by jojo */
+
+func TestCore_Domain_Device(t *testing.T) {
 	tests := []struct {
-		name             string
-		id               int64
-		uid              string
-		deviceFingerprint string
-		deviceName       string
-		checkField       string
+		name    string
+		setupFn func() *Device
+		checkFn func(*Device)
 	}{
-		{"ID is set correctly", 1, "test-uid", "fingerprint-123", "Test Device", "ID"},
-		{"UID is set correctly", 1, "test-uid", "fingerprint-123", "Test Device", "UID"},
-		{"DeviceFingerprint is set", 1, "test-uid", "fingerprint-123", "Test Device", "DeviceFingerprint"},
-		{"DeviceName is set", 1, "test-uid", "fingerprint-123", "Test Device", "DeviceName"},
-		{"CreatedAt is set", 1, "test-uid", "fingerprint-123", "Test Device", "CreatedAt"},
+		{
+			name: "set correctly",
+			setupFn: func() *Device {
+				return &Device{
+					ID:                1,
+					UID:               "test-uid",
+					DeviceFingerprint: "fingerprint-123",
+					DeviceName:        "Test Device",
+					CreatedAt:         time.Now().UTC(),
+				}
+			},
+			checkFn: func(d *Device) {
+				assert.Equal(t, int64(1), d.ID)
+				assert.Equal(t, "test-uid", d.UID)
+				assert.Equal(t, "fingerprint-123", d.DeviceFingerprint)
+				assert.Equal(t, "Test Device", d.DeviceName)
+				assert.NotZero(t, d.CreatedAt)
+			},
+		},
+		{
+			name: "Zero Value",
+			setupFn: func() *Device {
+				var d Device
+				return &d
+			},
+			checkFn: func(d *Device) {
+				assert.Equal(t, int64(0), d.ID)
+				assert.Equal(t, "", d.UID)
+				assert.Equal(t, "", d.DeviceFingerprint)
+				assert.Equal(t, "", d.DeviceName)
+				assert.Zero(t, d.CreatedAt)
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			now := time.Now().UTC()
-			d := &Device{
-				ID:                tt.id,
-				UID:               tt.uid,
-				DeviceFingerprint: tt.deviceFingerprint,
-				DeviceName:        tt.deviceName,
-				CreatedAt:         now,
-			}
-
-			switch tt.checkField {
-			case "ID":
-				if d.ID != tt.id {
-					t.Errorf("Device.ID = %v, want %v", d.ID, tt.id)
-				}
-			case "UID":
-				if d.UID != tt.uid {
-					t.Errorf("Device.UID = %v, want %v", d.UID, tt.uid)
-				}
-			case "DeviceFingerprint":
-				if d.DeviceFingerprint != tt.deviceFingerprint {
-					t.Errorf("Device.DeviceFingerprint = %v, want %v", d.DeviceFingerprint, tt.deviceFingerprint)
-				}
-			case "DeviceName":
-				if d.DeviceName != tt.deviceName {
-					t.Errorf("Device.DeviceName = %v, want %v", d.DeviceName, tt.deviceName)
-				}
-			case "CreatedAt":
-				if d.CreatedAt.IsZero() {
-					t.Error("Device.CreatedAt is zero")
-				}
-			}
-		})
-	}
-}
-
-func TestDevice_ZeroValue(t *testing.T) {
-	tests := []struct {
-		name       string
-		got        interface{}
-		want       interface{}
-		fieldCheck string
-	}{
-		{"zero ID", int64(0), int64(0), "ID"},
-		{"zero UID", "", "", "UID"},
-		{"zero DeviceFingerprint", "", "", "DeviceFingerprint"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var d Device
-			switch tt.fieldCheck {
-			case "ID":
-				if d.ID != tt.want.(int64) {
-					t.Errorf("zero Device.ID = %v, want %v", d.ID, tt.want)
-				}
-			case "UID":
-				if d.UID != tt.want.(string) {
-					t.Errorf("zero Device.UID = %v, want %v", d.UID, tt.want)
-				}
-			case "DeviceFingerprint":
-				if d.DeviceFingerprint != tt.want.(string) {
-					t.Errorf("zero Device.DeviceFingerprint = %v, want %v", d.DeviceFingerprint, tt.want)
-				}
-			}
+			device := tt.setupFn()
+			tt.checkFn(device)
 		})
 	}
 }

@@ -23,6 +23,11 @@ var (
 	// token errors
 	ErrTokenRevoked     = errors.New("token: token has been revoked")
 	ErrTokenBlacklisted = errors.New("token: token is blacklisted")
+	ErrTokenInvalid     = errors.New("token: invalid token")
+	ErrTokenExpired     = errors.New("token: token expired")
+
+	// auth errors
+	ErrInvalidCredentials = errors.New("invalid credentials")
 
 	// oauth errors
 	ErrOAuthInvalidState           = &OAuthError{Code: "invalid_state", Description: "Invalid or expired state parameter"}
