@@ -315,69 +315,6 @@ func TestJWTGenerator_ExpiredToken(t *testing.T) {
 	}
 }
 
-// func TestJWTGeneratorAdapter_ImplementsInterface(t *testing.T) {
-// 	var _ portsec.TokenGenerator = (*JWTGeneratorAdapter)(nil)
-// }
-
-// func TestJWTGeneratorAdapter_GenerateAccessToken(t *testing.T) {
-// 	adapter := NewJWTGeneratorAdapter(testSecretKey, testAccessExpiry, testRefreshExpiry)
-
-// 	claims := model.TokenClaims{
-// 		Uid:        "adapter-user",
-// 		Identifier: "test@example.com",
-// 	}
-
-// 	token, err := adapter.GenerateAccessToken(claims)
-// 	if err != nil {
-// 		t.Fatalf("GenerateAccessToken() error = %v", err)
-// 	}
-// 	if token == "" {
-// 		t.Error("GenerateAccessToken() returned empty token")
-// 	}
-// }
-
-// func TestJWTGeneratorAdapter_GenerateRefreshToken(t *testing.T) {
-// 	adapter := NewJWTGeneratorAdapter(testSecretKey, testAccessExpiry, testRefreshExpiry)
-
-// 	claims := model.TokenClaims{
-// 		Uid:        "adapter-user",
-// 		Identifier: "test@example.com",
-// 	}
-
-// 	token, err := adapter.GenerateRefreshToken(claims)
-// 	if err != nil {
-// 		t.Fatalf("GenerateRefreshToken() error = %v", err)
-// 	}
-// 	if token == "" {
-// 		t.Error("GenerateRefreshToken() returned empty token")
-// 	}
-// }
-
-// func TestJWTGeneratorAdapter_ValidateToken(t *testing.T) {
-// 	adapter := NewJWTGeneratorAdapter(testSecretKey, testAccessExpiry, testRefreshExpiry)
-
-// 	claims := model.TokenClaims{
-// 		Uid:        "adapter-user",
-// 		Identifier: "test@example.com",
-// 	}
-
-// 	// Generate token
-// 	token, err := adapter.GenerateAccessToken(claims)
-// 	if err != nil {
-// 		t.Fatalf("GenerateAccessToken() error = %v", err)
-// 	}
-
-// 	// Validate with adapter
-// 	extractedClaims, err := adapter.ValidateToken(token)
-// 	if err != nil {
-// 		t.Fatalf("ValidateToken() error = %v", err)
-// 	}
-
-// 	if extractedClaims.Uid != claims.Uid {
-// 		t.Errorf("ValidateToken() claims.Uid = %v, want %v", extractedClaims.Uid, claims.Uid)
-// 	}
-// }
-
 func TestJWTGenerator_ValidateInvalidTokenType(t *testing.T) {
 	generator := NewJWTGenerator(testSecretKey, testAccessExpiry, testRefreshExpiry)
 

@@ -106,30 +106,3 @@ func (g *JWTGenerator) ValidateToken(tokenString string) (*model.TokenClaims, er
 		Extra:          claims.Extra,
 	}, nil
 }
-
-// JWTGeneratorAdapter wraps JWTGenerator to implement port.TokenGenerator.
-// type JWTGeneratorAdapter struct {
-// 	*JWTGenerator
-// }
-
-// NewJWTGeneratorAdapter creates a new JWT generator adapter.
-// func NewJWTGeneratorAdapter(secretKey string, accessExpiry, refreshExpiry time.Duration) portsec.TokenGenerator {
-// 	return &JWTGeneratorAdapter{
-// 		JWTGenerator: NewJWTGenerator(secretKey, accessExpiry, refreshExpiry),
-// 	}
-// }
-
-// // GenerateAccessToken implements port.TokenGenerator.
-// func (a *JWTGeneratorAdapter) GenerateAccessToken(claims model.TokenClaims) (string, error) {
-// 	return a.JWTGenerator.GenerateAccessToken(claims)
-// }
-
-// // GenerateRefreshToken implements port.TokenGenerator.
-// func (a *JWTGeneratorAdapter) GenerateRefreshToken(claims model.TokenClaims) (string, error) {
-// 	return a.JWTGenerator.GenerateRefreshToken(claims)
-// }
-
-// // ValidateToken implements port.TokenGenerator.
-// func (a *JWTGeneratorAdapter) ValidateToken(token string) (*model.TokenClaims, error) {
-// 	return a.JWTGenerator.ValidateToken(token)
-// }
