@@ -15,3 +15,16 @@ type UserListParam struct {
 	Pagination *PaginationParam
 	Filter     *UserListFilterParam
 }
+
+type UserCreateParam struct {
+	Username string
+	Email    string
+	Password string
+}
+
+type UserUpdateParam struct {
+	Username *string
+	Email    *string
+	Password *string
+	Status   *model.UserStatus
+}
