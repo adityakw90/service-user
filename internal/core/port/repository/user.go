@@ -18,6 +18,4 @@ type UserRepository interface {
 	GetByPhone(ctx context.Context, phone string) (*model.User, error)
 	List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserListFilterParam) (*model.Users, error)
 	AddUserDevice(ctx context.Context, user *model.User, device *model.Device) error
-	MapIDsByUIDs(ctx context.Context, userUIDs []string) (map[string]int64, error)
-	MapUIDsByIDs(ctx context.Context, userIDs []int64) (map[int64]string, error)
 }

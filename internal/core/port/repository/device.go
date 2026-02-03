@@ -16,6 +16,4 @@ type DeviceRepository interface {
 	GetByFingerprint(ctx context.Context, fingerprint string) (*model.Device, error)
 	List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
 	ListByUserID(ctx context.Context, userId int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
-	MapIDsByUIDs(ctx context.Context, deviceUIDs []string) (map[string]int64, error)
-	MapUIDsByIDs(ctx context.Context, deviceIDs []int64) (map[int64]string, error)
 }

@@ -14,6 +14,4 @@ type UserFileRepository interface {
 	GetByID(ctx context.Context, id int64) (*model.UserFile, error)
 	GetByUID(ctx context.Context, uid string) (*model.UserFile, error)
 	List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) (*model.UserFiles, error)
-	MapIDsByUIDs(ctx context.Context, userFileUIDs []string) (map[string]int64, error)
-	MapUIDsByIDs(ctx context.Context, userFileIDs []int64) (map[int64]string, error)
 }
