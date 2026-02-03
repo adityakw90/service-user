@@ -11,7 +11,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // deviceModel is the database model for device data.
@@ -36,11 +35,11 @@ func (m *deviceModel) toDomain() *model.Device {
 
 // DeviceRepository implements repository.DeviceRepository for PostgreSQL.
 type DeviceRepository struct {
-	db *pgxpool.Pool
+	db PostgrePool
 }
 
 // NewDeviceRepository creates a new DeviceRepository.
-func NewDeviceRepository(db *pgxpool.Pool) repository.DeviceRepository {
+func NewDeviceRepository(db PostgrePool) repository.DeviceRepository {
 	return &DeviceRepository{db: db}
 }
 
@@ -182,10 +181,10 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *params.Paginati
 	return &model.Devices{
 		Items: deviceItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }
@@ -278,10 +277,10 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	return &model.Devices{
 		Items: deviceItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // userModel is the database model for user data.
@@ -45,11 +44,11 @@ func (m *userModel) toDomain() *model.User {
 
 // UserRepository implements repository.UserRepository for PostgreSQL.
 type UserRepository struct {
-	db *pgxpool.Pool
+	db PostgrePool
 }
 
 // NewUserRepository creates a new UserRepository.
-func NewUserRepository(db *pgxpool.Pool) repository.UserRepository {
+func NewUserRepository(db PostgrePool) repository.UserRepository {
 	return &UserRepository{db: db}
 }
 
@@ -224,10 +223,10 @@ func (r *UserRepository) List(ctx context.Context, pagination *params.Pagination
 	return &model.Users{
 		Items: userItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }
