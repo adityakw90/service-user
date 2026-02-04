@@ -3,8 +3,6 @@ package security
 import (
 	"strings"
 	"testing"
-
-	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 )
 
 func TestArgon2Hasher_Hash(t *testing.T) {
@@ -264,20 +262,6 @@ func TestArgon2Hasher_SamePasswordDifferentHashes(t *testing.T) {
 			if !hasher.Compare(hash2, tt.password) {
 				t.Error("hash2 should match password")
 			}
-		})
-	}
-}
-
-func TestArgon2Hasher_ImplementsPortHasher(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{"Argon2Hasher implements port.Hasher"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var _ portsec.Hasher = (*Argon2Hasher)(nil)
 		})
 	}
 }

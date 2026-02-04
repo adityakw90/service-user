@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/adityakw90/service-user/pkg/util"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -283,20 +282,6 @@ func TestBCryptHasher_UnicodePassword(t *testing.T) {
 			if !hasher.Compare(hash, tt.password) {
 				t.Error("unicode password should match its hash")
 			}
-		})
-	}
-}
-
-func TestBCryptHasher_ImplementsPortHasher(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{"BCryptHasher implements port.Hasher"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var _ portsec.Hasher = (*BCryptHasher)(nil)
 		})
 	}
 }

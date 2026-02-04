@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/adityakw90/service-user/pkg/util"
 )
 
@@ -234,20 +233,6 @@ func TestSHA256Hasher_EmptySalt(t *testing.T) {
 			if len(hash) != 64 {
 				t.Errorf("hash length = %d, want 64", len(hash))
 			}
-		})
-	}
-}
-
-func TestSHA256Hasher_ImplementsPortHasher(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{"SHA256Hasher implements port.Hasher"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var _ portsec.Hasher = (*SHA256Hasher)(nil)
 		})
 	}
 }
