@@ -85,7 +85,7 @@ func TestDeviceRepository_GetByUID(t *testing.T) {
 			uid:  "device-uid-123",
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
-					AddRow(1, uid, "fp-abc123", "iPhone 14", time.Now())
+					AddRow(int64(1), uid, "fp-abc123", "iPhone 14", time.Now())
 				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE uid = \$1`).
 					WithArgs(uid).
 					WillReturnRows(rows)
@@ -145,7 +145,7 @@ func TestDeviceRepository_GetByFingerprint(t *testing.T) {
 			fingerprint: "fp-abc123456",
 			setupMock: func(mock pgxmock.PgxPoolIface, fingerprint string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
-					AddRow(1, "device-uid-001", fingerprint, "iPhone 14", time.Now())
+					AddRow(int64(1), "device-uid-001", fingerprint, "iPhone 14", time.Now())
 				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE device_fingerprint = \$1`).
 					WithArgs(fingerprint).
 					WillReturnRows(rows)
@@ -219,8 +219,8 @@ func TestDeviceRepository_Create(t *testing.T) {
 
 			repo := NewDeviceRepository(mockPool)
 
-			rows := pgxmock.NewRows([]string{"id"}).AddRow(1)
-			mockPool.ExpectQuery(`INSERT INTO device`).
+			rows := pgxmock.NewRows([]string{"id"}).AddRow(int64(1))
+			mockPool.ExpectQuery(`INSERT INTO device \(uid, device_fingerprint, device_name, created_at\) VALUES \(\$1, \$2, \$3, \$4\) RETURNING id`).
 				WithArgs(tt.device.UID, tt.device.DeviceFingerprint, tt.device.DeviceName, pgxmock.AnyArg()).
 				WillReturnRows(rows)
 
@@ -356,9 +356,10 @@ func TestDeviceRepository_List(t *testing.T) {
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
-					AddRow(1, "uid1", "fp1", "iPhone 14", time.Now()).
-					AddRow(2, "uid2", "fp2", "Samsung Galaxy", time.Now())
-				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device`).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now()).
+					AddRow(int64(2), "uid2", "fp2", "Samsung Galaxy", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
 					WillReturnRows(rows)
 			},
 			wantCount: 2,
@@ -375,9 +376,9 @@ func TestDeviceRepository_List(t *testing.T) {
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
-					AddRow(1, "uid1", "fp1", "iPhone 14", time.Now())
-				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE device_name = \$1`).
-					WithArgs("iPhone 14").
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE device_name = \$1 ORDER BY created_at DESC LIMIT \$2 OFFSET \$3`).
+					WithArgs("iPhone 14", 10, 0).
 					WillReturnRows(rows)
 			},
 			wantCount: 1,
@@ -394,10 +395,10 @@ func TestDeviceRepository_List(t *testing.T) {
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
-					AddRow(1, "uid1", "fp1", "iPhone 14", time.Now()).
-					AddRow(2, "uid2", "fp2", "Samsung Galaxy", time.Now())
-				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE uid = ANY\(\$1\)`).
-					WithArgs(filter.Uids).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now()).
+					AddRow(int64(2), "uid2", "fp2", "Samsung Galaxy", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE uid = ANY\(\$1\) ORDER BY created_at DESC LIMIT \$2 OFFSET \$3`).
+					WithArgs(filter.Uids, 10, 0).
 					WillReturnRows(rows)
 			},
 			wantCount: 2,
@@ -450,15 +451,15 @@ func TestDeviceRepository_ListByUserID(t *testing.T) {
 			filter:     nil,
 			setupMock: func(mock pgxmock.PgxPoolIface, userID int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
-				mock.ExpectQuery(`SELECT COUNT\(\*\)`).
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1`).
 					WithArgs(userID).
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
-					AddRow(1, "uid1", "fp1", "iPhone 14", time.Now()).
-					AddRow(2, "uid2", "fp2", "Samsung Galaxy", time.Now())
-				mock.ExpectQuery(`SELECT d.id, d.uid, d.device_fingerprint, d.device_name, d.created_at FROM device d`).
-					WithArgs(userID, pgxmock.AnyArg(), pgxmock.AnyArg()).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now()).
+					AddRow(int64(2), "uid2", "fp2", "Samsung Galaxy", time.Now())
+				mock.ExpectQuery(`SELECT d\.id, d\.uid, d\.device_fingerprint, d\.device_name, d\.created_at FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1 ORDER BY d\.created_at DESC LIMIT \$2 OFFSET \$3`).
+					WithArgs(userID, 10, 0).
 					WillReturnRows(rows)
 			},
 			wantCount: 2,

@@ -11,7 +11,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // userFileModel is the database model for user file data.
@@ -46,11 +45,11 @@ func (m *userFileModel) toDomain() *model.UserFile {
 
 // UserFileRepository implements repository.UserFileRepository for PostgreSQL.
 type UserFileRepository struct {
-	db *pgxpool.Pool
+	db PostgrePool
 }
 
 // NewUserFileRepository creates a new UserFileRepository.
-func NewUserFileRepository(db *pgxpool.Pool) repository.UserFileRepository {
+func NewUserFileRepository(db PostgrePool) repository.UserFileRepository {
 	return &UserFileRepository{db: db}
 }
 

@@ -9,16 +9,15 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // UserDeviceRepository implements repository.UserDeviceRepository for PostgreSQL.
 type UserDeviceRepository struct {
-	db *pgxpool.Pool
+	db PostgrePool
 }
 
 // NewUserDeviceRepository creates a new UserDeviceRepository.
-func NewUserDeviceRepository(db *pgxpool.Pool) repository.UserDeviceRepository {
+func NewUserDeviceRepository(db PostgrePool) repository.UserDeviceRepository {
 	return &UserDeviceRepository{db: db}
 }
 

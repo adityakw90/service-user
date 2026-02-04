@@ -44,7 +44,7 @@ func TestUserRepository_Create(t *testing.T) {
 
 			// Expect the INSERT query with RETURNING
 			rows := pgxmock.NewRows([]string{"id"}).
-				AddRow(1)
+				AddRow(int64(1))
 
 			mockPool.ExpectQuery(`INSERT INTO "user"`).
 				WithArgs(tt.user.UID, tt.user.Username, tt.user.Email, tt.user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -82,7 +82,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 			id:   1,
 			setupMock: func(mock pgxmock.PgxPoolIface, id int64) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(id, "test-uid", "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(id), "test-uid", "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1`).
 					WithArgs(id).
 					WillReturnRows(rows)
@@ -143,7 +143,7 @@ func TestUserRepository_GetByUID(t *testing.T) {
 			uid:  "test-uid-123",
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(1, uid, "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), uid, "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1 AND deleted_at IS NULL`).
 					WithArgs(uid).
 					WillReturnRows(rows)
@@ -203,7 +203,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			email: "test@example.com",
 			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(1, "test-uid", "testuser", email, "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), "test-uid", "testuser", email, "hash", int32(1), time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1 AND deleted_at IS NULL`).
 					WithArgs(email).
 					WillReturnRows(rows)
@@ -263,7 +263,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 			username: "testuser",
 			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(1, "test-uid", username, "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), "test-uid", username, "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
 					WithArgs(username).
 					WillReturnRows(rows)
@@ -431,9 +431,10 @@ func TestUserRepository_List(t *testing.T) {
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(1, "uid1", "user1", "user1@example.com", "hash", int32(1), time.Now(), time.Now(), nil).
-					AddRow(2, "uid2", "user2", "user2@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL`).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", int32(1), time.Now(), time.Now(), nil).
+					AddRow(int64(2), "uid2", "user2", "user2@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
 					WillReturnRows(rows)
 			},
 			wantCount: 2,
@@ -450,9 +451,9 @@ func TestUserRepository_List(t *testing.T) {
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(1, "uid1", *filter.Username, "user1@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
-					WithArgs("testuser").
+					AddRow(int64(1), "uid1", *filter.Username, "user1@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT \$2 OFFSET \$3`).
+					WithArgs("testuser", 10, 0).
 					WillReturnRows(rows)
 			},
 			wantCount: 1,

@@ -9,7 +9,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // pinModel is the database model for PIN data.
@@ -32,11 +31,11 @@ func (m *pinModel) toDomain() *model.UserPin {
 
 // PinRepository implements port.PinRepository for PostgreSQL.
 type PinRepository struct {
-	db *pgxpool.Pool
+	db PostgrePool
 }
 
 // NewPinRepository creates a new PinRepository.
-func NewPinRepository(db *pgxpool.Pool) repository.UserPinRepository {
+func NewPinRepository(db PostgrePool) repository.UserPinRepository {
 	return &PinRepository{db: db}
 }
 

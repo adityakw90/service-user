@@ -10,7 +10,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // profileModel is the database model for profile data.
@@ -41,11 +40,11 @@ func (m *profileModel) toDomain() *model.UserProfile {
 
 // ProfileRepository implements port.ProfileRepository for PostgreSQL.
 type ProfileRepository struct {
-	db *pgxpool.Pool
+	db PostgrePool
 }
 
 // NewProfileRepository creates a new ProfileRepository.
-func NewProfileRepository(db *pgxpool.Pool) repository.UserProfileRepository {
+func NewProfileRepository(db PostgrePool) repository.UserProfileRepository {
 	return &ProfileRepository{db: db}
 }
 

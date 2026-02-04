@@ -45,53 +45,34 @@ func NewDeviceRepository(db PostgrePool) repository.DeviceRepository {
 
 // GetByID retrieves a device by internal ID.
 func (r *DeviceRepository) GetByID(ctx context.Context, id int64) (*model.Device, error) {
-	query := `
-		SELECT id, uid, device_fingerprint, device_name, created_at
-		FROM device
-		WHERE id = $1
-	`
+	query := `SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE id = $1`
 	return r.scanDevice(r.db.QueryRow(ctx, query, id))
 }
 
 // GetByUID retrieves a device by public UID.
 func (r *DeviceRepository) GetByUID(ctx context.Context, uid string) (*model.Device, error) {
-	query := `
-		SELECT id, uid, device_fingerprint, device_name, created_at
-		FROM device
-		WHERE uid = $1
-	`
+	query := `SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE uid = $1`
 	return r.scanDevice(r.db.QueryRow(ctx, query, uid))
 }
 
 // GetByFingerprint retrieves a device by fingerprint.
 func (r *DeviceRepository) GetByFingerprint(ctx context.Context, fingerprint string) (*model.Device, error) {
-	query := `
-		SELECT id, uid, device_fingerprint, device_name, created_at
-		FROM device
-		WHERE device_fingerprint = $1
-	`
+	query := `SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE device_fingerprint = $1`
 	return r.scanDevice(r.db.QueryRow(ctx, query, fingerprint))
 }
 
 // Create adds a new device.
 func (r *DeviceRepository) Create(ctx context.Context, device *model.Device) (*model.Device, error) {
-	query := `
-		INSERT INTO device (uid, device_fingerprint, device_name, created_at)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id
-	`
-	return device, r.db.QueryRow(ctx, query,
+	query := `INSERT INTO device (uid, device_fingerprint, device_name, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
+	err := r.db.QueryRow(ctx, query,
 		device.UID, device.DeviceFingerprint, device.DeviceName, device.CreatedAt,
 	).Scan(&device.ID)
+	return device, err
 }
 
 // Update modifies an existing device.
 func (r *DeviceRepository) Update(ctx context.Context, device *model.Device) error {
-	query := `
-		UPDATE device
-		SET device_name = $1
-		WHERE id = $2
-	`
+	query := `UPDATE device SET device_name = $1 WHERE id = $2`
 	_, err := r.db.Exec(ctx, query, device.DeviceName, device.ID)
 	return err
 }
