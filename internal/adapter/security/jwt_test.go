@@ -26,6 +26,7 @@ func TestJWTGenerator_GenerateAccessToken(t *testing.T) {
 		{
 			name: "generates valid access token with all fields",
 			claims: model.TokenClaims{
+				Type:           model.TokenTypeAccess,
 				Uid:            "user-123",
 				Identifier:     "user@example.com",
 				IdentifierType: "email",
@@ -36,6 +37,7 @@ func TestJWTGenerator_GenerateAccessToken(t *testing.T) {
 		{
 			name: "generates access token with minimal fields",
 			claims: model.TokenClaims{
+				Type:       model.TokenTypeAccess,
 				Uid:        "user-456",
 				Identifier: "username",
 			},
@@ -44,6 +46,7 @@ func TestJWTGenerator_GenerateAccessToken(t *testing.T) {
 		{
 			name: "generates access token with empty extra",
 			claims: model.TokenClaims{
+				Type:           model.TokenTypeAccess,
 				Uid:            "user-789",
 				Identifier:     "phone",
 				IdentifierType: "phone",
@@ -55,16 +58,16 @@ func TestJWTGenerator_GenerateAccessToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := generator.GenerateAccessToken(tt.claims)
+			token, err := generator.GenerateToken(&tt.claims)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateAccessToken() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GenerateToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && token == "" {
-				t.Error("GenerateAccessToken() returned empty token")
+				t.Error("GenerateToken() returned empty token")
 			}
 			if !tt.wantErr && len(token) < 50 {
-				t.Errorf("GenerateAccessToken() token too short: %s", token)
+				t.Errorf("GenerateToken() token too short: %s", token)
 			}
 		})
 	}
@@ -81,6 +84,7 @@ func TestJWTGenerator_GenerateRefreshToken(t *testing.T) {
 		{
 			name: "generates valid refresh token",
 			claims: model.TokenClaims{
+				Type:           model.TokenTypeRefresh,
 				Uid:            "user-123",
 				Identifier:     "user@example.com",
 				IdentifierType: "email",
@@ -90,6 +94,7 @@ func TestJWTGenerator_GenerateRefreshToken(t *testing.T) {
 		{
 			name: "generates refresh token with extra data",
 			claims: model.TokenClaims{
+				Type:           model.TokenTypeRefresh,
 				Uid:            "user-456",
 				Identifier:     "device-id-123",
 				IdentifierType: "device",
@@ -101,13 +106,13 @@ func TestJWTGenerator_GenerateRefreshToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			token, err := generator.GenerateRefreshToken(tt.claims)
+			token, err := generator.GenerateToken(&tt.claims)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GenerateRefreshToken() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GenerateToken() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && token == "" {
-				t.Error("GenerateRefreshToken() returned empty token")
+				t.Error("GenerateToken() returned empty token")
 			}
 		})
 	}
@@ -118,12 +123,13 @@ func TestJWTGenerator_ValidateToken(t *testing.T) {
 
 	// Generate a valid token for testing
 	validClaims := model.TokenClaims{
+		Type:           model.TokenTypeAccess,
 		Uid:            "user-123",
 		Identifier:     "user@example.com",
 		IdentifierType: "email",
 		Extra:          map[string]any{"role": "admin"},
 	}
-	validToken, err := generator.GenerateAccessToken(validClaims)
+	validToken, err := generator.GenerateToken(&validClaims)
 	if err != nil {
 		t.Fatalf("Failed to generate valid token: %v", err)
 	}
@@ -192,6 +198,7 @@ func TestJWTGenerator_TokenRoundTrip(t *testing.T) {
 	generator := NewJWTGenerator(testSecretKey, testAccessExpiry, testRefreshExpiry)
 
 	originalClaims := model.TokenClaims{
+		Type:           model.TokenTypeAccess,
 		Uid:            "user-round-trip-test",
 		Identifier:     "test@example.com",
 		IdentifierType: "email",
@@ -199,9 +206,9 @@ func TestJWTGenerator_TokenRoundTrip(t *testing.T) {
 	}
 
 	// Generate token
-	token, err := generator.GenerateAccessToken(originalClaims)
+	token, err := generator.GenerateToken(&originalClaims)
 	if err != nil {
-		t.Fatalf("GenerateAccessToken() error = %v", err)
+		t.Fatalf("GenerateToken() error = %v", err)
 	}
 
 	// Validate and extract claims
@@ -233,14 +240,15 @@ func TestJWTGenerator_DifferentSecrets(t *testing.T) {
 	generator2 := NewJWTGenerator("secret-key-2", testAccessExpiry, testRefreshExpiry)
 
 	claims := model.TokenClaims{
+		Type:       model.TokenTypeAccess,
 		Uid:        "user-123",
 		Identifier: "user@example.com",
 	}
 
 	// Generate token with first secret
-	token, err := generator1.GenerateAccessToken(claims)
+	token, err := generator1.GenerateToken(&claims)
 	if err != nil {
-		t.Fatalf("GenerateAccessToken() error = %v", err)
+		t.Fatalf("GenerateToken() error = %v", err)
 	}
 
 	// Validate with different secret should fail
@@ -263,14 +271,18 @@ func TestJWTGenerator_TokenWithDifferentExpiry(t *testing.T) {
 	}
 
 	// Both should generate valid tokens
-	accessToken, err := accessGenerator.GenerateAccessToken(claims)
+	accessClaims := claims
+	accessClaims.Type = model.TokenTypeAccess
+	accessToken, err := accessGenerator.GenerateToken(&accessClaims)
 	if err != nil {
-		t.Fatalf("GenerateAccessToken() error = %v", err)
+		t.Fatalf("GenerateToken() error = %v", err)
 	}
 
-	refreshToken, err := refreshGenerator.GenerateRefreshToken(claims)
+	refreshClaims := claims
+	refreshClaims.Type = model.TokenTypeRefresh
+	refreshToken, err := refreshGenerator.GenerateToken(&refreshClaims)
 	if err != nil {
-		t.Fatalf("GenerateRefreshToken() error = %v", err)
+		t.Fatalf("GenerateToken() error = %v", err)
 	}
 
 	// Both should be valid
@@ -295,14 +307,15 @@ func TestJWTGenerator_ExpiredToken(t *testing.T) {
 	generator := NewJWTGenerator(testSecretKey, -1*time.Hour, testRefreshExpiry)
 
 	claims := model.TokenClaims{
+		Type:       model.TokenTypeAccess,
 		Uid:        "user-123",
 		Identifier: "user@example.com",
 	}
 
 	// Generate expired token
-	token, err := generator.GenerateAccessToken(claims)
+	token, err := generator.GenerateToken(&claims)
 	if err != nil {
-		t.Fatalf("GenerateAccessToken() error = %v", err)
+		t.Fatalf("GenerateToken() error = %v", err)
 	}
 
 	// Validate should return expired error
@@ -343,14 +356,15 @@ func TestJWTGenerator_TokenWithSpecialCharacters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			claims := model.TokenClaims{
+				Type:           model.TokenTypeAccess,
 				Uid:            "user-123",
 				Identifier:     tt.identifier,
 				IdentifierType: tt.identifierType,
 			}
 
-			token, err := generator.GenerateAccessToken(claims)
+			token, err := generator.GenerateToken(&claims)
 			if err != nil {
-				t.Fatalf("GenerateAccessToken() error = %v", err)
+				t.Fatalf("GenerateToken() error = %v", err)
 			}
 
 			extracted, err := generator.ValidateToken(token)

@@ -6,4 +6,6 @@ type AuthParams struct {
 	Password          string
 	DeviceFingerprint string
 	DeviceName        string
+	DeviceIP          string
+	Extra             map[string]any
 }

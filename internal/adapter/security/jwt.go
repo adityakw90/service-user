@@ -36,39 +36,31 @@ func NewJWTGenerator(secretKey string, accessExpiry, refreshExpiry time.Duration
 	}
 }
 
-// GenerateAccessToken generates a new access token.
-func (g *JWTGenerator) GenerateAccessToken(claims model.TokenClaims) (string, error) {
-	now := time.Now()
-	jwtClaims := JWTClaims{
-		Uid:            claims.Uid,
-		Identifier:     claims.Identifier,
-		IdentifierType: claims.IdentifierType,
-		Extra:          claims.Extra,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(g.accessExpiry)),
-			IssuedAt:  jwt.NewNumericDate(now),
-			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    "service-user",
-			Subject:   claims.Uid,
-		},
+// GenerateToken generates a new token.
+func (g *JWTGenerator) GenerateToken(claims *model.TokenClaims) (string, error) {
+	var now time.Time
+	var iat, exp *jwt.NumericDate
+
+	now = time.Now()
+	iat = jwt.NewNumericDate(now)
+	switch claims.Type {
+	case model.TokenTypeAccess:
+		exp = jwt.NewNumericDate(now.Add(g.accessExpiry))
+	case model.TokenTypeRefresh:
+		exp = jwt.NewNumericDate(now.Add(g.refreshExpiry))
+	default:
+		return "", domainerrors.ErrInvalidTokenType
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtClaims)
-	return token.SignedString(g.secretKey)
-}
-
-// GenerateRefreshToken generates a new refresh token.
-func (g *JWTGenerator) GenerateRefreshToken(claims model.TokenClaims) (string, error) {
-	now := time.Now()
 	jwtClaims := JWTClaims{
 		Uid:            claims.Uid,
 		Identifier:     claims.Identifier,
 		IdentifierType: claims.IdentifierType,
 		Extra:          claims.Extra,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(g.refreshExpiry)),
-			IssuedAt:  jwt.NewNumericDate(now),
-			NotBefore: jwt.NewNumericDate(now),
+			ExpiresAt: exp,
+			IssuedAt:  iat,
+			NotBefore: iat,
 			Issuer:    "service-user",
 			Subject:   claims.Uid,
 		},
