@@ -9,16 +9,30 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-type ServiceObserver[T any] struct {
+type serviceObserver[T any] struct {
 	logger monitoring.Logger
 	tracer monitoring.Tracer
 	attrs  func(T) []attribute.KeyValue
 	logMap func(T) map[string]any
 }
 
-func (o *ServiceObserver[T]) OnSignal(
+func NewServiceObserver[T any](
+	logger monitoring.Logger,
+	tracer monitoring.Tracer,
+	attrs func(T) []attribute.KeyValue,
+	logMap func(T) map[string]any,
+) *serviceObserver[T] {
+	return &serviceObserver[T]{
+		logger: logger,
+		tracer: tracer,
+		attrs:  attrs,
+		logMap: logMap,
+	}
+}
+
+func (o *serviceObserver[T]) OnSignal(
 	ctx context.Context,
-	signal signal.ServiceSignal,
+	signal signal.SignalType,
 	data T,
 	err error,
 ) {
