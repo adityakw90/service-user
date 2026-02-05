@@ -1,4 +1,4 @@
-package observability
+package observer
 
 import (
 	"context"
@@ -10,113 +10,7 @@ import (
 	"github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-	nooptrace "go.opentelemetry.io/otel/trace/noop"
-	"google.golang.org/grpc/metadata"
 )
-
-// mockLogger captures log calls for testing
-type mockLogger struct {
-	mu            sync.Mutex
-	debugMessages []logEntry
-	infoMessages  []logEntry
-	warnMessages  []logEntry
-	errorMessages []logEntry
-	fatalMessages []logEntry
-}
-
-type logEntry struct {
-	message string
-	fields  map[string]interface{}
-}
-
-func newMockLogger() *mockLogger {
-	return &mockLogger{
-		debugMessages: make([]logEntry, 0),
-		infoMessages:  make([]logEntry, 0),
-		warnMessages:  make([]logEntry, 0),
-		errorMessages: make([]logEntry, 0),
-		fatalMessages: make([]logEntry, 0),
-	}
-}
-
-func (m *mockLogger) SetLogLevel(level string) {}
-
-func (m *mockLogger) Debug(msg string, fields map[string]interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.debugMessages = append(m.debugMessages, logEntry{message: msg, fields: fields})
-}
-
-func (m *mockLogger) Info(msg string, fields map[string]interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.infoMessages = append(m.infoMessages, logEntry{message: msg, fields: fields})
-}
-
-func (m *mockLogger) Warn(msg string, fields map[string]interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.warnMessages = append(m.warnMessages, logEntry{message: msg, fields: fields})
-}
-
-func (m *mockLogger) Error(msg string, fields map[string]interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.errorMessages = append(m.errorMessages, logEntry{message: msg, fields: fields})
-}
-
-func (m *mockLogger) Fatal(msg string, fields map[string]interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.fatalMessages = append(m.fatalMessages, logEntry{message: msg, fields: fields})
-}
-
-func (m *mockLogger) WithSpanContext(sc trace.SpanContext) monitoring.Logger {
-	return m
-}
-
-func (m *mockLogger) Sync() error {
-	return nil
-}
-
-// mockTracer is a minimal tracer implementation for testing
-type mockTracer struct{}
-
-func newMockTracer() monitoring.Tracer {
-	return &mockTracer{}
-}
-
-func (t *mockTracer) StartSpan(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	// Return noop span for testing
-	span := trace.SpanFromContext(ctx)
-	if span.SpanContext().IsValid() {
-		return ctx, span
-	}
-	return nooptrace.NewTracerProvider().Tracer("test").Start(ctx, name, opts...)
-}
-
-func (t *mockTracer) EndSpan(span trace.Span) {}
-
-func (t *mockTracer) ExtractContext(ctx context.Context, md metadata.MD) context.Context {
-	return ctx
-}
-
-func (t *mockTracer) InjectContext(ctx context.Context) metadata.MD {
-	return metadata.MD{}
-}
-
-func (t *mockTracer) Shutdown(ctx context.Context) error {
-	return nil
-}
-
-func (t *mockTracer) SpanFromContext(ctx context.Context) trace.Span {
-	return trace.SpanFromContext(ctx)
-}
-
-func (t *mockTracer) StartChildSpan(ctx context.Context, name string, parent trace.Span) (context.Context, trace.Span) {
-	return nooptrace.NewTracerProvider().Tracer("test").Start(ctx, name)
-}
 
 // testDataType is a sample type for testing the generic observer
 type testDataType struct {
@@ -125,7 +19,7 @@ type testDataType struct {
 	Duration int64
 }
 
-func TestNewServiceObserver(t *testing.T) {
+func TestAdapter_Observer_NewServiceObserver(t *testing.T) {
 	tests := []struct {
 		name    string
 		logger  monitoring.Logger
@@ -179,7 +73,7 @@ func TestNewServiceObserver(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_OnSignal_Success(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_OnSignal_Success(t *testing.T) {
 	tests := []struct {
 		name     string
 		sig      signal.SignalType
@@ -191,31 +85,31 @@ func TestServiceObserver_OnSignal_Success(t *testing.T) {
 		wantKeys []string
 	}{
 		{
-			name:   "success signal without data functions",
-			sig:    signal.SignalSuccess,
-			data:   testDataType{UserID: "123", Action: "login", Duration: 100},
-			attrs:  nil,
-			logMap: nil,
-			wantMsg: "service signal",
-			wantLvl: "debug",
+			name:     "success signal without data functions",
+			sig:      signal.SignalSuccess,
+			data:     testDataType{UserID: "123", Action: "login", Duration: 100},
+			attrs:    nil,
+			logMap:   nil,
+			wantMsg:  "service signal",
+			wantLvl:  "debug",
 			wantKeys: []string{"signal"},
 		},
 		{
-			name:   "start signal with logMap",
-			sig:    signal.SignalStart,
-			data:   testDataType{UserID: "456", Action: "register", Duration: 200},
-			attrs:  nil,
+			name:  "start signal with logMap",
+			sig:   signal.SignalStart,
+			data:  testDataType{UserID: "456", Action: "register", Duration: 200},
+			attrs: nil,
 			logMap: func(d testDataType) map[string]any {
 				return map[string]any{"user_id": d.UserID, "action": d.Action}
 			},
-			wantMsg: "service signal",
-			wantLvl: "debug",
+			wantMsg:  "service signal",
+			wantLvl:  "debug",
 			wantKeys: []string{"signal", "user_id", "action"},
 		},
 		{
-			name:   "reject signal with full functions",
-			sig:    signal.SignalReject,
-			data:   testDataType{UserID: "789", Action: "delete", Duration: 50},
+			name: "reject signal with full functions",
+			sig:  signal.SignalReject,
+			data: testDataType{UserID: "789", Action: "delete", Duration: 50},
 			attrs: func(d testDataType) []attribute.KeyValue {
 				return []attribute.KeyValue{
 					attribute.String("user_id", d.UserID),
@@ -225,18 +119,18 @@ func TestServiceObserver_OnSignal_Success(t *testing.T) {
 			logMap: func(d testDataType) map[string]any {
 				return map[string]any{"user_id": d.UserID, "duration_ms": d.Duration}
 			},
-			wantMsg: "service signal",
-			wantLvl: "debug",
+			wantMsg:  "service signal",
+			wantLvl:  "debug",
 			wantKeys: []string{"signal", "user_id", "duration_ms"},
 		},
 		{
-			name:   "fail signal with no error",
-			sig:    signal.SignalFail,
-			data:   testDataType{},
-			attrs:  nil,
-			logMap: nil,
-			wantMsg: "service signal",
-			wantLvl: "debug",
+			name:     "fail signal with no error",
+			sig:      signal.SignalFail,
+			data:     testDataType{},
+			attrs:    nil,
+			logMap:   nil,
+			wantMsg:  "service signal",
+			wantLvl:  "debug",
 			wantKeys: []string{"signal"},
 		},
 	}
@@ -284,7 +178,7 @@ func TestServiceObserver_OnSignal_Success(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_OnSignal_WithError(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_OnSignal_WithError(t *testing.T) {
 	tests := []struct {
 		name    string
 		sig     signal.SignalType
@@ -306,11 +200,11 @@ func TestServiceObserver_OnSignal_WithError(t *testing.T) {
 			wantLvl: "error",
 		},
 		{
-			name:   "error with logMap",
-			sig:    signal.SignalFail,
-			data:   testDataType{UserID: "456", Action: "register"},
-			err:    errors.New("database connection failed"),
-			attrs:  nil,
+			name:  "error with logMap",
+			sig:   signal.SignalFail,
+			data:  testDataType{UserID: "456", Action: "register"},
+			err:   errors.New("database connection failed"),
+			attrs: nil,
 			logMap: func(d testDataType) map[string]any {
 				return map[string]any{"user_id": d.UserID, "action": d.Action}
 			},
@@ -318,11 +212,11 @@ func TestServiceObserver_OnSignal_WithError(t *testing.T) {
 			wantLvl: "error",
 		},
 		{
-			name:   "success signal with error (edge case)",
-			sig:    signal.SignalSuccess,
-			data:   testDataType{},
-			err:    errors.New("unexpected error in success path"),
-			attrs:  nil,
+			name:    "success signal with error (edge case)",
+			sig:     signal.SignalSuccess,
+			data:    testDataType{},
+			err:     errors.New("unexpected error in success path"),
+			attrs:   nil,
 			logMap:  nil,
 			wantMsg: "service signal",
 			wantLvl: "error",
@@ -364,7 +258,7 @@ func TestServiceObserver_OnSignal_WithError(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_OnSignal_AllSignalTypes(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_OnSignal_AllSignalTypes(t *testing.T) {
 	signals := []signal.SignalType{
 		signal.SignalStart,
 		signal.SignalReject,
@@ -417,7 +311,7 @@ func TestServiceObserver_OnSignal_AllSignalTypes(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_OnSignal_ContextWithSpan(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_OnSignal_ContextWithSpan(t *testing.T) {
 	tests := []struct {
 		name          string
 		withSpan      bool
@@ -473,7 +367,7 @@ func TestServiceObserver_OnSignal_ContextWithSpan(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_AttributesFunction(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_AttributesFunction(t *testing.T) {
 	tests := []struct {
 		name         string
 		attrs        func(testDataType) []attribute.KeyValue
@@ -535,7 +429,7 @@ func TestServiceObserver_AttributesFunction(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_LogMapFunction(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_LogMapFunction(t *testing.T) {
 	tests := []struct {
 		name    string
 		logMap  func(testDataType) map[string]any
@@ -573,9 +467,9 @@ func TestServiceObserver_LogMapFunction(t *testing.T) {
 			},
 		},
 		{
-			name:   "empty map",
-			logMap: func(d testDataType) map[string]any { return map[string]any{} },
-			data:   testDataType{UserID: "user-789"},
+			name:    "empty map",
+			logMap:  func(d testDataType) map[string]any { return map[string]any{} },
+			data:    testDataType{UserID: "user-789"},
 			wantMap: map[string]any{},
 		},
 	}
@@ -611,7 +505,7 @@ func TestServiceObserver_LogMapFunction(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_ConcurrentCalls(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_ConcurrentCalls(t *testing.T) {
 	logger := newMockLogger()
 	tracer := newMockTracer()
 
@@ -653,7 +547,7 @@ func TestServiceObserver_ConcurrentCalls(t *testing.T) {
 	}
 }
 
-func TestServiceObserver_NilFunctionsSafe(t *testing.T) {
+func TestAdapter_Observer_ServiceObserver_NilFunctionsSafe(t *testing.T) {
 	logger := newMockLogger()
 	tracer := newMockTracer()
 

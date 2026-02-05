@@ -1,4 +1,4 @@
-package observability
+package observer
 
 import (
 	"context"
