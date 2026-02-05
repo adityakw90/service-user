@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+/*
+this test using real redis server
+*/
+
 func getTestRedisConfig() *RedisConfig {
 	return &RedisConfig{
 		Host:              getEnv("REDIS_HOST", "localhost"),

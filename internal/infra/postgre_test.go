@@ -7,12 +7,9 @@ import (
 	"time"
 )
 
-func getEnv(key, defaultValue string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultValue
-}
+/*
+this test should use real postgre server
+*/
 
 func TestInfra_PostgreConnection(t *testing.T) {
 	if os.Getenv("SKIP_INTEGRATION") == "1" {
