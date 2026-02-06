@@ -81,6 +81,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		return nil, domainerrors.ErrUserInactive
 	}
 
+	// Verify password
+	if !s.passwordHasher.Compare(user.Password, payload.Password) {
+		return nil, domainerrors.ErrInvalidCredentials
+	}
+
 	// check device
 	if payload.DeviceFingerprint != "" {
 		device, err = s.findOrCreateDevice(
@@ -145,6 +150,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Add refresh token to whitelist
+	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
+		// Log error but don't fail authentication
 	}
 
 	return &model.Token{

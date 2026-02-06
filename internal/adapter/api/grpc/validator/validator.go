@@ -30,6 +30,9 @@ func New() *Validator {
 	// Register custom PIN validator
 	v.validate.RegisterValidation("pin", pinValidator)
 
+	// Register custom username validator
+	v.validate.RegisterValidation("username", usernameValidator)
+
 	return v
 }
 
@@ -174,6 +177,20 @@ func pinValidator(fl validator.FieldLevel) bool {
 	return !isCommonPINPattern(pin)
 }
 
+// usernameValidator validates username format (alphanumeric, underscore, dot).
+func usernameValidator(fl validator.FieldLevel) bool {
+	username := fl.Field().String()
+
+	// Must be at least 3 characters
+	if len(username) < 3 {
+		return false
+	}
+
+	// Must contain only alphanumeric, underscore, or dot
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_.]+$`, username)
+	return matched
+}
+
 // Struct validates a struct and returns a ValidationErrors map.
 func (v *Validator) Struct(s any) error {
 	return v.validate.Struct(s)
@@ -227,6 +244,8 @@ func formatFieldError(e validator.FieldError) string {
 		return field + " must be a valid URL"
 	case "pin":
 		return field + " must be a valid 6-digit PIN (no common patterns)"
+	case "username":
+		return field + " must contain only letters, numbers, underscores, or dots"
 	default:
 		return field + " is invalid (" + tag + ")"
 	}

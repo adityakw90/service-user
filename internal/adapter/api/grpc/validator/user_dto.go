@@ -13,7 +13,7 @@ type GetRequestDTO struct {
 
 // AddRequestDTO represents validated user creation request.
 type AddRequestDTO struct {
-	Username string `validate:"required,min=3,max=50,alphanum"`
+	Username string `validate:"required,min=3,max=50,username"`
 	Email    string `validate:"required,email"`
 	Password string `validate:"required,min=8,max=128"`
 }
@@ -21,7 +21,7 @@ type AddRequestDTO struct {
 // UpdateRequestDTO represents validated user update request.
 type UpdateRequestDTO struct {
 	Uid       string `validate:"required"`
-	Username  string `validate:"omitempty,min=3,max=50,alphanum"`
+	Username  string `validate:"omitempty,min=3,max=50,username"`
 	Email     string `validate:"omitempty,email"`
 	Password  string `validate:"omitempty,min=8,max=128"`
 	StatusPtr *int32 // Status is int32 in proto, validated separately

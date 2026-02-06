@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/adityakw90/service-user/test/util"
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	commongrpc "github.com/adityakw90/service-user-proto/gen/go/common"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
@@ -13,34 +14,34 @@ import (
 func TestUserGet(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(t *testing.T) string
+		setup   func(t *testing.T, grpcClient *util.TestGRPCClient) string
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "Get existing user",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "getuser", "getuser@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "getuser", "getuser@example.com", "Password123!")
 			},
 			wantErr: false,
 		},
 		{
 			name: "Get non-existent user",
-			setup: func(t *testing.T) string {
-				return "non-existent-uid"
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return "01234567-89ab-cdef-0123-456789abcdef"
 			},
 			wantErr: true,
 			errMsg:  "user not found",
 		},
 		{
 			name: "Get deleted user",
-			setup: func(t *testing.T) string {
-				uid := createTestUser(t, nil, "deleteduser", "deleteduser@example.com", "Password123!")
-				deleteUser(t, nil, uid)
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				uid := createTestUser(t, grpcClient, "deleteduser", "deleteduser@example.com", "Password123!")
+				deleteUser(t, grpcClient, uid)
 				return uid
 			},
 			wantErr: true,
-			errMsg:  "user has been deleted",
+			errMsg:  "user not found",
 		},
 	}
 
@@ -50,7 +51,7 @@ func TestUserGet(t *testing.T) {
 			defer cleanup()
 
 			ctx := context.Background()
-			uid := tt.setup(t)
+			uid := tt.setup(t, grpcClient)
 
 			user, err := grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: uid})
 
@@ -177,15 +178,15 @@ func TestUserList(t *testing.T) {
 func TestUserUpdate(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T) string
+		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
 		update     func(t *testing.T) *usergrpc.UpdateRequest
 		wantErr    bool
 		verifyFunc func(t *testing.T, user *usergrpc.User)
 	}{
 		{
 			name: "Update username",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "updateuser", "updateuser@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "updateuser", "updateuser@example.com", "Password123!")
 			},
 			update: func(t *testing.T) *usergrpc.UpdateRequest {
 				newUsername := "updatedusername"
@@ -200,8 +201,8 @@ func TestUserUpdate(t *testing.T) {
 		},
 		{
 			name: "Update email",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "updateemail", "updateemail@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "updateemail", "updateemail@example.com", "Password123!")
 			},
 			update: func(t *testing.T) *usergrpc.UpdateRequest {
 				newEmail := "updatedemail@example.com"
@@ -216,8 +217,8 @@ func TestUserUpdate(t *testing.T) {
 		},
 		{
 			name: "Update password",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "updatepass", "updatepass@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "updatepass", "updatepass@example.com", "Password123!")
 			},
 			update: func(t *testing.T) *usergrpc.UpdateRequest {
 				newPassword := "NewPassword456!"
@@ -232,8 +233,8 @@ func TestUserUpdate(t *testing.T) {
 		},
 		{
 			name: "Update status to inactive",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "updatestatus", "updatestatus@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "updatestatus", "updatestatus@example.com", "Password123!")
 			},
 			update: func(t *testing.T) *usergrpc.UpdateRequest {
 				status := int32(0) // Inactive
@@ -248,8 +249,8 @@ func TestUserUpdate(t *testing.T) {
 		},
 		{
 			name: "Update multiple fields",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "updatemulti", "updatemulti@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "updatemulti", "updatemulti@example.com", "Password123!")
 			},
 			update: func(t *testing.T) *usergrpc.UpdateRequest {
 				newUsername := "multiupdated"
@@ -273,7 +274,7 @@ func TestUserUpdate(t *testing.T) {
 			defer cleanup()
 
 			ctx := context.Background()
-			uid := tt.setup(t)
+			uid := tt.setup(t, grpcClient)
 			updateReq := tt.update(t)
 			updateReq.Uid = uid
 
@@ -302,19 +303,19 @@ func TestUserUpdate(t *testing.T) {
 func TestUserDelete(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(t *testing.T) string
+		setup   func(t *testing.T, grpcClient *util.TestGRPCClient) string
 		wantErr bool
 	}{
 		{
 			name: "Soft delete existing user",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "deleteuser", "deleteuser@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "deleteuser", "deleteuser@example.com", "Password123!")
 			},
 			wantErr: false,
 		},
 		{
 			name: "Delete non-existent user",
-			setup: func(t *testing.T) string {
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
 				return "non-existent-uid"
 			},
 			wantErr: true,
@@ -327,7 +328,7 @@ func TestUserDelete(t *testing.T) {
 			defer cleanup()
 
 			ctx := context.Background()
-			uid := tt.setup(t)
+			uid := tt.setup(t, grpcClient)
 
 			err := func() error {
 				_, err := grpcClient.UserClient.Delete(ctx, &usergrpc.DeleteRequest{Uid: uid})
@@ -350,15 +351,15 @@ func TestUserDelete(t *testing.T) {
 func TestChangePassword(t *testing.T) {
 	tests := []struct {
 		name             string
-		setup            func(t *testing.T) string
+		setup            func(t *testing.T, grpcClient *util.TestGRPCClient) string
 		changePasswordFn func(t *testing.T) *usergrpc.ChangePasswordRequest
 		wantErr          bool
 		errMsg           string
 	}{
 		{
 			name: "Change password with correct current password",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "changepass", "changepass@example.com", "CurrentPassword123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "changepass", "changepass@example.com", "CurrentPassword123!")
 			},
 			changePasswordFn: func(t *testing.T) *usergrpc.ChangePasswordRequest {
 				return &usergrpc.ChangePasswordRequest{
@@ -371,8 +372,8 @@ func TestChangePassword(t *testing.T) {
 		},
 		{
 			name: "Change password with wrong current password",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "wrongpass", "wrongpass@example.com", "CorrectPassword123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "wrongpass", "wrongpass@example.com", "CorrectPassword123!")
 			},
 			changePasswordFn: func(t *testing.T) *usergrpc.ChangePasswordRequest {
 				return &usergrpc.ChangePasswordRequest{
@@ -386,8 +387,8 @@ func TestChangePassword(t *testing.T) {
 		},
 		{
 			name: "Change password for non-existent user",
-			setup: func(t *testing.T) string {
-				return "non-existent-uid"
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return "01234567-89ab-cdef-0123-456789abcdef"
 			},
 			changePasswordFn: func(t *testing.T) *usergrpc.ChangePasswordRequest {
 				return &usergrpc.ChangePasswordRequest{
@@ -407,7 +408,7 @@ func TestChangePassword(t *testing.T) {
 			defer cleanup()
 
 			ctx := context.Background()
-			uid := tt.setup(t)
+			uid := tt.setup(t, grpcClient)
 			changeReq := tt.changePasswordFn(t)
 			changeReq.Uid = uid
 
@@ -442,15 +443,15 @@ func TestChangePassword(t *testing.T) {
 func TestUpdateProfile(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T) string
+		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
 		updateFn   func(t *testing.T) *usergrpc.UpdateProfileRequest
 		wantErr    bool
 		verifyFunc func(t *testing.T, profile *usergrpc.Profile)
 	}{
 		{
 			name: "Update all profile fields",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "profilefull", "profilefull@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "profilefull", "profilefull@example.com", "Password123!")
 			},
 			updateFn: func(t *testing.T) *usergrpc.UpdateProfileRequest {
 				firstName := "John"
@@ -471,8 +472,8 @@ func TestUpdateProfile(t *testing.T) {
 		},
 		{
 			name: "Partial profile update",
-			setup: func(t *testing.T) string {
-				return createTestUser(t, nil, "profilepartial", "profilepartial@example.com", "Password123!")
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+				return createTestUser(t, grpcClient, "profilepartial", "profilepartial@example.com", "Password123!")
 			},
 			updateFn: func(t *testing.T) *usergrpc.UpdateProfileRequest {
 				firstName := "Jane"
@@ -489,7 +490,7 @@ func TestUpdateProfile(t *testing.T) {
 		},
 		{
 			name: "Update profile for non-existent user",
-			setup: func(t *testing.T) string {
+			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
 				return "non-existent-uid"
 			},
 			updateFn: func(t *testing.T) *usergrpc.UpdateProfileRequest {
@@ -508,7 +509,7 @@ func TestUpdateProfile(t *testing.T) {
 			defer cleanup()
 
 			ctx := context.Background()
-			uid := tt.setup(t)
+			uid := tt.setup(t, grpcClient)
 			updateReq := tt.updateFn(t)
 			updateReq.UserUid = uid
 

@@ -126,6 +126,7 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 
 	// Create empty profile
 	profile := &model.UserProfile{
+		UserID:  user.ID,
 		UserUID: user.UID,
 	}
 	_, err = s.profileRepo.Create(ctx, profile)
@@ -233,10 +234,22 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 		return err
 	}
 
-	// Get current profile
+	// Get current profile, or create if not exists
 	profile, err := s.profileRepo.GetByUserID(ctx, user.ID)
 	if err != nil {
-		return domainerrors.ErrProfileNotFound
+		if errors.Is(err, domainerrors.ErrProfileNotFound) {
+			// Create profile if it doesn't exist
+			profile = &model.UserProfile{
+				UserID:  user.ID,
+				UserUID: user.UID,
+			}
+			profile, err = s.profileRepo.Create(ctx, profile)
+			if err != nil {
+				return err
+			}
+		} else {
+			return domainerrors.ErrProfileNotFound
+		}
 	}
 
 	// Update fields
@@ -284,9 +297,10 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 	// Check if PIN already exists
 	existingPin, err := s.pinRepo.GetByUserID(ctx, user.ID)
 	if err != nil {
-		if errors.Is(err, domainerrors.ErrUserNotFound) {
+		if errors.Is(err, domainerrors.ErrUserNotFound) || errors.Is(err, domainerrors.ErrPinNotSet) {
 			// Create new PIN
 			userPin := &model.UserPin{
+				UserID:  user.ID,
 				UserUID: user.UID,
 				Code:    hashedPin,
 			}
