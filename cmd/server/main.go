@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
+	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
@@ -188,6 +189,9 @@ func main() {
 		})
 	}
 
+	// Initialize Observer
+	authObserver := observer.NewAuthObserver(iMon.Logger, iMon.Tracer)
+
 	// Initialize services
 	uidGen := security.NewUIDGenerator()
 	userService := service.NewUserService(
@@ -215,6 +219,7 @@ func main() {
 		tokenWhitelist,
 		tokenBlacklist,
 		eventPublisher,
+		authObserver,
 	)
 
 	// Initialize device service
