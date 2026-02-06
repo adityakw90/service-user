@@ -31,8 +31,8 @@ func NewDeviceHandler(service portsvc.DeviceService) *DeviceHandler {
 
 // Get retrieves a single device by UID.
 func (h *DeviceHandler) Get(ctx context.Context, req *device.GetRequest) (*device.Device, error) {
-	dto := validator.DeviceGetRequestDTO{Uid: req.Uid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.DeviceGetRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -46,10 +46,14 @@ func (h *DeviceHandler) Get(ctx context.Context, req *device.GetRequest) (*devic
 
 // List retrieves a list of devices.
 func (h *DeviceHandler) List(ctx context.Context, req *device.ListRequest) (*device.ListResponse, error) {
-	pagination := request.ToPaginationParam(req.Pagination)
-	filter := request.ToDeviceListFilterParam(req.Filter)
+	r := request.DeviceListRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
+		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+	}
 
-	result, err := h.service.List(ctx, pagination, filter)
+	p := r.ToDeviceListParams()
+
+	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
 		return nil, response.MapError(err)
 	}
@@ -61,7 +65,7 @@ func (h *DeviceHandler) List(ctx context.Context, req *device.ListRequest) (*dev
 
 	meta := &common.Meta{
 		Total: int64(len(result.Items)),
-		Limit: int32(*pagination.Limit),
+		Limit: int32(*p.Pagination.Limit),
 	}
 
 	return &device.ListResponse{
@@ -72,8 +76,8 @@ func (h *DeviceHandler) List(ctx context.Context, req *device.ListRequest) (*dev
 
 // Delete deletes a device by UID.
 func (h *DeviceHandler) Delete(ctx context.Context, req *device.DeleteRequest) (*common.Success, error) {
-	dto := validator.DeviceDeleteRequestDTO{Uid: req.Uid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.DeviceDeleteRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 

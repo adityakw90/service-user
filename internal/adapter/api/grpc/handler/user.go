@@ -33,8 +33,8 @@ func NewUserHandler(service portsvc.UserService) *UserHandler {
 
 // Get retrieves a single user.
 func (h *UserHandler) Get(ctx context.Context, req *user.GetRequest) (*user.User, error) {
-	dto := validator.GetRequestDTO{Uid: req.Uid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserGetRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -48,10 +48,14 @@ func (h *UserHandler) Get(ctx context.Context, req *user.GetRequest) (*user.User
 
 // List retrieves a list of users.
 func (h *UserHandler) List(ctx context.Context, req *user.ListRequest) (*user.ListResponse, error) {
-	pagination := request.ToPaginationParam(req.Pagination)
-	filter := request.ToUserListFilterParam(req.Filter)
+	r := request.UserListRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
+		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+	}
 
-	result, err := h.service.List(ctx, pagination, filter)
+	p := r.ToUserListParams()
+
+	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
 		return nil, response.MapError(err)
 	}
@@ -63,7 +67,7 @@ func (h *UserHandler) List(ctx context.Context, req *user.ListRequest) (*user.Li
 
 	meta := &common.Meta{
 		Total: int64(len(result.Items)),
-		Limit: int32(*pagination.Limit),
+		Limit: int32(*p.Pagination.Limit),
 	}
 
 	return &user.ListResponse{
@@ -74,12 +78,8 @@ func (h *UserHandler) List(ctx context.Context, req *user.ListRequest) (*user.Li
 
 // Add creates a new user.
 func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddResponse, error) {
-	dto := validator.AddRequestDTO{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: req.Password,
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserAddRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -97,14 +97,8 @@ func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddR
 
 // Update updates a user.
 func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*common.Success, error) {
-	dto := validator.UpdateRequestDTO{
-		Uid:       req.Uid,
-		Username:  req.GetUsername(),
-		Email:     req.GetEmail(),
-		Password:  req.GetPassword(),
-		StatusPtr: req.Status,
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserUpdateRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -132,8 +126,8 @@ func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*com
 
 // Delete performs a soft delete on a user.
 func (h *UserHandler) Delete(ctx context.Context, req *user.DeleteRequest) (*common.Success, error) {
-	dto := validator.DeleteRequestDTO{Uid: req.Uid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserDeleteRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -146,8 +140,8 @@ func (h *UserHandler) Delete(ctx context.Context, req *user.DeleteRequest) (*com
 
 // GetProfile retrieves a user's profile.
 func (h *UserHandler) GetProfile(ctx context.Context, req *user.GetProfileRequest) (*user.Profile, error) {
-	dto := validator.GetProfileRequestDTO{UserUid: req.UserUid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserGetProfileRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -161,13 +155,8 @@ func (h *UserHandler) GetProfile(ctx context.Context, req *user.GetProfileReques
 
 // UpdateProfile updates a user's profile.
 func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfileRequest) (*common.Success, error) {
-	dto := validator.UpdateProfileRequestDTO{
-		UserUid:   req.UserUid,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Bio:       req.Bio,
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserUpdateProfileRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -194,8 +183,8 @@ func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfile
 
 // UpdatePin sets or updates a user's PIN.
 func (h *UserHandler) UpdatePin(ctx context.Context, req *user.UpdatePinRequest) (*common.Success, error) {
-	dto := validator.UpdatePinRequestDTO{UserUid: req.UserUid, PIN: req.Pin}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserUpdatePinRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -208,14 +197,14 @@ func (h *UserHandler) UpdatePin(ctx context.Context, req *user.UpdatePinRequest)
 
 // ListDevice lists devices for a user.
 func (h *UserHandler) ListDevice(ctx context.Context, req *user.ListDevicesRequest) (*user.ListDevicesResponse, error) {
-	dto := validator.ListDevicesRequestDTO{UserUid: req.UserUid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserListDevicesRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	filter := request.ToUserDeviceListFilterParam(req.Filter)
+	p := r.ToUserDeviceListParam()
 
-	result, err := h.service.ListDevice(ctx, req.UserUid, filter)
+	result, err := h.service.ListDevice(ctx, r.UserUid, p.Pagination, p.Filter)
 	if err != nil {
 		return nil, response.MapError(err)
 	}
@@ -238,8 +227,8 @@ func (h *UserHandler) ListDevice(ctx context.Context, req *user.ListDevicesReque
 
 // RevokeDevice revokes access for a device.
 func (h *UserHandler) RevokeDevice(ctx context.Context, req *user.RevokeDeviceRequest) (*common.Success, error) {
-	dto := validator.RevokeDeviceRequestDTO{UserUid: req.UserUid, DeviceUid: req.DeviceUid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserRevokeDeviceRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -252,13 +241,8 @@ func (h *UserHandler) RevokeDevice(ctx context.Context, req *user.RevokeDeviceRe
 
 // ChangePassword changes a user's password.
 func (h *UserHandler) ChangePassword(ctx context.Context, req *user.ChangePasswordRequest) (*common.Success, error) {
-	dto := validator.ChangePasswordRequestDTO{
-		Uid:             req.Uid,
-		CurrentPassword: req.CurrentPassword,
-		NewPassword:     req.NewPassword,
-		ConfirmPassword: req.ConfirmPassword,
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserChangePasswordRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 

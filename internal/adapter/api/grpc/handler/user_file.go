@@ -41,8 +41,8 @@ func NewUserFileHandler(service portsvc.UserFileService) *UserFileHandler {
 
 // Get retrieves a single user file by UID.
 func (h *UserFileHandler) Get(ctx context.Context, req *userFile.GetRequest) (*userFile.UserFile, error) {
-	dto := validator.UserFileGetRequestDTO{Uid: req.Uid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserFileGetRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -56,10 +56,14 @@ func (h *UserFileHandler) Get(ctx context.Context, req *userFile.GetRequest) (*u
 
 // List retrieves a list of user files.
 func (h *UserFileHandler) List(ctx context.Context, req *userFile.ListRequest) (*userFile.ListResponse, error) {
-	pagination := request.ToPaginationParam(req.Pagination)
-	filter := request.ToUserFileListFilterParam(req.Filter)
+	r := request.UserFileListRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
+		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+	}
 
-	result, err := h.service.List(ctx, pagination, filter)
+	p := r.ToUserFileListParams()
+
+	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
 		return nil, response.MapError(err)
 	}
@@ -71,7 +75,7 @@ func (h *UserFileHandler) List(ctx context.Context, req *userFile.ListRequest) (
 
 	meta := &common.Meta{
 		Total: int64(len(result.Items)),
-		Limit: int32(*pagination.Limit),
+		Limit: int32(*p.Pagination.Limit),
 	}
 
 	return &userFile.ListResponse{
@@ -82,13 +86,8 @@ func (h *UserFileHandler) List(ctx context.Context, req *userFile.ListRequest) (
 
 // Add creates a new user file.
 func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*userFile.AddResponse, error) {
-	dto := validator.UserFileAddRequestDTO{
-		UserUid:  req.UserUid,
-		Name:     req.Name,
-		Filename: req.Filename,
-		FileData: req.Filedata,
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserFileAddRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -122,13 +121,8 @@ func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*u
 
 // Update updates an existing user file.
 func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateRequest) (*userFile.UpdateResponse, error) {
-	dto := validator.UserFileUpdateRequestDTO{
-		Uid:      req.Uid,
-		Name:     req.GetName(),
-		Filename: req.GetFilename(),
-		FileData: req.GetFiledata(),
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserFileUpdateRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -173,8 +167,8 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 
 // Delete deletes a user file by UID.
 func (h *UserFileHandler) Delete(ctx context.Context, req *userFile.DeleteRequest) (*userFile.DeleteResponse, error) {
-	dto := validator.UserFileDeleteRequestDTO{Uid: req.Uid}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.UserFileDeleteRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 

@@ -8,9 +8,9 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	auth "github.com/adityakw90/service-user-proto/gen/go/auth"
+	"github.com/adityakw90/service-user/internal/adapter/api/grpc/request"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
 	portsvc "github.com/adityakw90/service-user/internal/core/port/service"
 )
 
@@ -31,25 +31,12 @@ func NewAuthHandler(service portsvc.AuthService) *AuthHandler {
 
 // Auth authenticates a user and returns tokens.
 func (h *AuthHandler) Auth(ctx context.Context, req *auth.AuthRequest) (*auth.Token, error) {
-	// Validate request using DTO
-	dto := validator.AuthRequestDTO{
-		Identifier:        req.Identifier,
-		Password:          req.Password,
-		IdentifierType:    req.IdentifierType,
-		DeviceFingerprint: req.DeviceFingerprint,
-		DeviceName:        req.DeviceName,
-	}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.AuthRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	payload := &params.AuthParams{
-		Identifier:        req.Identifier,
-		IdentifierType:    req.IdentifierType,
-		Password:          req.Password,
-		DeviceFingerprint: req.DeviceFingerprint,
-		DeviceName:        req.DeviceName,
-	}
+	payload := r.ToAuthParams()
 
 	result, err := h.service.Authenticate(ctx, payload)
 	if err != nil {
@@ -64,8 +51,8 @@ func (h *AuthHandler) Auth(ctx context.Context, req *auth.AuthRequest) (*auth.To
 
 // RefreshToken refreshes access token using a refresh token.
 func (h *AuthHandler) RefreshToken(ctx context.Context, req *auth.RefreshTokenRequest) (*auth.Token, error) {
-	dto := validator.RefreshTokenRequestDTO{RefreshToken: req.RefreshToken}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.RefreshTokenRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -82,8 +69,8 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *auth.RefreshTokenRe
 
 // ValidateToken validates an access token and returns claims.
 func (h *AuthHandler) ValidateToken(ctx context.Context, req *auth.ValidateTokenRequest) (*auth.ValidateTokenResponse, error) {
-	dto := validator.ValidateTokenRequestDTO{AccessToken: req.AccessToken}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.ValidateTokenRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -108,8 +95,8 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, req *auth.ValidateToken
 
 // VerifyPin verifies a user's PIN.
 func (h *AuthHandler) VerifyPin(ctx context.Context, req *auth.VerifyPinRequest) (*auth.VerifyPinResponse, error) {
-	dto := validator.VerifyPinRequestDTO{Uid: req.Uid, Code: req.Code}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.VerifyPinRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -123,8 +110,8 @@ func (h *AuthHandler) VerifyPin(ctx context.Context, req *auth.VerifyPinRequest)
 
 // GoogleOAuth initiates Google OAuth flow.
 func (h *AuthHandler) GoogleOAuth(ctx context.Context, req *auth.GoogleOAuthRequest) (*auth.GoogleOAuthResponse, error) {
-	dto := validator.GoogleOAuthRequestDTO{RedirectUri: req.RedirectUri}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.GoogleOAuthRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -138,8 +125,8 @@ func (h *AuthHandler) GoogleOAuth(ctx context.Context, req *auth.GoogleOAuthRequ
 
 // HandleGoogleOAuth handles the OAuth callback.
 func (h *AuthHandler) HandleGoogleOAuth(ctx context.Context, req *auth.HandleGoogleOAuthRequest) (*auth.Token, error) {
-	dto := validator.HandleGoogleOAuthRequestDTO{Code: req.Code, RedirectUri: req.RedirectUri}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.HandleGoogleOAuthRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
@@ -156,8 +143,8 @@ func (h *AuthHandler) HandleGoogleOAuth(ctx context.Context, req *auth.HandleGoo
 
 // RevokeToken revokes a token.
 func (h *AuthHandler) RevokeToken(ctx context.Context, req *auth.RevokeTokenRequest) (*auth.RevokeTokenResponse, error) {
-	dto := validator.RevokeTokenRequestDTO{Token: req.Token, TokenType: req.TokenType}
-	if err := h.validator.Struct(dto); err != nil {
+	r := request.RevokeTokenRequestFromPb(req)
+	if err := h.validator.Struct(r); err != nil {
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
