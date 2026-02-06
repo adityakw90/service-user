@@ -884,7 +884,7 @@ func TestAuthService_VerifyPin(t *testing.T) {
 				}
 				h.CompareFunc = func(hashed, plain string) bool {
 					// Note: The service implementation has arguments in wrong order
-					return hashed == "1234" && plain == "hashed_1234"
+					return hashed == "hashed_1234" && plain == "1234"
 				}
 			},
 			userUID: "test-uid",
@@ -902,7 +902,7 @@ func TestAuthService_VerifyPin(t *testing.T) {
 					return createUserPin(1, "test-uid", "hashed_1234"), nil
 				}
 				h.CompareFunc = func(hashed, plain string) bool {
-					return false // Always return false for this test
+					return hashed == "hashed_1234" && plain == "9999" && false // Always return false for this test
 				}
 			},
 			userUID: "test-uid",

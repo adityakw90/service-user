@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -393,7 +394,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 	}
 
 	// Verify PIN hash
-	if !s.pinHasher.Compare(pin, userPin.Code) {
+	if !s.pinHasher.Compare(userPin.Code, pin) {
 		return false, domainerrors.ErrPinInvalid
 	}
 
@@ -419,10 +420,12 @@ func (s *authService) findUser(ctx context.Context, identifierType string, ident
 func (s *authService) findOrCreateDevice(ctx context.Context, name string, fingerprint string) (*model.Device, error) {
 	device, err := s.deviceRepo.GetByFingerprint(ctx, fingerprint)
 	if err != nil {
-		if err == domainerrors.ErrDeviceNotFound {
+		if errors.Is(err, domainerrors.ErrDeviceNotFound) {
 			return s.deviceRepo.Create(ctx, &model.Device{
+				UID:               s.uidGen.New(),
 				DeviceName:        name,
 				DeviceFingerprint: fingerprint,
+				CreatedAt:         time.Now().UTC(),
 			})
 		}
 		return nil, err
@@ -433,11 +436,14 @@ func (s *authService) findOrCreateDevice(ctx context.Context, name string, finge
 func (s *authService) findOrCreateUserDevice(ctx context.Context, user *model.User, device *model.Device, ipAddress string) (*model.UserDevice, error) {
 	userDevice, err := s.userDeviceRepo.GetByUserIDAndDeviceID(ctx, user.ID, device.ID)
 	if err != nil {
-		if err == domainerrors.ErrUserDeviceNotFound {
+		if errors.Is(err, domainerrors.ErrUserDeviceNotFound) {
+			now := time.Now().UTC()
 			return s.userDeviceRepo.Create(ctx, &model.UserDevice{
-				UserID:    user.ID,
-				DeviceID:  device.ID,
-				IPAddress: ipAddress,
+				UserID:       user.ID,
+				DeviceID:     device.ID,
+				IPAddress:    ipAddress,
+				LastActiveAt: now,
+				CreatedAt:    now,
 			})
 		}
 		return nil, err

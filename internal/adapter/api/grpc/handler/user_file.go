@@ -143,7 +143,18 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 		if len(req.Filedata) > MaxFileSize {
 			return nil, status.Error(codes.ResourceExhausted, "file size exceeds maximum limit")
 		}
-		filePath := "data:" + getMimeType(*req.Filename) + ";base64," + base64.StdEncoding.EncodeToString(req.Filedata)
+		// Determine filename for MIME type detection
+		filename := ""
+		if req.Filename != nil {
+			filename = *req.Filename
+		} else if req.Name != nil {
+			filename = *req.Name
+		}
+		mimeType := getMimeType(filename)
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
+		}
+		filePath := "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(req.Filedata)
 		updateParam.FilePath = &filePath
 		updateParam.SizeBytes = new(int64)
 		*updateParam.SizeBytes = int64(len(req.Filedata))
