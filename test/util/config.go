@@ -3,6 +3,7 @@ package util
 import (
 	"os"
 	"strconv"
+	"testing"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/config"
@@ -15,7 +16,9 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
-func LoadTestConfig() (*config.Config, error) {
+func LoadTestConfig(t *testing.T) (*config.Config, error) {
+	t.Helper()
+
 	dbPort, err := strconv.Atoi(getEnv("DATABASE_PORT", "5432"))
 	if err != nil {
 		return nil, err

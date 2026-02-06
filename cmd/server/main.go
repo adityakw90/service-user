@@ -17,27 +17,28 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
-	"github.com/adityakw90/service-user/internal/adapter/monitoring"
+	adaptermonitoring "github.com/adityakw90/service-user/internal/adapter/monitoring"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
+	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
 	"github.com/adityakw90/service-user/internal/config"
 	"github.com/adityakw90/service-user/internal/core/port"
+	portresolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/adityakw90/service-user/internal/core/service"
 	"github.com/adityakw90/service-user/internal/infra"
 )
 
 func main() {
-	// Initialize logger
-	logger := monitoring.NewLogger()
-
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		logger.Fatal("failed to load config", map[string]interface{}{
-			"error": err.Error(),
-		})
+		panic(err)
 	}
+
+	// Initialize logger
+	logger := adaptermonitoring.NewLogger()
+	logger.Info("starting service", nil)
 
 	// start context
 	ctx := context.Background()
@@ -93,6 +94,12 @@ func main() {
 	deviceRepo := repository.NewDeviceRepository(dbPool)
 	userDeviceRepo := repository.NewUserDeviceRepository(dbPool)
 	_ = repository.NewUserFileRepository(dbPool)
+
+	// Initialize resolvers
+	// Initialize user resolver with nil tracer for now
+	// The resolver will still work but without tracing
+	var userResolver portresolver.UserResolver
+	userResolver = resolver.NewUserResolver(dbPool, redisClient, "user", 1*time.Hour, logger, nil)
 
 	// Initialize hashers
 	passwordHasher, err := security.NewHasher(cfg.PasswordHasher.Type, map[string]any{
@@ -196,7 +203,7 @@ func main() {
 
 	// Initialize user file service
 	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := service.NewUserFileService(userFileRepo, userRepo, uidGen)
+	userFileService := service.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen)
 
 	// Initialize gRPC handlers
 	userHandler := grpcadapter.NewUserHandler(userService)

@@ -15,16 +15,19 @@ import (
 func TestUserFileService_Get(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserFileRepository)
+		setupMocks func(*MockUserFileRepository, *MockUserResolver)
 		uid        string
 		want       *model.UserFile
 		wantErr    error
 	}{
 		{
 			name: "Happy Path",
-			setupMocks: func(fr *MockUserFileRepository) {
+			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
 				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
 					return createUserFile(1, "file-uid", "user-uid", "image"), nil
+				}
+				ur.UIDsByIDsFunc = func(ctx context.Context, userIDs []int64) (map[int64]string, error) {
+					return map[int64]string{1: "user-uid"}, nil
 				}
 			},
 			uid:  "file-uid",
@@ -37,7 +40,7 @@ func TestUserFileService_Get(t *testing.T) {
 		},
 		{
 			name: "Error - file not found",
-			setupMocks: func(fr *MockUserFileRepository) {
+			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
 				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
 					return nil, domainerrors.ErrFileNotFound
 				}
@@ -52,17 +55,19 @@ func TestUserFileService_Get(t *testing.T) {
 			// Setup mocks
 			mockUserFileRepo := NewMockUserFileRepository()
 			mockUserRepo := NewMockUserRepository()
+			mockUserResolver := NewMockUserResolver()
 			mockUIDGen := NewMockUIDGenerator()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserFileRepo)
+				tt.setupMocks(mockUserFileRepo, mockUserResolver)
 			}
 
 			// Create service
 			svc := NewUserFileService(
 				mockUserFileRepo,
 				mockUserRepo,
+				mockUserResolver,
 				mockUIDGen,
 			)
 
@@ -78,6 +83,7 @@ func TestUserFileService_Get(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.want.UID, got.UID)
+			assert.Equal(t, tt.want.UserUID, got.UserUID)
 			assert.Equal(t, tt.want.FileName, got.FileName)
 		})
 	}
@@ -86,15 +92,15 @@ func TestUserFileService_Get(t *testing.T) {
 func TestUserFileService_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserFileRepository)
+		setupMocks func(*MockUserFileRepository, *MockUserResolver)
 		pagination *params.PaginationParam
 		filter     *params.UserFileListFilterParam
-		want       *model.UserFiles
 		wantErr    error
+		verifyFunc func(*testing.T, *model.UserFiles)
 	}{
 		{
 			name: "Happy Path - default pagination",
-			setupMocks: func(fr *MockUserFileRepository) {
+			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
 				fr.ListFunc = func(ctx context.Context, p *params.PaginationParam, f *params.UserFileListFilterParam) (*model.UserFiles, error) {
 					return &model.UserFiles{
 						Items: []model.UserFile{
@@ -103,19 +109,24 @@ func TestUserFileService_List(t *testing.T) {
 						},
 					}, nil
 				}
+				ur.UIDsByIDsFunc = func(ctx context.Context, userIDs []int64) (map[int64]string, error) {
+					return map[int64]string{1: "user-uid"}, nil
+				}
 			},
 			pagination: nil,
 			filter:     nil,
-			want: &model.UserFiles{
-				Items: []model.UserFile{
-					*createUserFile(1, "file1", "user-uid", "image"),
-					*createUserFile(2, "file2", "user-uid", "document"),
-				},
+			wantErr:    nil,
+			verifyFunc: func(t *testing.T, got *model.UserFiles) {
+				require.Len(t, got.Items, 2)
+				assert.Equal(t, "file1", got.Items[0].UID)
+				assert.Equal(t, "user-uid", got.Items[0].UserUID)
+				assert.Equal(t, "file2", got.Items[1].UID)
+				assert.Equal(t, "user-uid", got.Items[1].UserUID)
 			},
 		},
 		{
 			name: "Happy Path - custom pagination",
-			setupMocks: func(fr *MockUserFileRepository) {
+			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
 				fr.ListFunc = func(ctx context.Context, p *params.PaginationParam, f *params.UserFileListFilterParam) (*model.UserFiles, error) {
 					return &model.UserFiles{
 						Items: []model.UserFile{},
@@ -124,13 +135,14 @@ func TestUserFileService_List(t *testing.T) {
 			},
 			pagination: createPaginationParams(2, 20, "created_at", "desc"),
 			filter:     nil,
-			want: &model.UserFiles{
-				Items: []model.UserFile{},
+			wantErr:    nil,
+			verifyFunc: func(t *testing.T, got *model.UserFiles) {
+				require.Len(t, got.Items, 0)
 			},
 		},
 		{
 			name: "Happy Path - with filters",
-			setupMocks: func(fr *MockUserFileRepository) {
+			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
 				fr.ListFunc = func(ctx context.Context, p *params.PaginationParam, f *params.UserFileListFilterParam) (*model.UserFiles, error) {
 					return &model.UserFiles{Items: []model.UserFile{}}, nil
 				}
@@ -139,8 +151,9 @@ func TestUserFileService_List(t *testing.T) {
 			filter: &params.UserFileListFilterParam{
 				UserUid: util.Ptr("user-123"),
 			},
-			want: &model.UserFiles{
-				Items: []model.UserFile{},
+			wantErr: nil,
+			verifyFunc: func(t *testing.T, got *model.UserFiles) {
+				require.Len(t, got.Items, 0)
 			},
 		},
 	}
@@ -150,17 +163,19 @@ func TestUserFileService_List(t *testing.T) {
 			// Setup mocks
 			mockUserFileRepo := NewMockUserFileRepository()
 			mockUserRepo := NewMockUserRepository()
+			mockUserResolver := NewMockUserResolver()
 			mockUIDGen := NewMockUIDGenerator()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserFileRepo)
+				tt.setupMocks(mockUserFileRepo, mockUserResolver)
 			}
 
 			// Create service
 			svc := NewUserFileService(
 				mockUserFileRepo,
 				mockUserRepo,
+				mockUserResolver,
 				mockUIDGen,
 			)
 
@@ -176,6 +191,9 @@ func TestUserFileService_List(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, got)
+			if tt.verifyFunc != nil {
+				tt.verifyFunc(t, got)
+			}
 		})
 	}
 }
@@ -260,6 +278,7 @@ func TestUserFileService_Add(t *testing.T) {
 			// Setup mocks
 			mockUserFileRepo := NewMockUserFileRepository()
 			mockUserRepo := NewMockUserRepository()
+			mockUserResolver := NewMockUserResolver()
 			mockUIDGen := NewMockUIDGenerator()
 
 			// Setup expectations
@@ -271,6 +290,7 @@ func TestUserFileService_Add(t *testing.T) {
 			svc := NewUserFileService(
 				mockUserFileRepo,
 				mockUserRepo,
+				mockUserResolver,
 				mockUIDGen,
 			)
 
@@ -352,6 +372,7 @@ func TestUserFileService_Update(t *testing.T) {
 			// Setup mocks
 			mockUserFileRepo := NewMockUserFileRepository()
 			mockUserRepo := NewMockUserRepository()
+			mockUserResolver := NewMockUserResolver()
 			mockUIDGen := NewMockUIDGenerator()
 
 			// Setup expectations
@@ -363,6 +384,7 @@ func TestUserFileService_Update(t *testing.T) {
 			svc := NewUserFileService(
 				mockUserFileRepo,
 				mockUserRepo,
+				mockUserResolver,
 				mockUIDGen,
 			)
 
@@ -417,6 +439,7 @@ func TestUserFileService_Delete(t *testing.T) {
 			// Setup mocks
 			mockUserFileRepo := NewMockUserFileRepository()
 			mockUserRepo := NewMockUserRepository()
+			mockUserResolver := NewMockUserResolver()
 			mockUIDGen := NewMockUIDGenerator()
 
 			// Setup expectations
@@ -428,6 +451,7 @@ func TestUserFileService_Delete(t *testing.T) {
 			svc := NewUserFileService(
 				mockUserFileRepo,
 				mockUserRepo,
+				mockUserResolver,
 				mockUIDGen,
 			)
 

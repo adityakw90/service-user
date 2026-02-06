@@ -3,14 +3,82 @@ package util
 import (
 	"context"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
+
+func TruncateTestTables(t *testing.T, ctx context.Context, db *pgxpool.Pool) {
+	t.Helper()
+
+	// get all table names
+	var tables []string
+	err := db.QueryRow(ctx, `
+		SELECT array_agg(tablename)
+		FROM pg_tables
+		WHERE schemaname = 'public' AND tablename != 'goose_db_version'
+	`).Scan(&tables)
+	if err != nil {
+		t.Fatalf("Failed to get table names: %v", err)
+	}
+
+	if len(tables) == 0 {
+		return
+	}
+
+	tx, err := db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	if err != nil {
+		t.Fatalf("Failed to begin transaction: %v", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	// truncate all tables in a single statement
+	// using CASCADE to handle foreign key constraints automatically
+	query := fmt.Sprintf(`TRUNCATE TABLE "%s"`, tables[0])
+	for i := 1; i < len(tables); i++ {
+		query += fmt.Sprintf(`, "%s"`, tables[i])
+	}
+	query += " CASCADE"
+
+	if _, err := tx.Exec(ctx, query); err != nil {
+		t.Fatalf("Failed to truncate tables: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("Failed to commit transaction: %v", err)
+	}
+}
+
+// CreateTestUser inserts a user directly into the database for fixtures.
+// This bypasses the service layer for faster test setup.
+func CreateTestUser(ctx context.Context, db *pgxpool.Pool, user *model.User) error {
+	query := `
+		INSERT INTO "user" (uid, username, email, password, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at, updated_at`
+
+	err := db.QueryRow(
+		ctx,
+		query,
+		user.UID,
+		user.Username,
+		user.Email,
+		user.Password,
+		user.Status,
+		time.Now(),
+		time.Now(),
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+
+	return err
+}
 
 // SetupTestDatabase truncates all test tables in foreign key order.
 // Use this to clean the database between tests.
@@ -31,29 +99,6 @@ func SetupTestDatabase(ctx context.Context, db pgxExecutor) error {
 	}
 
 	return nil
-}
-
-// CreateTestUser inserts a user directly into the database for fixtures.
-// This bypasses the service layer for faster test setup.
-func CreateTestUser(ctx context.Context, db pgxExecutor, user *model.User) error {
-	query := `
-		INSERT INTO "user" (uid, username, email, password, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id, created_at, updated_at`
-
-	err := db.QueryRow(
-		ctx,
-		query,
-		user.UID,
-		user.Username,
-		user.Email,
-		user.Password,
-		user.Status,
-		time.Now(),
-		time.Now(),
-	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
-
-	return err
 }
 
 // GetTestUser retrieves a user by UID for assertions.
@@ -117,7 +162,7 @@ func WaitForDatabase(ctx context.Context, dbURL string, maxAttempts int) error {
 }
 
 // CreateTestUserWithProfile creates both user and profile records.
-func CreateTestUserWithProfile(ctx context.Context, db pgxExecutor, user *model.User, profile *model.UserProfile) error {
+func CreateTestUserWithProfile(ctx context.Context, db *pgxpool.Pool, user *model.User, profile *model.UserProfile) error {
 	// First create the user
 	if err := CreateTestUser(ctx, db, user); err != nil {
 		return fmt.Errorf("failed to create user: %w", err)

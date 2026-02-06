@@ -7,6 +7,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
+	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
 )
@@ -14,17 +15,20 @@ import (
 type userFileService struct {
 	userFileRepo repository.UserFileRepository
 	userRepo     repository.UserRepository
+	userResolver portResolver.UserResolver
 	uidGen       portSec.UIDGenerator
 }
 
 func NewUserFileService(
 	userFileRepo repository.UserFileRepository,
 	userRepo repository.UserRepository,
+	userResolver portResolver.UserResolver,
 	uidGen portSec.UIDGenerator,
 ) portSvc.UserFileService {
 	return &userFileService{
 		userFileRepo: userFileRepo,
 		userRepo:     userRepo,
+		userResolver: userResolver,
 		uidGen:       uidGen,
 	}
 }
@@ -38,6 +42,14 @@ func (s *userFileService) Get(ctx context.Context, uid string) (*model.UserFile,
 	if err != nil {
 		return nil, err
 	}
+
+	resUserUid, err := s.userResolver.UIDsByIDs(ctx, []int64{
+		file.UserID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	file.UserUID = resUserUid[file.UserID]
 
 	return file, nil
 }
@@ -55,6 +67,20 @@ func (s *userFileService) List(ctx context.Context, pagination *params.Paginatio
 	files, err := s.userFileRepo.List(ctx, pagination, filter)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(files.Items) > 0 {
+		var listUserId []int64
+		for _, item := range files.Items {
+			listUserId = append(listUserId, item.UserID)
+		}
+		resUserUIDs, err := s.userResolver.UIDsByIDs(ctx, listUserId)
+		if err != nil {
+			return nil, err
+		}
+		for i, item := range files.Items {
+			files.Items[i].UserUID = resUserUIDs[item.UserID]
+		}
 	}
 
 	return files, nil
