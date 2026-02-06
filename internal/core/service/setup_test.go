@@ -90,10 +90,11 @@ func createUserPin(userID int64, userUID string, code string) *model.UserPin {
 }
 
 // Helper function to create auth params
-func createAuthParams(identifier, identifierType, deviceName, deviceFingerprint, deviceIP string) *params.AuthParams {
+func createAuthParams(identifier, identifierType, password, deviceName, deviceFingerprint, deviceIP string) *params.AuthParams {
 	return &params.AuthParams{
 		Identifier:        identifier,
 		IdentifierType:    identifierType,
+		Password:          password,
 		DeviceName:        deviceName,
 		DeviceFingerprint: deviceFingerprint,
 		DeviceIP:          deviceIP,

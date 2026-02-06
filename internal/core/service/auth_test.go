@@ -35,7 +35,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "email", "", "", ""),
+			input: createAuthParams("test@example.com", "email", "password", "", "", ""),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -59,7 +59,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("testuser", "username", "", "", ""),
+			input: createAuthParams("testuser", "username", "password", "", "", ""),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -76,7 +76,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return nil, domainerrors.ErrUserNotFound
 				}
 			},
-			input:   createAuthParams("nonexistent@example.com", "", "", "", ""),
+			input:   createAuthParams("nonexistent@example.com", "", "password", "", "", ""),
 			wantErr: domainerrors.ErrInvalidCredentials,
 		},
 		{
@@ -86,7 +86,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return createDeletedUser(1, "test-uid", "testuser", "test@example.com"), nil
 				}
 			},
-			input:   createAuthParams("test@example.com", "", "", "", ""),
+			input:   createAuthParams("test@example.com", "", "password", "", "", ""),
 			wantErr: domainerrors.ErrUserDeleted,
 		},
 		{
@@ -96,7 +96,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusInactive), nil
 				}
 			},
-			input:   createAuthParams("test@example.com", "", "", "", ""),
+			input:   createAuthParams("test@example.com", "", "password", "", "", ""),
 			wantErr: domainerrors.ErrUserInactive,
 		},
 		{
@@ -125,7 +125,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "", "iPhone", "fp123", "192.168.1.1"),
+			input: createAuthParams("test@example.com", "", "password", "iPhone", "fp123", "192.168.1.1"),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -152,7 +152,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "", "iPhone", "fp123", "192.168.1.1"),
+			input: createAuthParams("test@example.com", "", "password", "iPhone", "fp123", "192.168.1.1"),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -173,7 +173,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "", "", "", ""),
+			input: createAuthParams("test@example.com", "", "password", "", "", ""),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
