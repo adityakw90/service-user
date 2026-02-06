@@ -2,7 +2,7 @@ package params
 
 type UserFileListFilterParam struct {
 	Uids       []string // file uids
-	UserUid    *string
+	UserUid    []string
 	FileType   *string
 	Visibility *string
 }

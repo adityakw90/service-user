@@ -29,7 +29,8 @@ var (
 	ErrInvalidTokenType  = errors.New("token: invalid token type")
 
 	// auth errors
-	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrInvalidCredentials    = errors.New("invalid credentials")
+	ErrInvalidIdentifierType = errors.New("invalid identifier type")
 
 	// oauth errors
 	ErrOAuthInvalidState           = &OAuthError{Code: "invalid_state", Description: "Invalid or expired state parameter"}

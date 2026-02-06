@@ -3,6 +3,7 @@ package params
 type UserDeviceListFilterParam struct {
 	UserUids   []string // user uids
 	DeviceUids []string // device uids
+	DeviceName *string
 	IpAddress  *string
 	Revoked    *bool
 }

@@ -6,12 +6,3 @@ type PaginationParam struct {
 	OrderBy *string
 	Sort    *string
 }
-
-func NewPaginationParam(page int, limit int, orderBy string, sort string) *PaginationParam {
-	return &PaginationParam{
-		Page:    &page,
-		Limit:   &limit,
-		OrderBy: &orderBy,
-		Sort:    &sort,
-	}
-}

@@ -31,7 +31,7 @@ type UserService interface {
 	SetPin(ctx context.Context, userUID, pin string) error
 
 	// Device operations
-	ListDevice(ctx context.Context, userUID string, opts params.UserDeviceListFilterParam) (*model.Devices, error)
+	ListDevice(ctx context.Context, userUID string, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) (*model.Devices, error)
 	RevokeDevice(ctx context.Context, userUID, deviceUID string) error
 
 	// Password operations
