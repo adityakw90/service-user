@@ -8,7 +8,6 @@ import (
 
 	"github.com/adityakw90/go-monitoring"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
-	portMonitoring "github.com/adityakw90/service-user/internal/core/port/monitoring"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
@@ -20,7 +19,7 @@ type userResolver struct {
 	redisClient        *redis.Client
 	redisPrefix        string
 	redisCacheDuration time.Duration
-	logger             portMonitoring.Logger
+	logger             monitoring.Logger
 	tracer             monitoring.Tracer
 }
 
@@ -34,7 +33,7 @@ func NewUserResolver(
 	redisClient *redis.Client,
 	redisPrefix string,
 	redisCacheDuration time.Duration,
-	logger portMonitoring.Logger,
+	logger monitoring.Logger,
 	tracer monitoring.Tracer,
 ) portResolver.UserResolver {
 	return &userResolver{
@@ -51,7 +50,7 @@ func (r *userResolver) fetchIDFromDB(ctx context.Context, uid string) (*userIden
 	var iden userIdentity
 
 	rows, err := r.db.Query(ctx,
-		`SELECT id, uid FROM user WHERE uid=$1`, uid,
+		`SELECT id, uid FROM "user" WHERE uid=$1`, uid,
 	)
 	if err != nil {
 		return nil, err
@@ -76,7 +75,7 @@ func (r *userResolver) fetchUIDFromDB(ctx context.Context, id int64) (*userIdent
 	var iden userIdentity
 
 	rows, err := r.db.Query(ctx,
-		`SELECT id, uid FROM user WHERE id=$1`, id,
+		`SELECT id, uid FROM "user" WHERE id=$1`, id,
 	)
 	if err != nil {
 		return nil, err

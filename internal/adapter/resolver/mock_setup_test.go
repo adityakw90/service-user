@@ -53,11 +53,18 @@ func (t *noOpTracer) StartChildSpan(ctx context.Context, name string, parent tra
 // mockLogger is a mock implementation of portMonitoring.Logger for testing
 type mockLogger struct{}
 
+func (m *mockLogger) SetLogLevel(level string)                            {}
 func (m *mockLogger) Debug(message string, fields map[string]interface{}) {}
 func (m *mockLogger) Info(message string, fields map[string]interface{})  {}
 func (m *mockLogger) Warn(message string, fields map[string]interface{})  {}
 func (m *mockLogger) Error(message string, fields map[string]interface{}) {}
 func (m *mockLogger) Fatal(message string, fields map[string]interface{}) {}
+func (m *mockLogger) WithSpanContext(span trace.SpanContext) monitoring.Logger {
+	return m
+}
+func (m *mockLogger) Sync() error {
+	return nil
+}
 
 // newMockRedis creates a new miniredis server and returns the redis client and cleanup function
 func newMockRedis() (*redis.Client, func(), error) {

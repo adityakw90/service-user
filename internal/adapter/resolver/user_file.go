@@ -8,7 +8,6 @@ import (
 
 	"github.com/adityakw90/go-monitoring"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
-	portMonitoring "github.com/adityakw90/service-user/internal/core/port/monitoring"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
@@ -20,7 +19,7 @@ type userFileResolver struct {
 	redisClient        *redis.Client
 	redisPrefix        string
 	redisCacheDuration time.Duration
-	logger             portMonitoring.Logger
+	logger             monitoring.Logger
 	tracer             monitoring.Tracer
 }
 
@@ -34,7 +33,7 @@ func NewUserFileResolver(
 	redisClient *redis.Client,
 	redisPrefix string,
 	redisCacheDuration time.Duration,
-	logger portMonitoring.Logger,
+	logger monitoring.Logger,
 	tracer monitoring.Tracer,
 ) portResolver.UserFileResolver {
 	return &userFileResolver{

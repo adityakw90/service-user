@@ -17,14 +17,12 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
-	adaptermonitoring "github.com/adityakw90/service-user/internal/adapter/monitoring"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
 	"github.com/adityakw90/service-user/internal/config"
 	"github.com/adityakw90/service-user/internal/core/port"
-	portresolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/adityakw90/service-user/internal/core/service"
 	"github.com/adityakw90/service-user/internal/infra"
 )
@@ -37,8 +35,28 @@ func main() {
 	}
 
 	// Initialize logger
-	logger := adaptermonitoring.NewLogger()
-	logger.Info("starting service", nil)
+	logger := infra.NewLogger()
+
+	// initialize monitoring
+	iMon, err := infra.NewMonitoring(&infra.MonitoringConfig{
+		ServiceName:        cfg.Monitoring.ServiceName,
+		Environment:        cfg.Monitoring.Environment,
+		InstanceName:       cfg.Monitoring.Instance.Name,
+		InstanceHost:       cfg.Monitoring.Instance.Host,
+		LoggerLevel:        cfg.Monitoring.Logger.Level,
+		TracerProvider:     cfg.Monitoring.Tracer.Provider,
+		TracerProviderHost: cfg.Monitoring.Tracer.ProviderHost,
+		TracerProviderPort: cfg.Monitoring.Tracer.ProviderPort,
+		TracerSampleRatio:  cfg.Monitoring.Tracer.SampleRatio,
+		MetricProvider:     cfg.Monitoring.Metric.Provider,
+		MetricProviderHost: cfg.Monitoring.Metric.ProviderHost,
+		MetricProviderPort: cfg.Monitoring.Metric.ProviderPort,
+	})
+	if err != nil {
+		logger.Fatal("failed to initialize monitoring", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 
 	// start context
 	ctx := context.Background()
@@ -96,10 +114,14 @@ func main() {
 	_ = repository.NewUserFileRepository(dbPool)
 
 	// Initialize resolvers
-	// Initialize user resolver with nil tracer for now
-	// The resolver will still work but without tracing
-	var userResolver portresolver.UserResolver
-	userResolver = resolver.NewUserResolver(dbPool, redisClient, "user", 1*time.Hour, logger, nil)
+	userResolver := resolver.NewUserResolver(
+		dbPool,
+		redisClient,
+		cfg.App.Code+":resolver:user",
+		1*time.Hour,
+		iMon.Logger,
+		iMon.Tracer,
+	)
 
 	// Initialize hashers
 	passwordHasher, err := security.NewHasher(cfg.PasswordHasher.Type, map[string]any{

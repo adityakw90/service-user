@@ -37,8 +37,13 @@ func (r *UserDeviceRepository) Create(ctx context.Context, ud *model.UserDevice)
 		INSERT INTO user_device (user_id, device_id, ip_address, last_active_at, created_at)
 		VALUES ($1, $2, $3, $4, $5)
 	`
+	// Handle empty string for ip_address - use 0.0.0.0 as default (inet type doesn't accept empty strings)
+	ipAddress := ud.IPAddress
+	if ipAddress == "" {
+		ipAddress = "0.0.0.0"
+	}
 	_, err := r.db.Exec(ctx, query,
-		ud.UserID, ud.DeviceID, ud.IPAddress, ud.LastActiveAt, ud.CreatedAt,
+		ud.UserID, ud.DeviceID, ipAddress, ud.LastActiveAt, ud.CreatedAt,
 	)
 	return ud, err
 }
@@ -50,7 +55,19 @@ func (r *UserDeviceRepository) Update(ctx context.Context, ud *model.UserDevice)
 		SET ip_address = $1, last_active_at = $2
 		WHERE user_id = $3 AND device_id = $4
 	`
-	_, err := r.db.Exec(ctx, query, ud.IPAddress, ud.LastActiveAt, ud.UserID, ud.DeviceID)
+	// Handle empty string for ip_address - keep existing value if empty
+	ipAddress := ud.IPAddress
+	if ipAddress == "" {
+		// Don't update ip_address if empty, keep existing value
+		query = `
+			UPDATE user_device
+			SET last_active_at = $1
+			WHERE user_id = $2 AND device_id = $3
+		`
+		_, err := r.db.Exec(ctx, query, ud.LastActiveAt, ud.UserID, ud.DeviceID)
+		return err
+	}
+	_, err := r.db.Exec(ctx, query, ipAddress, ud.LastActiveAt, ud.UserID, ud.DeviceID)
 	return err
 }
 
@@ -145,7 +162,7 @@ func (r *UserDeviceRepository) scanUserDevice(row pgx.Row) (*model.UserDevice, e
 		&ud.LastActiveAt, &ud.RevokedAt, &ud.CreatedAt,
 	)
 	if err == pgx.ErrNoRows {
-		return nil, errors.ErrDeviceNotFound
+		return nil, errors.ErrUserDeviceNotFound
 	}
 	if err != nil {
 		return nil, err

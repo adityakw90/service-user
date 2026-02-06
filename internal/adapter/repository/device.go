@@ -192,6 +192,9 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	args = append(args, userID)
 	argIdx++
 
+	// Exclude revoked devices
+	conditions = append(conditions, "ud.revoked_at IS NULL")
+
 	if filter != nil {
 		if len(filter.Uids) > 0 {
 			conditions = append(conditions, fmt.Sprintf("d.uid = ANY($%d)", argIdx))

@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	portMonitoring "github.com/adityakw90/service-user/internal/core/port/monitoring"
+	monitoring "github.com/adityakw90/go-monitoring"
 	"github.com/redis/go-redis/v9"
 )
 
 func mapperID[T any, KS comparable, KT comparable](
 	ctx context.Context,
-	logger portMonitoring.Logger,
+	logger monitoring.Logger,
 	redisClient *redis.Client,
 	keys []KS,
 	convertResult func(string) KT,
@@ -121,7 +121,7 @@ func mapperID[T any, KS comparable, KT comparable](
 
 func mapperUID[T any, KS comparable, KT comparable](
 	ctx context.Context,
-	logger portMonitoring.Logger,
+	logger monitoring.Logger,
 	redisClient *redis.Client,
 	keys []KS,
 	convertResult func(string) KT,

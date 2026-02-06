@@ -28,7 +28,7 @@ func TestUserResolver_FetchIDFromDB(t *testing.T) {
 			setupMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"}).
 					AddRow(int64(100), "user-uid-123")
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("user-uid-123").
 					WillReturnRows(rows)
 			},
@@ -41,7 +41,7 @@ func TestUserResolver_FetchIDFromDB(t *testing.T) {
 			uid:  "nonexistent-uid",
 			setupMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"})
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("nonexistent-uid").
 					WillReturnRows(rows)
 			},
@@ -54,7 +54,7 @@ func TestUserResolver_FetchIDFromDB(t *testing.T) {
 			name: "database error",
 			uid:  "error-uid",
 			setupMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("error-uid").
 					WillReturnError(errors.New("database connection error"))
 			},
@@ -116,7 +116,7 @@ func TestUserResolver_FetchUIDFromDB(t *testing.T) {
 			setupMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"}).
 					AddRow(int64(100), "user-uid-123")
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(100)).
 					WillReturnRows(rows)
 			},
@@ -129,7 +129,7 @@ func TestUserResolver_FetchUIDFromDB(t *testing.T) {
 			id:   999,
 			setupMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"})
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(999)).
 					WillReturnRows(rows)
 			},
@@ -142,7 +142,7 @@ func TestUserResolver_FetchUIDFromDB(t *testing.T) {
 			name: "database error",
 			id:   500,
 			setupMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(500)).
 					WillReturnError(errors.New("database connection error"))
 			},
@@ -245,7 +245,7 @@ func TestUserResolver_IDsByUIDs(t *testing.T) {
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"}).
 					AddRow(int64(100), "user-uid-1")
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("user-uid-1").
 					WillReturnRows(rows)
 			},
@@ -263,7 +263,7 @@ func TestUserResolver_IDsByUIDs(t *testing.T) {
 			name:     "single user fetch from DB",
 			userUIDs: []string{"user-uid-1"},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("user-uid-1").
 					WillReturnRows(pgxmock.NewRows([]string{"id", "uid"}).
 						AddRow(int64(100), "user-uid-1"))
@@ -283,7 +283,7 @@ func TestUserResolver_IDsByUIDs(t *testing.T) {
 			userUIDs: []string{"nonexistent-uid"},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"})
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("nonexistent-uid").
 					WillReturnRows(rows)
 			},
@@ -294,7 +294,7 @@ func TestUserResolver_IDsByUIDs(t *testing.T) {
 			name:     "database error",
 			userUIDs: []string{"error-uid"},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE uid=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE uid=$1").
 					WithArgs("error-uid").
 					WillReturnError(errors.New("database error"))
 			},
@@ -379,7 +379,7 @@ func TestUserResolver_UIDsByIDs(t *testing.T) {
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"}).
 					AddRow(int64(100), "user-uid-1")
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(100)).
 					WillReturnRows(rows)
 			},
@@ -397,7 +397,7 @@ func TestUserResolver_UIDsByIDs(t *testing.T) {
 			name:    "single user fetch from DB",
 			userIDs: []int64{100},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(100)).
 					WillReturnRows(pgxmock.NewRows([]string{"id", "uid"}).
 						AddRow(int64(100), "user-uid-1"))
@@ -417,7 +417,7 @@ func TestUserResolver_UIDsByIDs(t *testing.T) {
 			userIDs: []int64{999},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"})
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(999)).
 					WillReturnRows(rows)
 			},
@@ -428,7 +428,7 @@ func TestUserResolver_UIDsByIDs(t *testing.T) {
 			name:    "database error",
 			userIDs: []int64{500},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
-				mock.ExpectQuery("SELECT id, uid FROM user WHERE id=$1").
+				mock.ExpectQuery("SELECT id, uid FROM \"user\" WHERE id=$1").
 					WithArgs(int64(500)).
 					WillReturnError(errors.New("database error"))
 			},

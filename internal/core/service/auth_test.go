@@ -893,7 +893,7 @@ func TestAuthService_VerifyPin(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "Error - invalid PIN",
+			name: "Invalid PIN returns false",
 			setupMocks: func(ur *MockUserRepository, pr *MockUserPinRepository, h *MockHasher) {
 				ur.GetByUIDFunc = func(ctx context.Context, uid string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil
@@ -908,7 +908,7 @@ func TestAuthService_VerifyPin(t *testing.T) {
 			userUID: "test-uid",
 			pin:     "9999",
 			want:    false,
-			wantErr: domainerrors.ErrPinInvalid,
+			wantErr: nil,
 		},
 		{
 			name: "Error - PIN not set",

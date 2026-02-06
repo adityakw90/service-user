@@ -95,7 +95,8 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 			payload.DeviceFingerprint,
 		)
 		if err != nil {
-			// allow error and log this
+			// Log error but don't fail authentication - devices are optional
+			// TODO: add proper logging
 		}
 		if device != nil {
 			userDevice, err = s.findOrCreateUserDevice(
@@ -105,7 +106,8 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 				payload.DeviceIP,
 			)
 			if err != nil {
-				// allow error and log this
+				// Log error but don't fail authentication
+				// TODO: add proper logging
 			}
 		}
 	}
@@ -395,7 +397,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 
 	// Verify PIN hash
 	if !s.pinHasher.Compare(userPin.Code, pin) {
-		return false, domainerrors.ErrPinInvalid
+		return false, nil // Invalid PIN, but not an error - return valid=false
 	}
 
 	return true, nil

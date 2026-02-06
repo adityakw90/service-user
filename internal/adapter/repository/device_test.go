@@ -451,14 +451,14 @@ func TestDeviceRepository_ListByUserID(t *testing.T) {
 			filter:     nil,
 			setupMock: func(mock pgxmock.PgxPoolIface, userID int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
-				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1`).
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1 AND ud\.revoked_at IS NULL`).
 					WithArgs(userID).
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
 					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now()).
 					AddRow(int64(2), "uid2", "fp2", "Samsung Galaxy", time.Now())
-				mock.ExpectQuery(`SELECT d\.id, d\.uid, d\.device_fingerprint, d\.device_name, d\.created_at FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1 ORDER BY d\.created_at DESC LIMIT \$2 OFFSET \$3`).
+				mock.ExpectQuery(`SELECT d\.id, d\.uid, d\.device_fingerprint, d\.device_name, d\.created_at FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1 AND ud\.revoked_at IS NULL ORDER BY d\.created_at DESC LIMIT \$2 OFFSET \$3`).
 					WithArgs(userID, 10, 0).
 					WillReturnRows(rows)
 			},

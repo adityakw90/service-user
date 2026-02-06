@@ -40,36 +40,35 @@ type Config struct {
 	Monitoring MonitoringConfig `mapstructure:",squash"`
 }
 
-type MonitoringConfig struct {
-	ServiceName string         `mapstructure:"MONITORING_SERVICE_NAME"`
-	Environment string         `mapstructure:"MONITORING_ENVIRONMENT"`
-	Instance    InstanceConfig `mapstructure:",squash"`
-	Logger      LoggerConfig   `mapstructure:",squash"`
-	Tracer      TracerConfig   `mapstructure:",squash"`
-	Metric      MetricConfig   `mapstructure:",squash"`
-}
-
 type InstanceConfig struct {
-	Name string `mapstructure:"MONITORING_INSTANCE_NAME"`
-	Host string `mapstructure:"MONITORING_INSTANCE_HOST"`
+	Name string `mapstructure:"name"`
+	Host string `mapstructure:"host"`
 }
 
-type LoggerConfig struct {
-	Level string `mapstructure:"MONITORING_LOGGER_LEVEL"`
+type MonitoringConfig struct {
+	ServiceName string                 `mapstructure:"service_name"`
+	Environment string                 `mapstructure:"environment"`
+	Logger      MonitoringLogConfig    `mapstructure:"logger"`
+	Tracer      MonitoringTraceConfig  `mapstructure:"tracer"`
+	Metric      MonitoringMetricConfig `mapstructure:"metric"`
+	Instance    InstanceConfig
 }
 
-type TracerConfig struct {
-	Provider     string  `mapstructure:"MONITORING_TRACER_PROVIDER"`
-	ProviderHost string  `mapstructure:"MONITORING_TRACER_PROVIDER_HOST"`
-	ProviderPort int     `mapstructure:"MONITORING_TRACER_PROVIDER_PORT"`
-	SampleRatio  float64 `mapstructure:"MONITORING_TRACER_SAMPLE_RATIO"`
+type MonitoringLogConfig struct {
+	Level string `mapstructure:"level"`
 }
 
-type MetricConfig struct {
-	Provider     string        `mapstructure:"MONITORING_METRIC_PROVIDER"`
-	ProviderHost string        `mapstructure:"MONITORING_METRIC_PROVIDER_HOST"`
-	ProviderPort int           `mapstructure:"MONITORING_METRIC_PROVIDER_PORT"`
-	Interval     time.Duration `mapstructure:"MONITORING_METRIC_INTERVAL_SECONDS"`
+type MonitoringTraceConfig struct {
+	Provider     string  `mapstructure:"provider"`      // "stdout", "jaeger", "otlp"
+	ProviderHost string  `mapstructure:"provider_host"` // provider host
+	ProviderPort int     `mapstructure:"provider_port"` // provider port
+	SampleRatio  float64 `mapstructure:"sample_ratio"`  // provider port
+}
+
+type MonitoringMetricConfig struct {
+	Provider     string `mapstructure:"provider"`      // "stdout", "jaeger", "otlp"
+	ProviderHost string `mapstructure:"provider_host"` // provider host
+	ProviderPort int    `mapstructure:"provider_port"` // provider port
 }
 
 // Load reads configuration from environment variables using Viper.
