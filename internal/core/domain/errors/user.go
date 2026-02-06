@@ -14,4 +14,6 @@ var (
 	ErrInvalidStatus     = errors.New("user: invalid status")
 	ErrUserDeleted       = errors.New("user: user has been deleted")
 	ErrUserInactive      = errors.New("user: user account is inactive")
+	ErrInvalidCurrentPassword = errors.New("user: current password is incorrect")
+	ErrPasswordMismatch  = errors.New("user: new password and confirm password do not match")
 )

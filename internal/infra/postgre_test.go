@@ -228,7 +228,7 @@ func TestInfra_PostgreConnection_ConcurrentQueries(t *testing.T) {
 				MaxConnLifetimeJitter: 5 * time.Minute,
 				HealthCheckPeriod:     1 * time.Minute,
 			}
-			cfg.MaxConns = tt.numQueries + 1
+			cfg.MaxConns = int32(tt.numQueries + 1)
 
 			pool, err := NewPostgreConnection(ctx, cfg)
 			if err != nil {

@@ -16,9 +16,9 @@ type PostgreConfig struct {
 	Name                  string
 	SslMode               string
 	Timezone              string
-	MinConns              int
-	MinIdleConns          int
-	MaxConns              int
+	MinConns              int32
+	MinIdleConns          int32
+	MaxConns              int32
 	MaxConnIdleTime       time.Duration
 	MaxConnLifetime       time.Duration
 	MaxConnLifetimeJitter time.Duration
@@ -39,9 +39,9 @@ func NewPostgreConnection(ctx context.Context, cfg *PostgreConfig) (*pgxpool.Poo
 	}
 
 	// Configure pool settings
-	connConfig.MinConns = int32(cfg.MinConns)
-	connConfig.MinIdleConns = int32(cfg.MinIdleConns)
-	connConfig.MaxConns = int32(cfg.MaxConns)
+	connConfig.MinConns = cfg.MinConns
+	connConfig.MinIdleConns = cfg.MinIdleConns
+	connConfig.MaxConns = cfg.MaxConns
 	connConfig.MaxConnLifetime = cfg.MaxConnLifetime
 	connConfig.MaxConnLifetimeJitter = cfg.MaxConnLifetimeJitter
 	connConfig.MaxConnIdleTime = cfg.MaxConnIdleTime

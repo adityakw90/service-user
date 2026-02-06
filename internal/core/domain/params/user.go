@@ -28,3 +28,8 @@ type UserUpdateParam struct {
 	Password *string
 	Status   *model.UserStatus
 }
+
+type UserChangePasswordParam struct {
+	CurrentPassword string
+	NewPassword     string
+}

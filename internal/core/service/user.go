@@ -336,3 +336,39 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	// Revoke device
 	return s.userDeviceRepo.Revoke(ctx, user.ID, device.ID)
 }
+
+func (s *userService) ChangePassword(ctx context.Context, userUID string, param *params.UserChangePasswordParam) error {
+	// Validate input
+	if param.CurrentPassword == "" {
+		return domainerrors.ErrInvalidCurrentPassword
+	}
+	if param.NewPassword == "" {
+		return domainerrors.ErrInvalidPassword
+	}
+
+	// Get user
+	user, err := s.userRepo.GetByUID(ctx, userUID)
+	if err != nil {
+		return err
+	}
+
+	// Check if user is deleted
+	if user.IsDeleted() {
+		return domainerrors.ErrUserDeleted
+	}
+
+	// Verify current password
+	if !s.passwordHasher.Compare(user.Password, param.CurrentPassword) {
+		return domainerrors.ErrInvalidCurrentPassword
+	}
+
+	// Hash new password
+	hashedPassword, err := s.passwordHasher.Hash(param.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	// Update password
+	user.Password = hashedPassword
+	return s.userRepo.Update(ctx, user)
+}

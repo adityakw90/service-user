@@ -1,0 +1,83 @@
+package util
+
+import (
+	"os"
+	"strconv"
+	"time"
+
+	"github.com/adityakw90/service-user/internal/config"
+)
+
+func getEnv(key, defaultValue string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultValue
+}
+
+func LoadTestConfig() (*config.Config, error) {
+	dbPort, err := strconv.Atoi(getEnv("DATABASE_PORT", "5432"))
+	if err != nil {
+		return nil, err
+	}
+	redisPort, err := strconv.Atoi(getEnv("REDIS_PORT", "6379"))
+	if err != nil {
+		return nil, err
+	}
+	return &config.Config{
+		Database: config.DatabaseConfig{
+			Host:                  getEnv("DATABASE_HOST", "localhost"),
+			Port:                  dbPort,
+			User:                  getEnv("DATABASE_USER", "postgres"),
+			Password:              getEnv("DATABASE_PASSWORD", "postgres"),
+			Name:                  getEnv("DATABASE_NAME", "test_service_user"),
+			SslMode:               getEnv("DATABASE_SSL_MODE", "disable"),
+			Timezone:              "UTC",
+			MinConns:              1,
+			MinIdleConns:          1,
+			MaxConns:              10,
+			MaxConnIdleTime:       10 * time.Minute,
+			MaxConnLifetime:       30 * time.Minute,
+			MaxConnLifetimeJitter: 5 * time.Minute,
+			HealthCheckPeriod:     1 * time.Minute,
+		},
+		Redis: config.RedisConfig{
+			Host:              getEnv("REDIS_HOST", "localhost"),
+			Port:              redisPort,
+			User:              getEnv("REDIS_USER", ""),
+			Password:          getEnv("REDIS_PASSWORD", ""),
+			DB:                0,
+			PoolSize:          10,
+			PoolTimeout:       5 * time.Second,
+			ConnectionIdleMin: 1,
+		},
+		Jwt: config.JWTConfig{
+			SecretKey:     "test-secret-key",
+			AccessExpiry:  15 * time.Minute,
+			RefreshExpiry: 24 * time.Hour,
+		},
+		PasswordHasher: config.HasherConfig{
+			Type:        "bcrypt",
+			Cost:        10,
+			Salt:        "",
+			Memory:      64 * 1024,
+			Iterations:  2,
+			Parallelism: 1,
+			SaltLength:  16,
+			KeyLength:   32,
+		},
+		PINHasher: config.HasherConfig{
+			Type:        "bcrypt",
+			Cost:        10,
+			Salt:        "",
+			Memory:      64 * 1024,
+			Iterations:  2,
+			Parallelism: 1,
+			SaltLength:  16,
+			KeyLength:   32,
+		},
+		LockoutDuration:       15 * time.Minute,
+		RateLimitWindow:       time.Minute,
+		EventPublisherTimeout: 5 * time.Second,
+	}, nil
+}

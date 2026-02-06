@@ -33,4 +33,7 @@ type UserService interface {
 	// Device operations
 	ListDevice(ctx context.Context, userUID string, opts params.UserDeviceListFilterParam) (*model.Devices, error)
 	RevokeDevice(ctx context.Context, userUID, deviceUID string) error
+
+	// Password operations
+	ChangePassword(ctx context.Context, userUID string, param *params.UserChangePasswordParam) error
 }
