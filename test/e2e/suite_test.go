@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
+	filegrpc "github.com/adityakw90/service-user-proto/gen/go/user_file"
+	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/test/util"
-	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func setupE2ETest(t *testing.T) (*util.TestServices, *util.TestGRPCClient, func(
 	ctx := context.Background()
 
 	// Setup test services
-	testServices, err := util.SetupTestServices(ctx)
+	testServices, err := util.SetupTestServices(t, ctx)
 	require.NoError(t, err)
 
 	// Start gRPC server
@@ -33,7 +34,7 @@ func setupE2ETest(t *testing.T) (*util.TestServices, *util.TestGRPCClient, func(
 	cleanup := func() {
 		grpcClient.Close()
 		grpcServer.Close()
-		util.TeardownTestServices(testServices)
+		// util.TeardownTestServices(testServices)
 	}
 
 	// Clean up test data before each test
@@ -80,4 +81,32 @@ func deleteUser(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
 		Uid: uid,
 	})
 	require.NoError(t, err)
+}
+
+// createTestFile creates a test file via gRPC.
+func createTestFile(t *testing.T, grpcClient *util.TestGRPCClient, userUID, fileName string, fileData []byte, isPublic bool) string {
+	t.Helper()
+	ctx := context.Background()
+	req := &filegrpc.AddRequest{
+		UserUid:  userUID,
+		Name:     fileName,
+		Filename: fileName,
+		Filedata: fileData,
+		Public:   &isPublic,
+	}
+
+	resp, err := grpcClient.UserFileClient.Add(ctx, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	return resp.Uid
+}
+
+// generateTestFileData generates test file data of the specified size.
+func generateTestFileData(size int) []byte {
+	data := make([]byte, size)
+	for i := range data {
+		data[i] = byte(i % 256)
+	}
+	return data
 }

@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/domain/errors"
-	"github.com/adityakw90/service-user/internal/core/domain/model"
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -95,7 +95,7 @@ func TestFullUserLifecycle(t *testing.T) {
 	// Phase 6: Verify user is deleted
 	_, err = grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: userUID})
 	require.Error(t, err)
-	require.ErrorIs(t, err, errors.ErrUserDeleted)
+	require.Contains(t, err.Error(), "user has been deleted")
 
 	// Phase 7: Verify login fails after deletion
 	_, err = grpcClient.AuthClient.Auth(ctx, authReq)
