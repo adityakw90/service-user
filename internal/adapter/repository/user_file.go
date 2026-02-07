@@ -127,20 +127,24 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *params.Pagina
 
 	if filter != nil {
 		if len(filter.Uids) > 0 {
-			conditions = append(conditions, fmt.Sprintf("uid = ANY($%d)", argIdx))
-			args = append(args, filter.Uids)
-			argIdx++
-		}
-		if len(filter.UserUid) > 0 {
-			// First get user IDs from UIDs
-			placeholders := make([]string, len(filter.UserUid))
-			userQueryArgs := make([]interface{}, len(filter.UserUid))
-			for i, uid := range filter.UserUid {
+			placeholders := make([]string, len(filter.Uids))
+			for i := range filter.Uids {
 				placeholders[i] = fmt.Sprintf("$%d", argIdx)
-				userQueryArgs[i] = uid
+				args = append(args, filter.Uids[i])
 				argIdx++
 			}
-			userQuery := fmt.Sprintf(`SELECT id FROM "user" WHERE uid = ANY(%s)`, strings.Join(placeholders, ","))
+			conditions = append(conditions, fmt.Sprintf("uid IN (%s)", strings.Join(placeholders, ", ")))
+		}
+		if len(filter.UserUid) > 0 {
+			// First get user IDs from UIDs - use IN clause for simplicity
+			// Build separate args for the subquery to avoid index confusion
+			var userQueryArgs []interface{}
+			placeholders := make([]string, len(filter.UserUid))
+			for i := range filter.UserUid {
+				placeholders[i] = fmt.Sprintf("$%d", i+1)
+				userQueryArgs = append(userQueryArgs, filter.UserUid[i])
+			}
+			userQuery := fmt.Sprintf(`SELECT id FROM "user" WHERE uid IN (%s)`, strings.Join(placeholders, ", "))
 			rows, err := r.db.Query(ctx, userQuery, userQueryArgs...)
 			if err != nil {
 				return nil, err
@@ -163,9 +167,13 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *params.Pagina
 				return nil, errors.ErrUserNotFound
 			}
 
-			conditions = append(conditions, fmt.Sprintf("user_id = ANY($%d)", argIdx))
-			args = append(args, userIDs)
-			argIdx++
+			placeholders = make([]string, len(userIDs))
+			for i := range userIDs {
+				placeholders[i] = fmt.Sprintf("$%d", argIdx)
+				args = append(args, userIDs[i])
+				argIdx++
+			}
+			conditions = append(conditions, fmt.Sprintf("user_id IN (%s)", strings.Join(placeholders, ", ")))
 		}
 		if filter.FileType != nil {
 			conditions = append(conditions, fmt.Sprintf("file_type = $%d", argIdx))
