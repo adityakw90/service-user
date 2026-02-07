@@ -150,7 +150,7 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token
-		refreshReq func(t *testing.T, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest
+		refreshReq func(t *testing.T, grpcClient *testutil.TestGRPCClient, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest
 		wantErr    bool
 		errMsg     string
 		verifyFunc func(t *testing.T, initialToken, newToken *authgrpc.Token)
@@ -171,7 +171,7 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 				require.NoError(t, err)
 				return token
 			},
-			refreshReq: func(t *testing.T, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest {
+			refreshReq: func(t *testing.T, grpcClient *testutil.TestGRPCClient, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest {
 				return &authgrpc.RefreshTokenRequest{
 					RefreshToken: initialToken.RefreshToken,
 				}
@@ -199,10 +199,9 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 				require.NoError(t, err)
 				return token
 			},
-			refreshReq: func(t *testing.T, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest {
+			refreshReq: func(t *testing.T, grpcClient *testutil.TestGRPCClient, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest {
 				// First refresh
 				ctx := context.Background()
-				_, grpcClient, _ := setupE2ETest(t)
 				firstRefresh, err := grpcClient.AuthClient.RefreshToken(ctx, &authgrpc.RefreshTokenRequest{
 					RefreshToken: initialToken.RefreshToken,
 				})
@@ -231,7 +230,7 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 				require.NoError(t, err)
 				return token
 			},
-			refreshReq: func(t *testing.T, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest {
+			refreshReq: func(t *testing.T, grpcClient *testutil.TestGRPCClient, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest {
 				return &authgrpc.RefreshTokenRequest{
 					RefreshToken: "invalid.refresh.token",
 				}
@@ -247,7 +246,7 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 
 			ctx := context.Background()
 			initialToken := tt.setup(t, grpcClient)
-			refreshReq := tt.refreshReq(t, initialToken)
+			refreshReq := tt.refreshReq(t, grpcClient, initialToken)
 
 			newToken, err := grpcClient.AuthClient.RefreshToken(ctx, refreshReq)
 
