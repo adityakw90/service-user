@@ -22,12 +22,13 @@ func TestAdapter_Observer_NoopObserver_OnSignal_DoesNotPanic(t *testing.T) {
 }
 
 func TestAdapter_Observer_NoopObserver_Generic(t *testing.T) {
-	// Test with different types - for now just AuthSignal
-	// UserSignal will be added in Task 2
+	// Test with different types
 	authNoop := NewNoopObserver[signal.AuthSignal]()
+	userNoop := NewNoopObserver[signal.UserSignal]()
 
 	ctx := context.Background()
 
 	// Should not panic with any signal type
 	authNoop.OnSignal(ctx, signal.SignalSuccess, signal.AuthSignal{}, nil)
+	userNoop.OnSignal(ctx, signal.SignalStart, signal.UserSignal{}, nil)
 }
