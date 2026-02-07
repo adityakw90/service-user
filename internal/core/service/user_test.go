@@ -157,8 +157,13 @@ func TestUserService_List(t *testing.T) {
 					}, nil
 				}
 			},
-			pagination: createPaginationParams(2, 20, "created_at", "desc"),
-			filter:     nil,
+			pagination: &params.PaginationParam{
+				Page:    util.Ptr(2),
+				Limit:   util.Ptr(20),
+				OrderBy: util.Ptr("created_at"),
+				Sort:    util.Ptr("desc"),
+			},
+			filter: nil,
 			want: &model.Users{
 				Items: []model.User{},
 			},
@@ -170,7 +175,12 @@ func TestUserService_List(t *testing.T) {
 					return &model.Users{Items: []model.User{}}, nil
 				}
 			},
-			pagination: createPaginationParams(1, 10, "created_at", "desc"),
+			pagination: &params.PaginationParam{
+				Page:    util.Ptr(1),
+				Limit:   util.Ptr(10),
+				OrderBy: util.Ptr("created_at"),
+				Sort:    util.Ptr("desc"),
+			},
 			filter: &params.UserListFilterParam{
 				Status: userStatusPtr(model.UserStatusActive),
 			},
@@ -1078,9 +1088,4 @@ func TestUserService_RevokeDevice(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
-}
-
-// Helper function to create pagination params for tests
-func createPaginationParams(page, limit int, orderBy, sort string) *params.PaginationParam {
-	return params.NewPaginationParam(page, limit, orderBy, sort)
 }

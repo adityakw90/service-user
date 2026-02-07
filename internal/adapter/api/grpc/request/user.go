@@ -6,6 +6,7 @@ import (
 	user "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 // UserGetRequest represents validated get request.
@@ -84,9 +85,31 @@ type UserListRequest struct {
 }
 
 func (r *UserListRequest) ToUserListParams() *params.UserListParam {
+	var pagination *params.PaginationParam
+	if r.Pagination != nil {
+		pagination = r.Pagination.ToPaginationParams()
+	} else {
+		// Default pagination
+		page := 1
+		limit := 10
+		pagination = &params.PaginationParam{
+			Page:    &page,
+			Limit:   &limit,
+			Sort:    util.Ptr("created_at"),
+			OrderBy: util.Ptr("desc"),
+		}
+	}
+
+	var filter *params.UserListFilterParam
+	if r.Filter != nil {
+		filter = r.Filter.ToUserFilterParams()
+	} else {
+		filter = &params.UserListFilterParam{}
+	}
+
 	return &params.UserListParam{
-		Pagination: r.Pagination.ToPaginationParams(),
-		Filter:     r.Filter.ToUserFilterParams(),
+		Pagination: pagination,
+		Filter:     filter,
 	}
 }
 
@@ -266,8 +289,27 @@ type UserListDevicesRequest struct {
 }
 
 func (r *UserListDevicesRequest) ToUserDeviceListParam() *params.UserDeviceListParam {
-	pagination := r.Pagination.ToPaginationParams()
-	filter := r.Filter.ToUserDeviceListFilterParams()
+	var pagination *params.PaginationParam
+	if r.Pagination != nil {
+		pagination = r.Pagination.ToPaginationParams()
+	} else {
+		// Default pagination
+		page := 1
+		limit := 10
+		pagination = &params.PaginationParam{
+			Page:    &page,
+			Limit:   &limit,
+			Sort:    util.Ptr("created_at"),
+			OrderBy: util.Ptr("desc"),
+		}
+	}
+
+	var filter *params.UserDeviceListFilterParam
+	if r.Filter != nil {
+		filter = r.Filter.ToUserDeviceListFilterParams()
+	} else {
+		filter = &params.UserDeviceListFilterParam{}
+	}
 	filter.UserUids = []string{r.UserUid}
 	return &params.UserDeviceListParam{
 		Pagination: pagination,

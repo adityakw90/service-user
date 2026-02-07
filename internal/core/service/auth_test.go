@@ -27,6 +27,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByEmailFunc = func(ctx context.Context, email string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 				ug.NewFunc = func() string { return "session-123" }
 				tg.GenerateTokenFunc = func(claims *model.TokenClaims) (string, error) {
 					if claims.Type == model.TokenTypeAccess {
@@ -51,6 +52,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByUsernameFunc = func(ctx context.Context, username string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 				ug.NewFunc = func() string { return "session-123" }
 				tg.GenerateTokenFunc = func(claims *model.TokenClaims) (string, error) {
 					if claims.Type == model.TokenTypeAccess {
@@ -76,7 +78,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return nil, domainerrors.ErrUserNotFound
 				}
 			},
-			input:   createAuthParams("nonexistent@example.com", "", "password", "", "", ""),
+			input:   createAuthParams("nonexistent@example.com", "email", "password", "", "", ""),
 			wantErr: domainerrors.ErrInvalidCredentials,
 		},
 		{
@@ -85,8 +87,9 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByEmailFunc = func(ctx context.Context, email string) (*model.User, error) {
 					return createDeletedUser(1, "test-uid", "testuser", "test@example.com"), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 			},
-			input:   createAuthParams("test@example.com", "", "password", "", "", ""),
+			input:   createAuthParams("test@example.com", "email", "password", "", "", ""),
 			wantErr: domainerrors.ErrUserDeleted,
 		},
 		{
@@ -95,8 +98,9 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByEmailFunc = func(ctx context.Context, email string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusInactive), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 			},
-			input:   createAuthParams("test@example.com", "", "password", "", "", ""),
+			input:   createAuthParams("test@example.com", "email", "password", "", "", ""),
 			wantErr: domainerrors.ErrUserInactive,
 		},
 		{
@@ -105,6 +109,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByEmailFunc = func(ctx context.Context, email string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 				dr.GetByFingerprintFunc = func(ctx context.Context, fingerprint string) (*model.Device, error) {
 					return nil, domainerrors.ErrDeviceNotFound
 				}
@@ -125,7 +130,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "", "password", "iPhone", "fp123", "192.168.1.1"),
+			input: createAuthParams("test@example.com", "email", "password", "iPhone", "fp123", "192.168.1.1"),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -138,6 +143,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByEmailFunc = func(ctx context.Context, email string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 				dr.GetByFingerprintFunc = func(ctx context.Context, fingerprint string) (*model.Device, error) {
 					return createTestDevice(1, "device-uid", "iPhone", "fp123"), nil
 				}
@@ -152,7 +158,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "", "password", "iPhone", "fp123", "192.168.1.1"),
+			input: createAuthParams("test@example.com", "email", "password", "iPhone", "fp123", "192.168.1.1"),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -165,6 +171,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 				ur.GetByEmailFunc = func(ctx context.Context, email string) (*model.User, error) {
 					return createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil
 				}
+				h.CompareFunc = func(hashed, plain string) bool { return true }
 				ug.NewFunc = func() string { return "session-123" }
 				tg.GenerateTokenFunc = func(claims *model.TokenClaims) (string, error) {
 					if claims.Type == model.TokenTypeAccess {
@@ -173,7 +180,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return "refresh_token", nil
 				}
 			},
-			input: createAuthParams("test@example.com", "", "password", "", "", ""),
+			input: createAuthParams("test@example.com", "email", "password", "", "", ""),
 			want: &model.Token{
 				Access:  "access_token",
 				Refresh: "refresh_token",
@@ -196,6 +203,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -216,6 +224,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute
@@ -285,6 +294,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -305,6 +315,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute
@@ -432,6 +443,7 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -452,6 +464,7 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute
@@ -616,6 +629,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -636,6 +650,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute
@@ -737,6 +752,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -757,6 +773,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute
@@ -827,6 +844,7 @@ func TestAuthService_RevokeToken(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -847,6 +865,7 @@ func TestAuthService_RevokeToken(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute
@@ -953,6 +972,7 @@ func TestAuthService_VerifyPin(t *testing.T) {
 			mockTokenBlacklist := NewMockTokenStore()
 			mockOAuthProvider := NewMockOAuthProvider()
 			mockEventPublisher := NewMockEventPublisher()
+			mockAuthObserver := NewMockAuthObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -973,6 +993,7 @@ func TestAuthService_VerifyPin(t *testing.T) {
 				mockTokenWhitelist,
 				mockTokenBlacklist,
 				mockEventPublisher,
+				mockAuthObserver,
 			)
 
 			// Execute

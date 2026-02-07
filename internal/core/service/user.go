@@ -8,10 +8,11 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
-	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
+	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 type userService struct {
@@ -85,11 +86,11 @@ func (s *userService) Get(ctx context.Context, uid string) (*model.User, error) 
 
 	active := user.IsActive()
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:      &uid,
-		Username: &user.Username,
-		Email:    &user.Email,
-		Status:   &user.Status,
-		Active:   &active,
+		UID:       &uid,
+		Username:  &user.Username,
+		Email:     &user.Email,
+		Status:    &user.Status,
+		Active:    &active,
 		Operation: "get",
 	}, nil)
 
@@ -103,7 +104,12 @@ func (s *userService) List(ctx context.Context, pagination *params.PaginationPar
 
 	// Set defaults for pagination
 	if pagination == nil {
-		pagination = params.NewPaginationParam(1, 10, "created_at", "desc")
+		pagination = &params.PaginationParam{
+			Page:    util.Ptr(1),
+			Limit:   util.Ptr(10),
+			OrderBy: util.Ptr("created_at"),
+			Sort:    util.Ptr("desc"),
+		}
 	}
 
 	users, err := s.userRepo.List(ctx, pagination, filter)
@@ -123,8 +129,8 @@ func (s *userService) List(ctx context.Context, pagination *params.PaginationPar
 
 func (s *userService) Create(ctx context.Context, param *params.UserCreateParam) (*model.User, error) {
 	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		Username: &param.Username,
-		Email:    &param.Email,
+		Username:  &param.Username,
+		Email:     &param.Email,
 		Operation: "create",
 	}, nil)
 
@@ -216,11 +222,11 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 
 	active := user.IsActive()
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:      &user.UID,
-		Username: &user.Username,
-		Email:    &user.Email,
-		Status:   &user.Status,
-		Active:   &active,
+		UID:       &user.UID,
+		Username:  &user.Username,
+		Email:     &user.Email,
+		Status:    &user.Status,
+		Active:    &active,
 		Operation: "create",
 	}, nil)
 
@@ -349,12 +355,12 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 
 	active := user.IsActive()
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:         &uid,
-		Username:    &user.Username,
-		Email:       &user.Email,
-		Status:      &user.Status,
-		Active:      &active,
-		Operation:   "update",
+		UID:          &uid,
+		Username:     &user.Username,
+		Email:        &user.Email,
+		Status:       &user.Status,
+		Active:       &active,
+		Operation:    "update",
 		ChangesCount: changesCount,
 	}, nil)
 
@@ -388,10 +394,10 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 	}
 
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:      &uid,
-		Username: &user.Username,
-		Email:    &user.Email,
-		Status:   &user.Status,
+		UID:       &uid,
+		Username:  &user.Username,
+		Email:     &user.Email,
+		Status:    &user.Status,
 		Operation: "delete",
 	}, nil)
 
@@ -618,7 +624,12 @@ func (s *userService) ListDevice(ctx context.Context, userUID string, pagination
 
 	// Set defaults for pagination
 	if pagination == nil {
-		pagination = params.NewPaginationParam(1, 10, "created_at", "desc")
+		pagination = &params.PaginationParam{
+			Page:    util.Ptr(1),
+			Limit:   util.Ptr(10),
+			OrderBy: util.Ptr("created_at"),
+			Sort:    util.Ptr("desc"),
+		}
 	}
 	if filter == nil {
 		filter = &params.UserDeviceListFilterParam{}

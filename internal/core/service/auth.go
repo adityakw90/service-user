@@ -8,7 +8,9 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/core/port"
+	"github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
@@ -27,6 +29,7 @@ type authService struct {
 	tokenWhitelist portSec.TokenStore
 	tokenBlacklist portSec.TokenStore
 	eventPublisher port.EventPublisher
+	authObserver   observer.ServiceObserver[domainSignal.AuthSignal]
 }
 
 func NewAuthService(
@@ -42,6 +45,7 @@ func NewAuthService(
 	tokenWhitelist portSec.TokenStore,
 	tokenBlacklist portSec.TokenStore,
 	eventPublisher port.EventPublisher,
+	authObserver observer.ServiceObserver[domainSignal.AuthSignal],
 ) portSvc.AuthService {
 	return &authService{
 		userRepo:       userRepo,
@@ -56,10 +60,19 @@ func NewAuthService(
 		tokenWhitelist: tokenWhitelist,
 		tokenBlacklist: tokenBlacklist,
 		eventPublisher: eventPublisher,
+		authObserver:   authObserver,
 	}
 }
 
 func (s *authService) Authenticate(ctx context.Context, payload *params.AuthParams) (*model.Token, error) {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		Identifier:        payload.Identifier,
+		IdentifierType:    payload.IdentifierType,
+		DeviceFingerprint: payload.DeviceFingerprint,
+		DeviceIP:          payload.DeviceIP,
+		DeviceName:        payload.DeviceName,
+		Extra:             payload.Extra,
+	}, nil)
 	var userDevice *model.UserDevice
 	var device *model.Device
 
@@ -67,43 +80,73 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+				Identifier:     payload.Identifier,
+				IdentifierType: payload.IdentifierType,
+			}, domainerrors.ErrInvalidCredentials)
 			return nil, domainerrors.ErrInvalidCredentials
 		}
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			Identifier:     payload.Identifier,
+			IdentifierType: payload.IdentifierType,
+		}, err)
 		return nil, err
 	}
 
 	// Check if user is deleted
 	if user.IsDeleted() {
+		deleted := true
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:      &user.UID,
+			Email:    &user.Email,
+			Username: &user.Username,
+			Deleted:  &deleted,
+		}, domainerrors.ErrUserDeleted)
 		return nil, domainerrors.ErrUserDeleted
 	}
 
 	// Check if user is active
 	if user.Status != model.UserStatusActive {
+		active := false
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:    &user.UID,
+			Email:  &user.Email,
+			Status: &user.Status,
+			Active: &active,
+		}, domainerrors.ErrUserInactive)
 		return nil, domainerrors.ErrUserInactive
 	}
 
 	// Verify password
 	if !s.passwordHasher.Compare(user.Password, payload.Password) {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			Identifier:     payload.Identifier,
+			IdentifierType: payload.IdentifierType,
+		}, domainerrors.ErrInvalidCredentials)
 		return nil, domainerrors.ErrInvalidCredentials
 	}
 
 	// check device
-	if payload.DeviceFingerprint != "" {
+	if payload.DeviceFingerprint != nil {
 		device, err = s.findOrCreateDevice(
 			ctx,
-			payload.DeviceName,
-			payload.DeviceFingerprint,
+			*payload.DeviceName,
+			*payload.DeviceFingerprint,
 		)
 		if err != nil {
 			// Log error but don't fail authentication - devices are optional
 			// TODO: add proper logging
 		}
 		if device != nil {
+			var deviceIP string
+			if payload.DeviceIP != nil {
+				deviceIP = *payload.DeviceIP
+			}
 			userDevice, err = s.findOrCreateUserDevice(
 				ctx,
 				user,
 				device,
-				payload.DeviceIP,
+				deviceIP,
 			)
 			if err != nil {
 				// Log error but don't fail authentication
@@ -126,7 +169,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		extaClaims["device"] = deviceClaim
 	}
 	if payload.Extra != nil {
-		for k, v := range payload.Extra {
+		for k, v := range *payload.Extra {
 			extaClaims[k] = v
 		}
 	}
@@ -141,6 +184,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		Extra:          extaClaims,
 	})
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:      &user.UID,
+			Email:    &user.Email,
+			Username: &user.Username,
+		}, err)
 		return nil, err
 	}
 	refreshToken, err := s.tokenGen.GenerateToken(&model.TokenClaims{
@@ -152,6 +200,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		Extra:          extaClaims,
 	})
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:      &user.UID,
+			Email:    &user.Email,
+			Username: &user.Username,
+		}, err)
 		return nil, err
 	}
 
@@ -160,6 +213,20 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		// Log error but don't fail authentication
 	}
 
+	active := true
+	deleted := false
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		UID:            &user.UID,
+		Email:          &user.Email,
+		Username:       &user.Username,
+		Status:         &user.Status,
+		Active:         &active,
+		Deleted:        &deleted,
+		Identifier:     payload.Identifier,
+		IdentifierType: payload.IdentifierType,
+		Extra:          payload.Extra,
+	}, nil)
+
 	return &model.Token{
 		Access:  accessToken,
 		Refresh: refreshToken,
@@ -167,28 +234,52 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 }
 
 func (s *authService) GoogleOAuth(ctx context.Context, redirectURI string) (string, error) {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		IdentifierType: "oauth",
+		Extra:          &map[string]any{"provider": "google", "redirect_uri": redirectURI},
+	}, nil)
+
 	// Generate state parameter for OAuth flow
 	state := s.uidGen.New()
 
 	// Get authorization URL from OAuth provider
 	authURL, err := s.oauthProvider.GetAuthorizationURL(ctx, redirectURI, state)
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			IdentifierType: "oauth",
+		}, domainerrors.ErrOAuthExchangeFailed)
 		return "", domainerrors.ErrOAuthExchangeFailed
 	}
+
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		IdentifierType: "oauth",
+		Extra:          &map[string]any{"provider": "google", "state": state},
+	}, nil)
 
 	return authURL, nil
 }
 
 func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		IdentifierType: "oauth",
+		Extra:          &map[string]any{"provider": "google"},
+	}, nil)
+
 	// Exchange code for tokens
 	tokens, err := s.oauthProvider.ExchangeCode(ctx, code, redirectURI)
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			IdentifierType: "oauth",
+		}, domainerrors.ErrOAuthExchangeFailed)
 		return nil, domainerrors.ErrOAuthExchangeFailed
 	}
 
 	// Get user info from OAuth provider
 	userInfo, err := s.oauthProvider.GetUserInfo(ctx, tokens.AccessToken)
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			IdentifierType: "oauth",
+		}, domainerrors.ErrOAuthUserInfoFailed)
 		return nil, domainerrors.ErrOAuthUserInfoFailed
 	}
 
@@ -205,9 +296,17 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 			}
 			user, err = s.userRepo.Create(ctx, user)
 			if err != nil {
+				s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					Email:          &user.Email,
+					IdentifierType: "oauth",
+				}, err)
 				return nil, err
 			}
 		} else {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				Email:          &userInfo.Email,
+				IdentifierType: "oauth",
+			}, err)
 			return nil, err
 		}
 	}
@@ -227,6 +326,11 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 		},
 	})
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			IdentifierType: "oauth",
+		}, err)
 		return nil, err
 	}
 
@@ -241,6 +345,11 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 		},
 	})
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			IdentifierType: "oauth",
+		}, err)
 		return nil, err
 	}
 
@@ -254,6 +363,20 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 		// TODO: publish event
 	}
 
+	active := true
+	deleted := false
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		UID:            &user.UID,
+		Email:          &user.Email,
+		Username:       &user.Username,
+		Status:         &user.Status,
+		Active:         &active,
+		Deleted:        &deleted,
+		Identifier:     user.Email,
+		IdentifierType: "oauth",
+		Extra:          &map[string]any{"oauth_provider": "google"},
+	}, nil)
+
 	return &model.Token{
 		Access:  accessToken,
 		Refresh: refreshToken,
@@ -261,37 +384,73 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 }
 
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*model.Token, error) {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		IdentifierType: "refresh",
+	}, nil)
+
 	// Validate refresh token
 	claims, err := s.tokenGen.ValidateToken(refreshToken)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrTokenExpired) {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+				IdentifierType: "refresh",
+			}, domainerrors.ErrTokenExpired)
 			return nil, domainerrors.ErrTokenExpired
 		}
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			IdentifierType: "refresh",
+		}, domainerrors.ErrTokenInvalid)
 		return nil, domainerrors.ErrTokenInvalid
 	}
 
 	// Check if it's a refresh token
 	if !claims.IsRefresh() {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "refresh",
+		}, domainerrors.ErrTokenInvalid)
 		return nil, domainerrors.ErrTokenInvalid
 	}
 
 	// Check if token is in whitelist
 	allowed, err := s.tokenWhitelist.IsAllowed(ctx, claims.Uid, claims.Sid)
 	if err != nil || !allowed {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "refresh",
+		}, domainerrors.ErrTokenRevoked)
 		return nil, domainerrors.ErrTokenRevoked
 	}
 
 	// Get user to verify they exist and are active
 	user, err := s.userRepo.GetByUID(ctx, claims.Uid)
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "refresh",
+		}, domainerrors.ErrTokenInvalid)
 		return nil, domainerrors.ErrTokenInvalid
 	}
 
 	if user.IsDeleted() {
+		deleted := true
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:      &claims.Uid,
+			Email:    &user.Email,
+			Username: &user.Username,
+			Deleted:  &deleted,
+		}, domainerrors.ErrUserDeleted)
 		return nil, domainerrors.ErrUserDeleted
 	}
 
 	if user.Status != model.UserStatusActive {
+		active := false
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:    &claims.Uid,
+			Email:  &user.Email,
+			Status: &user.Status,
+			Active: &active,
+		}, domainerrors.ErrUserInactive)
 		return nil, domainerrors.ErrUserInactive
 	}
 
@@ -308,6 +467,11 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 		Extra:          claims.Extra,
 	})
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			Email:          &user.Email,
+			IdentifierType: "refresh",
+		}, err)
 		return nil, err
 	}
 
@@ -320,6 +484,11 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 		Extra:          claims.Extra,
 	})
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			Email:          &user.Email,
+			IdentifierType: "refresh",
+		}, err)
 		return nil, err
 	}
 
@@ -333,6 +502,18 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 		// Log error but don't fail
 	}
 
+	active := true
+	deleted := false
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		UID:            &claims.Uid,
+		Email:          &user.Email,
+		Username:       &user.Username,
+		Status:         &user.Status,
+		Active:         &active,
+		Deleted:        &deleted,
+		IdentifierType: "refresh",
+	}, nil)
+
 	return &model.Token{
 		Access:  newAccessToken,
 		Refresh: newRefreshToken,
@@ -340,19 +521,38 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 }
 
 func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*model.TokenClaims, error) {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		IdentifierType: "validate",
+	}, nil)
+
 	// Validate token signature and expiration
 	claims, err := s.tokenGen.ValidateToken(accessToken)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrTokenExpired) {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+				IdentifierType: "validate",
+			}, domainerrors.ErrTokenExpired)
 			return nil, domainerrors.ErrTokenExpired
 		}
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			IdentifierType: "validate",
+		}, domainerrors.ErrTokenInvalid)
 		return nil, domainerrors.ErrTokenInvalid
 	}
 
 	// Check if it's an access token
 	if !claims.IsAccess() {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "validate",
+		}, domainerrors.ErrTokenInvalid)
 		return nil, domainerrors.ErrTokenInvalid
 	}
+
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		UID:            &claims.Uid,
+		IdentifierType: "validate",
+	}, nil)
 
 	// TODO: Optionally check blacklist if needed
 
@@ -360,24 +560,49 @@ func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*m
 }
 
 func (s *authService) RevokeToken(ctx context.Context, token string, tokenType string) error {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		IdentifierType: "revoke",
+	}, nil)
+
 	// Validate token to extract claims
 	claims, err := s.tokenGen.ValidateToken(token)
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			IdentifierType: "revoke",
+		}, domainerrors.ErrTokenInvalid)
 		return domainerrors.ErrTokenInvalid
 	}
 
 	// Remove from whitelist
 	if err := s.tokenWhitelist.Remove(ctx, claims.Uid, claims.Sid); err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "revoke",
+		}, err)
 		return err
 	}
+
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		UID:            &claims.Uid,
+		IdentifierType: "revoke",
+	}, nil)
 
 	return nil
 }
 
 func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string) (bool, error) {
+	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		UID:            &userUid,
+		IdentifierType: "verify_pin",
+	}, nil)
+
 	// Get user
 	user, err := s.userRepo.GetByUID(ctx, userUid)
 	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &userUid,
+			IdentifierType: "verify_pin",
+		}, err)
 		return false, err
 	}
 
@@ -385,20 +610,49 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 	userPin, err := s.pinRepo.GetByUserID(ctx, user.ID)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+				UID:            &userUid,
+				Email:          &user.Email,
+				IdentifierType: "verify_pin",
+			}, domainerrors.ErrPinNotSet)
 			return false, domainerrors.ErrPinNotSet
 		}
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &userUid,
+			Email:          &user.Email,
+			IdentifierType: "verify_pin",
+		}, err)
 		return false, err
 	}
 
 	// Check if PIN is set
 	if !userPin.IsSet() {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &userUid,
+			Email:          &user.Email,
+			IdentifierType: "verify_pin",
+		}, domainerrors.ErrPinNotSet)
 		return false, domainerrors.ErrPinNotSet
 	}
 
 	// Verify PIN hash
 	if !s.pinHasher.Compare(userPin.Code, pin) {
-		return false, nil // Invalid PIN, but not an error - return valid=false
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &userUid,
+			Email:          &user.Email,
+			IdentifierType: "verify_pin",
+		}, nil) // Invalid PIN, but not an error - just reject
+		return false, nil
 	}
+
+	active := user.IsActive()
+	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
+		UID:            &userUid,
+		Email:          &user.Email,
+		Username:       &user.Username,
+		Active:         &active,
+		IdentifierType: "verify_pin",
+	}, nil)
 
 	return true, nil
 }
@@ -410,12 +664,7 @@ func (s *authService) findUser(ctx context.Context, identifierType string, ident
 	case "username":
 		return s.userRepo.GetByUsername(ctx, identifier)
 	default:
-		// Try email first, then username
-		user, err := s.userRepo.GetByEmail(ctx, identifier)
-		if err != nil {
-			user, err = s.userRepo.GetByUsername(ctx, identifier)
-		}
-		return user, err
+		return nil, domainerrors.ErrInvalidIdentifierType
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 
 	device "github.com/adityakw90/service-user-proto/gen/go/device"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 // DeviceGetRequest represents validated device get request.
@@ -62,9 +63,31 @@ type DeviceListRequest struct {
 }
 
 func (r *DeviceListRequest) ToDeviceListParams() *params.DeviceListParam {
+	var pagination *params.PaginationParam
+	if r.Pagination != nil {
+		pagination = r.Pagination.ToPaginationParams()
+	} else {
+		// Default pagination
+		page := 1
+		limit := 10
+		pagination = &params.PaginationParam{
+			Page:    &page,
+			Limit:   &limit,
+			Sort:    util.Ptr("created_at"),
+			OrderBy: util.Ptr("desc"),
+		}
+	}
+
+	var filter *params.DeviceListFilterParam
+	if r.Filter != nil {
+		filter = r.Filter.ToDeviceFilterParams()
+	} else {
+		filter = &params.DeviceListFilterParam{}
+	}
+
 	return &params.DeviceListParam{
-		Pagination: r.Pagination.ToPaginationParams(),
-		Filter:     r.Filter.ToDeviceFilterParams(),
+		Pagination: pagination,
+		Filter:     filter,
 	}
 }
 

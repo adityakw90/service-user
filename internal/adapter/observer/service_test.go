@@ -244,7 +244,13 @@ func TestAdapter_Observer_ServiceObserver_OnSignal_WithError(t *testing.T) {
 			}
 
 			// Verify error field is present
-			if errMsg, ok := entry.fields["error"].(string); !ok {
+			if errType, ok := entry.fields["error.Type"].(string); !ok {
+				t.Errorf("error field is not a string")
+			} else if errType != fmt.Sprintf("%T", tt.err) {
+				t.Errorf("error = %s, want %s", errType, fmt.Sprintf("%T", tt.err))
+			}
+
+			if errMsg, ok := entry.fields["error.Message"].(string); !ok {
 				t.Errorf("error field is not a string")
 			} else if errMsg != tt.err.Error() {
 				t.Errorf("error = %s, want %s", errMsg, tt.err.Error())

@@ -5,6 +5,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 // Helper function to create a test user
@@ -95,15 +96,10 @@ func createAuthParams(identifier, identifierType, password, deviceName, deviceFi
 		Identifier:        identifier,
 		IdentifierType:    identifierType,
 		Password:          password,
-		DeviceName:        deviceName,
-		DeviceFingerprint: deviceFingerprint,
-		DeviceIP:          deviceIP,
+		DeviceName:        util.Ptr(deviceName),
+		DeviceFingerprint: util.Ptr(deviceFingerprint),
+		DeviceIP:          util.Ptr(deviceIP),
 	}
-}
-
-// Helper function to create pagination params
-func createPaginationParams(page, pageSize int, sortBy, sortOrder string) *params.PaginationParam {
-	return params.NewPaginationParam(page, pageSize, sortBy, sortOrder)
 }
 
 // Helper function to create user create params

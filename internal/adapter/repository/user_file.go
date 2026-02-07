@@ -131,18 +131,40 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *params.Pagina
 			args = append(args, filter.Uids)
 			argIdx++
 		}
-		if filter.UserUid != nil {
-			// First get user ID from UID
-			userQuery := `SELECT id FROM "user" WHERE uid = $1`
-			var userID int64
-			if err := r.db.QueryRow(ctx, userQuery, *filter.UserUid).Scan(&userID); err != nil {
-				if err == pgx.ErrNoRows {
-					return nil, errors.ErrUserNotFound
-				}
+		if len(filter.UserUid) > 0 {
+			// First get user IDs from UIDs
+			placeholders := make([]string, len(filter.UserUid))
+			userQueryArgs := make([]interface{}, len(filter.UserUid))
+			for i, uid := range filter.UserUid {
+				placeholders[i] = fmt.Sprintf("$%d", argIdx)
+				userQueryArgs[i] = uid
+				argIdx++
+			}
+			userQuery := fmt.Sprintf(`SELECT id FROM "user" WHERE uid = ANY(%s)`, strings.Join(placeholders, ","))
+			rows, err := r.db.Query(ctx, userQuery, userQueryArgs...)
+			if err != nil {
 				return nil, err
 			}
-			conditions = append(conditions, fmt.Sprintf("user_id = $%d", argIdx))
-			args = append(args, userID)
+			defer rows.Close()
+
+			var userIDs []int64
+			for rows.Next() {
+				var userID int64
+				if err := rows.Scan(&userID); err != nil {
+					return nil, err
+				}
+				userIDs = append(userIDs, userID)
+			}
+			if rows.Err() != nil {
+				return nil, rows.Err()
+			}
+
+			if len(userIDs) == 0 {
+				return nil, errors.ErrUserNotFound
+			}
+
+			conditions = append(conditions, fmt.Sprintf("user_id = ANY($%d)", argIdx))
+			args = append(args, userIDs)
 			argIdx++
 		}
 		if filter.FileType != nil {

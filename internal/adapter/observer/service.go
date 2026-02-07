@@ -2,6 +2,7 @@ package observer
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
@@ -39,11 +40,22 @@ func (o *serviceObserver[T]) OnSignal(
 	span := trace.SpanFromContext(ctx)
 
 	if span != nil {
+		attrs := []attribute.KeyValue{}
 		if o.attrs != nil {
-			span.SetAttributes(o.attrs(data)...)
+			attrs = o.attrs(data)
 		}
-
-		span.AddEvent(string(signal))
+		if err != nil {
+			attrs = append(
+				attrs,
+				attribute.String("error.Type", fmt.Sprintf("%T", err)),
+				attribute.String("error.Message", err.Error()),
+			)
+		}
+		if len(attrs) > 0 {
+			span.AddEvent(string(signal), trace.WithAttributes(attrs...))
+		} else {
+			span.AddEvent(string(signal))
+		}
 	}
 
 	// logger auto attach span context
@@ -60,7 +72,8 @@ func (o *serviceObserver[T]) OnSignal(
 	}
 
 	if err != nil {
-		fields["error"] = err.Error()
+		fields["error.Type"] = fmt.Sprintf("%T", err)
+		fields["error.Message"] = err.Error()
 		l.Error("service signal", fields)
 		return
 	}
