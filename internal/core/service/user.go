@@ -24,6 +24,7 @@ type userService struct {
 	passwordHasher portSec.Hasher
 	pinHasher      portSec.Hasher
 	uidGen         portSec.UIDGenerator
+	tokenWhitelist portSec.TokenStore
 	userObserver   observer.ServiceObserver[signal.UserSignal]
 }
 
@@ -36,6 +37,7 @@ func NewUserService(
 	passwordHasher portSec.Hasher,
 	pinHasher portSec.Hasher,
 	uidGen portSec.UIDGenerator,
+	tokenWhitelist portSec.TokenStore,
 	userObserver observer.ServiceObserver[signal.UserSignal],
 ) portSvc.UserService {
 	if userObserver == nil {
@@ -50,6 +52,7 @@ func NewUserService(
 		passwordHasher: passwordHasher,
 		pinHasher:      pinHasher,
 		uidGen:         uidGen,
+		tokenWhitelist: tokenWhitelist,
 		userObserver:   userObserver,
 	}
 }
@@ -684,6 +687,23 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 			Operation: "revoke_device",
 		}, err)
 		return err
+	}
+
+	// Get the user-device relationship to retrieve the current session ID
+	userDevice, err := s.userDeviceRepo.GetByUserIDAndDeviceID(ctx, user.ID, device.ID)
+	if err != nil {
+		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
+			UID:       &userUID,
+			Operation: "revoke_device",
+		}, err)
+		return err
+	}
+
+	// Remove the session from token whitelist before revoking the device
+	if userDevice.SessionID != "" {
+		if err := s.tokenWhitelist.Remove(ctx, userUID, userDevice.SessionID); err != nil {
+			// Log error but don't fail - device will still be revoked
+		}
 	}
 
 	// Revoke device

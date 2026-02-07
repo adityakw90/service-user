@@ -74,6 +74,7 @@ func TestUserService_Get(t *testing.T) {
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
 			mockObserver := NewMockUserObserver()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -90,6 +91,7 @@ func TestUserService_Get(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				mockObserver,
 			)
 
@@ -201,6 +203,7 @@ func TestUserService_List(t *testing.T) {
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
 			mockObserver := NewMockUserObserver()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -217,6 +220,7 @@ func TestUserService_List(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				mockObserver,
 			)
 
@@ -551,6 +555,7 @@ func TestUserService_Delete(t *testing.T) {
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
 			mockObserver := NewMockUserObserver()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -567,6 +572,7 @@ func TestUserService_Delete(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				mockObserver,
 			)
 

@@ -179,6 +179,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		passwordHasher,
 		pinHasher,
 		uidGen,
+		tokenWhitelist,
 		userObserver,
 	)
 

@@ -24,7 +24,7 @@ func NewUserDeviceRepository(db PostgrePool) repository.UserDeviceRepository {
 // GetByUserIDAndDeviceID finds a user-device relationship.
 func (r *UserDeviceRepository) GetByUserIDAndDeviceID(ctx context.Context, userID, deviceID int64) (*model.UserDevice, error) {
 	query := `
-		SELECT user_id, device_id, ip_address, last_active_at, revoked_at, created_at
+		SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at
 		FROM user_device
 		WHERE user_id = $1 AND device_id = $2
 	`
@@ -34,8 +34,8 @@ func (r *UserDeviceRepository) GetByUserIDAndDeviceID(ctx context.Context, userI
 // Create adds a new user-device relationship.
 func (r *UserDeviceRepository) Create(ctx context.Context, ud *model.UserDevice) (*model.UserDevice, error) {
 	query := `
-		INSERT INTO user_device (user_id, device_id, ip_address, last_active_at, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO user_device (user_id, device_id, ip_address, last_active_at, session_id, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 	// Handle empty string for ip_address - use 0.0.0.0 as default (inet type doesn't accept empty strings)
 	ipAddress := ud.IPAddress
@@ -43,7 +43,7 @@ func (r *UserDeviceRepository) Create(ctx context.Context, ud *model.UserDevice)
 		ipAddress = "0.0.0.0"
 	}
 	_, err := r.db.Exec(ctx, query,
-		ud.UserID, ud.DeviceID, ipAddress, ud.LastActiveAt, ud.CreatedAt,
+		ud.UserID, ud.DeviceID, ipAddress, ud.LastActiveAt, ud.SessionID, ud.CreatedAt,
 	)
 	return ud, err
 }
@@ -68,6 +68,13 @@ func (r *UserDeviceRepository) Update(ctx context.Context, ud *model.UserDevice)
 		return err
 	}
 	_, err := r.db.Exec(ctx, query, ipAddress, ud.LastActiveAt, ud.UserID, ud.DeviceID)
+	return err
+}
+
+// UpdateSessionID updates the session ID for a user-device relationship.
+func (r *UserDeviceRepository) UpdateSessionID(ctx context.Context, userID, deviceID int64, sessionID string) error {
+	query := `UPDATE user_device SET session_id = $1 WHERE user_id = $2 AND device_id = $3`
+	_, err := r.db.Exec(ctx, query, sessionID, userID, deviceID)
 	return err
 }
 
@@ -109,7 +116,7 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *params.Pagi
 
 	// Get paginated results
 	query := `
-		SELECT user_id, device_id, ip_address, last_active_at, revoked_at, created_at
+		SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at
 		FROM user_device
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
@@ -125,7 +132,7 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *params.Pagi
 		var ud model.UserDevice
 		err := rows.Scan(
 			&ud.UserID, &ud.DeviceID, &ud.IPAddress,
-			&ud.LastActiveAt, &ud.RevokedAt, &ud.CreatedAt,
+			&ud.LastActiveAt, &ud.SessionID, &ud.RevokedAt, &ud.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -159,7 +166,7 @@ func (r *UserDeviceRepository) scanUserDevice(row pgx.Row) (*model.UserDevice, e
 	var ud model.UserDevice
 	err := row.Scan(
 		&ud.UserID, &ud.DeviceID, &ud.IPAddress,
-		&ud.LastActiveAt, &ud.RevokedAt, &ud.CreatedAt,
+		&ud.LastActiveAt, &ud.SessionID, &ud.RevokedAt, &ud.CreatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, errors.ErrUserDeviceNotFound

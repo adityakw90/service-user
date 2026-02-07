@@ -224,13 +224,14 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				// Verify both tokens are valid
-				claims1, err := grpcClient.AuthClient.ValidateToken(ctx, &authgrpc.ValidateTokenRequest{
+				// After refresh, the old access token should be invalid (single-use refresh tokens)
+				_, err = grpcClient.AuthClient.ValidateToken(ctx, &authgrpc.ValidateTokenRequest{
 					AccessToken: initialToken.AccessToken,
 				})
-				require.NoError(t, err)
-				require.NotNil(t, claims1)
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "token has been revoked")
 
+				// The new access token should be valid
 				claims2, err := grpcClient.AuthClient.ValidateToken(ctx, &authgrpc.ValidateTokenRequest{
 					AccessToken: newToken.AccessToken,
 				})

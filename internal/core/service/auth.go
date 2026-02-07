@@ -126,6 +126,9 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		return nil, domainerrors.ErrInvalidCredentials
 	}
 
+	// Generate session ID first - needed for device tracking
+	sid := s.uidGen.New()
+
 	// check device
 	if payload.DeviceFingerprint != nil {
 		device, err = s.findOrCreateDevice(
@@ -147,6 +150,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 				user,
 				device,
 				deviceIP,
+				sid, // Pass session ID to track this login
 			)
 			if err != nil {
 				// Log error but don't fail authentication
@@ -155,8 +159,6 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		}
 	}
 
-	// generate sessionID
-	sid := s.uidGen.New()
 	extaClaims := map[string]any{}
 	if device != nil {
 		deviceClaim := map[string]any{
@@ -457,6 +459,22 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 	// Generate new session ID
 	newSid := s.uidGen.New()
 
+	// Update device session ID if this token is associated with a device
+	if claims.Extra != nil {
+		if deviceClaim, ok := claims.Extra["device"].(map[string]interface{}); ok {
+			if deviceUIDStr, ok := deviceClaim["uid"].(string); ok {
+				// Get device by UID
+				device, err := s.deviceRepo.GetByUID(ctx, deviceUIDStr)
+				if err == nil {
+					// Update the session ID for this user-device pair
+					if err := s.userDeviceRepo.UpdateSessionID(ctx, user.ID, device.ID, newSid); err != nil {
+						// Log error but don't fail refresh
+					}
+				}
+			}
+		}
+	}
+
 	// Generate new tokens
 	newAccessToken, err := s.tokenGen.GenerateToken(&model.TokenClaims{
 		Uid:            claims.Uid,
@@ -497,7 +515,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 		// Log error but don't fail
 	}
 
-	// Remove old refresh token from whitelist
+	// Remove old session from whitelist (single-use refresh token for security)
 	if err := s.tokenWhitelist.Remove(ctx, claims.Uid, claims.Sid); err != nil {
 		// Log error but don't fail
 	}
@@ -547,6 +565,16 @@ func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*m
 			IdentifierType: "validate",
 		}, domainerrors.ErrTokenInvalid)
 		return nil, domainerrors.ErrTokenInvalid
+	}
+
+	// Check if token's session is in the whitelist (for device revocation support)
+	allowed, err := s.tokenWhitelist.IsAllowed(ctx, claims.Uid, claims.Sid)
+	if err != nil || !allowed {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "validate",
+		}, domainerrors.ErrTokenRevoked)
+		return nil, domainerrors.ErrTokenRevoked
 	}
 
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
@@ -684,7 +712,7 @@ func (s *authService) findOrCreateDevice(ctx context.Context, name string, finge
 	return device, nil
 }
 
-func (s *authService) findOrCreateUserDevice(ctx context.Context, user *model.User, device *model.Device, ipAddress string) (*model.UserDevice, error) {
+func (s *authService) findOrCreateUserDevice(ctx context.Context, user *model.User, device *model.Device, ipAddress, sessionID string) (*model.UserDevice, error) {
 	userDevice, err := s.userDeviceRepo.GetByUserIDAndDeviceID(ctx, user.ID, device.ID)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserDeviceNotFound) {
@@ -694,9 +722,19 @@ func (s *authService) findOrCreateUserDevice(ctx context.Context, user *model.Us
 				DeviceID:     device.ID,
 				IPAddress:    ipAddress,
 				LastActiveAt: now,
+				SessionID:    sessionID,
 				CreatedAt:    now,
 			})
 		}
+		return nil, err
+	}
+	// Update existing device with new session ID
+	if err := s.userDeviceRepo.UpdateSessionID(ctx, user.ID, device.ID, sessionID); err != nil {
+		// Log error but don't fail
+	}
+	// Re-fetch to get the updated session ID
+	userDevice, err = s.userDeviceRepo.GetByUserIDAndDeviceID(ctx, user.ID, device.ID)
+	if err != nil {
 		return nil, err
 	}
 	return userDevice, nil
