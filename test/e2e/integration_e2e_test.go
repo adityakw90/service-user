@@ -6,7 +6,6 @@ import (
 
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
-	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/require"
@@ -284,7 +283,7 @@ func TestAccountDeactivationPreventsLogin(t *testing.T) {
 	// And: Getting user should fail
 	_, err = grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: uid})
 	require.Error(t, err)
-	require.ErrorIs(t, err, errors.ErrUserInactive)
+	require.Contains(t, err.Error(), "user account is inactive")
 
 	// When: Reactivate user
 	activeStatus := int32(model.UserStatusActive)

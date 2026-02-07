@@ -323,6 +323,7 @@ func TestUserService_Create(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -339,6 +340,7 @@ func TestUserService_Create(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 
@@ -479,6 +481,7 @@ func TestUserService_Update(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -495,6 +498,7 @@ func TestUserService_Update(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 
@@ -647,6 +651,7 @@ func TestUserService_GetProfile(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -663,6 +668,7 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 
@@ -770,6 +776,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -786,6 +793,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 
@@ -879,6 +887,7 @@ func TestUserService_SetPin(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -895,6 +904,7 @@ func TestUserService_SetPin(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 
@@ -966,6 +976,7 @@ func TestUserService_ListDevice(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -982,6 +993,7 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 
@@ -1017,6 +1029,13 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				}
 				dr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.Device, error) {
 					return createTestDevice(1, "device-uid", "iPhone", "fp123"), nil
+				}
+				udr.GetByUserIDAndDeviceIDFunc = func(ctx context.Context, userID int64, deviceID int64) (*model.UserDevice, error) {
+					return &model.UserDevice{
+						UserID:    userID,
+						DeviceID:  deviceID,
+						SessionID: "session-123",
+					}, nil
 				}
 				udr.RevokeFunc = func(ctx context.Context, userID int64, deviceID int64) error {
 					return nil
@@ -1062,6 +1081,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockTokenWhitelist := NewMockTokenStore()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -1078,6 +1098,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockTokenWhitelist,
 				NewMockUserObserver(),
 			)
 

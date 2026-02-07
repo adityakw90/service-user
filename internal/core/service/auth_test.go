@@ -671,11 +671,12 @@ func TestAuthService_RefreshToken(t *testing.T) {
 
 func TestAuthService_ValidateToken(t *testing.T) {
 	tests := []struct {
-		name       string
-		setupMocks func(*MockTokenGenerator)
-		token      string
-		want       *model.TokenClaims
-		wantErr    error
+		name              string
+		setupMocks        func(*MockTokenGenerator)
+		setupTokenWhitelist func(*MockTokenStore)
+		token             string
+		want              *model.TokenClaims
+		wantErr           error
 	}{
 		{
 			name: "Happy Path - valid access token",
@@ -688,6 +689,11 @@ func TestAuthService_ValidateToken(t *testing.T) {
 						Identifier:     "test@example.com",
 						IdentifierType: "email",
 					}, nil
+				}
+			},
+			setupTokenWhitelist: func(tw *MockTokenStore) {
+				tw.IsAllowedFunc = func(ctx context.Context, userUID string, tid string) (bool, error) {
+					return true, nil
 				}
 			},
 			token: "valid_access_token",
@@ -757,6 +763,11 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			// Setup expectations
 			if tt.setupMocks != nil {
 				tt.setupMocks(mockTokenGen)
+			}
+
+			// Setup token whitelist expectations
+			if tt.setupTokenWhitelist != nil {
+				tt.setupTokenWhitelist(mockTokenWhitelist)
 			}
 
 			// Create service

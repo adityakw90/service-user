@@ -87,6 +87,14 @@ func (s *userService) Get(ctx context.Context, uid string) (*model.User, error) 
 		return nil, domainerrors.ErrUserDeleted
 	}
 
+	if !user.IsActive() {
+		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
+			UID:       &uid,
+			Operation: "get",
+		}, domainerrors.ErrUserInactive)
+		return nil, domainerrors.ErrUserInactive
+	}
+
 	active := user.IsActive()
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
 		UID:       &uid,

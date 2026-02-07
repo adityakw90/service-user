@@ -42,7 +42,7 @@ func TestUserGet(t *testing.T) {
 				return uid
 			},
 			wantErr: true,
-			errMsg:  "user not found",
+			errMsg:  "user has been deleted",
 		},
 	}
 
@@ -178,11 +178,12 @@ func TestUserList(t *testing.T) {
 
 func TestUserUpdate(t *testing.T) {
 	tests := []struct {
-		name       string
-		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
-		update     func(t *testing.T) *usergrpc.UpdateRequest
-		wantErr    bool
-		verifyFunc func(t *testing.T, user *usergrpc.User)
+		name            string
+		setup           func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
+		update          func(t *testing.T) *usergrpc.UpdateRequest
+		wantErr         bool
+		verifyGetFails  bool
+		verifyFunc      func(t *testing.T, user *usergrpc.User)
 	}{
 		{
 			name: "Update username",
@@ -244,9 +245,8 @@ func TestUserUpdate(t *testing.T) {
 				}
 			},
 			wantErr: false,
-			verifyFunc: func(t *testing.T, user *usergrpc.User) {
-				require.Equal(t, int32(0), user.Status)
-			},
+			// After deactivating, getting the user should fail
+			verifyGetFails: true,
 		},
 		{
 			name: "Update multiple fields",
@@ -289,12 +289,19 @@ func TestUserUpdate(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 
-				user, err := grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: uid})
-				require.NoError(t, err)
-				require.NotNil(t, user)
+				if tt.verifyGetFails {
+					// After updating to inactive, getting the user should fail
+					_, err := grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: uid})
+					require.Error(t, err)
+					require.Contains(t, err.Error(), "user account is inactive")
+				} else {
+					user, err := grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: uid})
+					require.NoError(t, err)
+					require.NotNil(t, user)
 
-				if tt.verifyFunc != nil {
-					tt.verifyFunc(t, user)
+					if tt.verifyFunc != nil {
+						tt.verifyFunc(t, user)
+					}
 				}
 			}
 		})

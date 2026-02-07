@@ -70,25 +70,25 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*model.User, er
 
 // GetByUID retrieves a user by public UID.
 func (r *UserRepository) GetByUID(ctx context.Context, uid string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE uid = $1 AND deleted_at IS NULL`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE uid = $1`
 	return r.scanUser(r.db.QueryRow(ctx, query, uid))
 }
 
 // GetByEmail retrieves a user by email.
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE email = $1 AND deleted_at IS NULL`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE email = $1`
 	return r.scanUser(r.db.QueryRow(ctx, query, email))
 }
 
 // GetByUsername retrieves a user by username.
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE username = $1 AND deleted_at IS NULL`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE username = $1`
 	return r.scanUser(r.db.QueryRow(ctx, query, username))
 }
 
 // GetByPhone retrieves a user by phone.
 func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE phone = $1 AND deleted_at IS NULL`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE phone = $1`
 	return r.scanUser(r.db.QueryRow(ctx, query, phone))
 }
 

@@ -294,6 +294,7 @@ type MockUserDeviceRepository struct {
 	GetByUserIDAndDeviceIDFunc func(ctx context.Context, userID int64, deviceID int64) (*model.UserDevice, error)
 	ListFunc                   func(ctx context.Context, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) (*model.UserDevices, error)
 	RevokeFunc                 func(ctx context.Context, userID int64, deviceID int64) error
+	UpdateSessionIDFunc        func(ctx context.Context, userID int64, deviceID int64, sessionID string) error
 
 	createCalls                 int
 	updateCalls                 int
@@ -303,6 +304,7 @@ type MockUserDeviceRepository struct {
 	getByUserIDAndDeviceIDCalls int
 	listCalls                   int
 	revokeCalls                 int
+	updateSessionIDCalls        int
 }
 
 func NewMockUserDeviceRepository() *MockUserDeviceRepository {
@@ -371,6 +373,14 @@ func (m *MockUserDeviceRepository) List(ctx context.Context, pagination *params.
 		return m.ListFunc(ctx, pagination, filter)
 	}
 	return &model.UserDevices{}, nil
+}
+
+func (m *MockUserDeviceRepository) UpdateSessionID(ctx context.Context, userID int64, deviceID int64, sessionID string) error {
+	m.updateSessionIDCalls++
+	if m.UpdateSessionIDFunc != nil {
+		return m.UpdateSessionIDFunc(ctx, userID, deviceID, sessionID)
+	}
+	return nil
 }
 
 // MockUserPinRepository is a mock implementation of repository.UserPinRepository.

@@ -144,7 +144,7 @@ func TestUserRepository_GetByUID(t *testing.T) {
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(1), uid, "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1 AND deleted_at IS NULL`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1`).
 					WithArgs(uid).
 					WillReturnRows(rows)
 			},
@@ -155,7 +155,7 @@ func TestUserRepository_GetByUID(t *testing.T) {
 			uid:  "non-existent-uid",
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1 AND deleted_at IS NULL`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1`).
 					WithArgs(uid).
 					WillReturnRows(rows)
 			},
@@ -204,7 +204,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(1), "test-uid", "testuser", email, "hash", int32(1), time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1 AND deleted_at IS NULL`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1`).
 					WithArgs(email).
 					WillReturnRows(rows)
 			},
@@ -215,7 +215,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			email: "nobody@example.com",
 			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1 AND deleted_at IS NULL`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1`).
 					WithArgs(email).
 					WillReturnRows(rows)
 			},
@@ -264,7 +264,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(1), "test-uid", username, "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1`).
 					WithArgs(username).
 					WillReturnRows(rows)
 			},
@@ -275,7 +275,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 			username: "nobody",
 			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1`).
 					WithArgs(username).
 					WillReturnRows(rows)
 			},

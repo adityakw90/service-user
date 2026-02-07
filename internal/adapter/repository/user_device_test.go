@@ -26,9 +26,9 @@ func TestUserDeviceRepository_GetByUserIDAndDeviceID(t *testing.T) {
 			userID:   1,
 			deviceID: 2,
 			setupMock: func(mock pgxmock.PgxPoolIface, userID, deviceID int64) {
-				rows := pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "revoked_at", "created_at"}).
-					AddRow(userID, deviceID, "192.168.1.1", time.Now(), (*time.Time)(nil), time.Now())
-				mock.ExpectQuery(`SELECT user_id, device_id, ip_address, last_active_at, revoked_at, created_at FROM user_device WHERE user_id = \$1 AND device_id = \$2`).
+				rows := pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "session_id", "revoked_at", "created_at"}).
+					AddRow(userID, deviceID, "192.168.1.1", time.Now(), "session-123", (*time.Time)(nil), time.Now())
+				mock.ExpectQuery(`SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at FROM user_device WHERE user_id = \$1 AND device_id = \$2`).
 					WithArgs(userID, deviceID).
 					WillReturnRows(rows)
 			},
@@ -39,8 +39,8 @@ func TestUserDeviceRepository_GetByUserIDAndDeviceID(t *testing.T) {
 			userID:   999999999,
 			deviceID: 888888888,
 			setupMock: func(mock pgxmock.PgxPoolIface, userID, deviceID int64) {
-				rows := pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "revoked_at", "created_at"})
-				mock.ExpectQuery(`SELECT user_id, device_id, ip_address, last_active_at, revoked_at, created_at FROM user_device WHERE user_id = \$1 AND device_id = \$2`).
+				rows := pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "session_id", "revoked_at", "created_at"})
+				mock.ExpectQuery(`SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at FROM user_device WHERE user_id = \$1 AND device_id = \$2`).
 					WithArgs(userID, deviceID).
 					WillReturnRows(rows)
 			},
@@ -90,6 +90,7 @@ func TestUserDeviceRepository_Create(t *testing.T) {
 				DeviceID:    2,
 				IPAddress:   "192.168.1.1",
 				LastActiveAt: time.Now().UTC(),
+				SessionID:   "test-session-123",
 				CreatedAt:   time.Now().UTC(),
 			},
 			wantErr: false,
@@ -107,7 +108,7 @@ func TestUserDeviceRepository_Create(t *testing.T) {
 			mockPool.ExpectExec(`INSERT INTO user_device`).
 				WithArgs(
 					tt.userDev.UserID, tt.userDev.DeviceID, tt.userDev.IPAddress,
-					tt.userDev.LastActiveAt, pgxmock.AnyArg(),
+					tt.userDev.LastActiveAt, tt.userDev.SessionID, pgxmock.AnyArg(),
 				).
 				WillReturnResult(pgxmock.NewResult("INSERT", 1))
 
@@ -288,10 +289,10 @@ func TestUserDeviceRepository_List(t *testing.T) {
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_device`).
 					WillReturnRows(countRows)
 
-				rows := pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "revoked_at", "created_at"}).
-					AddRow(int64(1), int64(2), "192.168.1.1", time.Now(), (*time.Time)(nil), time.Now()).
-					AddRow(int64(3), int64(4), "10.0.0.1", time.Now(), (*time.Time)(nil), time.Now())
-				mock.ExpectQuery(`SELECT user_id, device_id, ip_address, last_active_at, revoked_at, created_at FROM user_device`).
+				rows := pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "session_id", "revoked_at", "created_at"}).
+					AddRow(int64(1), int64(2), "192.168.1.1", time.Now(), "session-1", (*time.Time)(nil), time.Now()).
+					AddRow(int64(3), int64(4), "10.0.0.1", time.Now(), "session-2", (*time.Time)(nil), time.Now())
+				mock.ExpectQuery(`SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at FROM user_device`).
 					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
 					WillReturnRows(rows)
 			},
