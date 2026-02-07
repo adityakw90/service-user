@@ -6,7 +6,8 @@ import (
 
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
-	"github.com/adityakw90/service-user/test/util"
+	"github.com/adityakw90/service-user/pkg/util"
+	testutil "github.com/adityakw90/service-user/test/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,15 +15,15 @@ import (
 func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 	tests := []struct {
 		name     string
-		scenario func(t *testing.T, grpcClient *util.TestGRPCClient, uid string)
-		setup    func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		scenario func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string)
+		setup    func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 	}{
 		{
 			name: "Device created on first login",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "lifecycle1", "lifecycle1@example.com", "Password123!")
 			},
-			scenario: func(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+			scenario: func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 				ctx := context.Background()
 
 				// First login - creates device
@@ -30,8 +31,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 					Identifier:        "lifecycle1@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "lifecycle-fp-1",
-					DeviceName:        "First Device",
+					DeviceFingerprint: util.Ptr("lifecycle-fp-1"),
+					DeviceName:        util.Ptr("First Device"),
 				}
 				token, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)
@@ -48,10 +49,10 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 		},
 		{
 			name: "Device reused on subsequent login with same fingerprint",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "lifecycle2", "lifecycle2@example.com", "Password123!")
 			},
-			scenario: func(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+			scenario: func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 				ctx := context.Background()
 
 				// First login
@@ -59,8 +60,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 					Identifier:        "lifecycle2@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "lifecycle-fp-2",
-					DeviceName:        "Device A",
+					DeviceFingerprint: util.Ptr("lifecycle-fp-2"),
+					DeviceName:        util.Ptr("Device A"),
 				}
 				token1, err := grpcClient.AuthClient.Auth(ctx, authReq1)
 				require.NoError(t, err)
@@ -71,8 +72,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 					Identifier:        "lifecycle2@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "lifecycle-fp-2", // Same fingerprint
-					DeviceName:        "Device B",       // Different name
+					DeviceFingerprint: util.Ptr("lifecycle-fp-2"), // Same fingerprint
+					DeviceName:        util.Ptr("Device B"),       // Different name
 				}
 				token2, err := grpcClient.AuthClient.Auth(ctx, authReq2)
 				require.NoError(t, err)
@@ -88,10 +89,10 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 		},
 		{
 			name: "Multiple devices created with different fingerprints",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "lifecycle3", "lifecycle3@example.com", "Password123!")
 			},
-			scenario: func(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+			scenario: func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 				ctx := context.Background()
 
 				// Login from multiple devices
@@ -109,8 +110,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 						Identifier:        "lifecycle3@example.com",
 						IdentifierType:    "email",
 						Password:          "Password123!",
-						DeviceFingerprint: fp.fingerprint,
-						DeviceName:        fp.name,
+						DeviceFingerprint: util.Ptr(fp.fingerprint),
+						DeviceName:        util.Ptr(fp.name),
 					}
 					_, err := grpcClient.AuthClient.Auth(ctx, authReq)
 					require.NoError(t, err)
@@ -126,10 +127,10 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 		},
 		{
 			name: "Device revocation lifecycle",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "lifecycle4", "lifecycle4@example.com", "Password123!")
 			},
-			scenario: func(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+			scenario: func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 				ctx := context.Background()
 
 				// Create two devices
@@ -137,8 +138,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 					Identifier:        "lifecycle4@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "lifecycle-fp-4a",
-					DeviceName:        "Device to Keep",
+					DeviceFingerprint: util.Ptr("lifecycle-fp-4a"),
+					DeviceName:        util.Ptr("Device to Keep"),
 				}
 				tokenKeep, err := grpcClient.AuthClient.Auth(ctx, authReq1)
 				require.NoError(t, err)
@@ -147,8 +148,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 					Identifier:        "lifecycle4@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "lifecycle-fp-4b",
-					DeviceName:        "Device to Revoke",
+					DeviceFingerprint: util.Ptr("lifecycle-fp-4b"),
+					DeviceName:        util.Ptr("Device to Revoke"),
 				}
 				tokenRevoke, err := grpcClient.AuthClient.Auth(ctx, authReq2)
 				require.NoError(t, err)
@@ -200,10 +201,10 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 		},
 		{
 			name: "Token refresh maintains device association",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "lifecycle5", "lifecycle5@example.com", "Password123!")
 			},
-			scenario: func(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+			scenario: func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 				ctx := context.Background()
 
 				// Initial login
@@ -211,8 +212,8 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 					Identifier:        "lifecycle5@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "lifecycle-fp-5",
-					DeviceName:        "Refresh Test Device",
+					DeviceFingerprint: util.Ptr("lifecycle-fp-5"),
+					DeviceName:        util.Ptr("Refresh Test Device"),
 				}
 				initialToken, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)

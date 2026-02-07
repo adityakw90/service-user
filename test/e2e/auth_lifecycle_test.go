@@ -6,7 +6,8 @@ import (
 
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
-	"github.com/adityakw90/service-user/test/util"
+	util "github.com/adityakw90/service-user/pkg/util"
+	testutil "github.com/adityakw90/service-user/test/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,13 +15,13 @@ import (
 func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 		authReq    func(t *testing.T, email string) *authgrpc.AuthRequest
-		verifyFunc func(t *testing.T, uid string, grpcClient *util.TestGRPCClient)
+		verifyFunc func(t *testing.T, uid string, grpcClient *testutil.TestGRPCClient)
 	}{
 		{
 			name: "Login creates new device",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "devicetrack", "devicetrack@example.com", "Password123!")
 			},
 			authReq: func(t *testing.T, email string) *authgrpc.AuthRequest {
@@ -28,11 +29,11 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 					Identifier:        email,
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "unique-fingerprint-123",
-					DeviceName:        "iPhone 14",
+					DeviceFingerprint: util.Ptr("unique-fingerprint-123"),
+					DeviceName:        util.Ptr("iPhone 14"),
 				}
 			},
-			verifyFunc: func(t *testing.T, uid string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, uid string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				devices, err := grpcClient.UserClient.ListDevice(ctx, &usergrpc.ListDevicesRequest{
 					UserUid: uid,
@@ -44,7 +45,7 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 		},
 		{
 			name: "Login with same fingerprint reuses device",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				uid := createTestUser(t, grpcClient, "sametrack", "sametrack@example.com", "Password123!")
 				ctx := context.Background()
 				// First login
@@ -52,8 +53,8 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 					Identifier:        "sametrack@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "same-fingerprint",
-					DeviceName:        "Device 1",
+					DeviceFingerprint: util.Ptr("same-fingerprint"),
+					DeviceName:        util.Ptr("Device 1"),
 				})
 				return uid
 			},
@@ -62,11 +63,11 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 					Identifier:        email,
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "same-fingerprint",
-					DeviceName:        "Device 2",
+					DeviceFingerprint: util.Ptr("same-fingerprint"),
+					DeviceName:        util.Ptr("Device 2"),
 				}
 			},
-			verifyFunc: func(t *testing.T, uid string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, uid string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				devices, err := grpcClient.UserClient.ListDevice(ctx, &usergrpc.ListDevicesRequest{
 					UserUid: uid,
@@ -77,7 +78,7 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 		},
 		{
 			name: "Multiple devices for same user",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "multidevice", "multidevice@example.com", "Password123!")
 			},
 			authReq: func(t *testing.T, email string) *authgrpc.AuthRequest {
@@ -85,11 +86,11 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 					Identifier:        email,
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "fp-3",
-					DeviceName:        "Windows PC",
+					DeviceFingerprint: util.Ptr("fp-3"),
+					DeviceName:        util.Ptr("Windows PC"),
 				}
 			},
-			verifyFunc: func(t *testing.T, uid string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, uid string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				// Create multiple devices
 				fingerprints := []struct{ fp, name string }{
@@ -101,8 +102,8 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 						Identifier:        "multidevice@example.com",
 						IdentifierType:    "email",
 						Password:          "Password123!",
-						DeviceFingerprint: d.fp,
-						DeviceName:        d.name,
+						DeviceFingerprint: util.Ptr(d.fp),
+						DeviceName:        util.Ptr(d.name),
 					})
 				}
 				devices, err := grpcClient.UserClient.ListDevice(ctx, &usergrpc.ListDevicesRequest{
@@ -142,13 +143,13 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 func TestE2E_AuthService_RevokeDevice(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string)
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string)
 		wantErr    bool
-		verifyFunc func(t *testing.T, uid string, grpcClient *util.TestGRPCClient, tokens map[string]*authgrpc.Token)
+		verifyFunc func(t *testing.T, uid string, grpcClient *testutil.TestGRPCClient, tokens map[string]*authgrpc.Token)
 	}{
 		{
 			name: "Revoke device and verify token invalidation",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string) {
 				uid := createTestUser(t, grpcClient, "revokeuser", "revokeuser@example.com", "Password123!")
 				ctx := context.Background()
 
@@ -157,8 +158,8 @@ func TestE2E_AuthService_RevokeDevice(t *testing.T) {
 					Identifier:        "revokeuser@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "fp-keep",
-					DeviceName:        "Device to Keep",
+					DeviceFingerprint: util.Ptr("fp-keep"),
+					DeviceName:        util.Ptr("Device to Keep"),
 				}
 				_, _ = grpcClient.AuthClient.Auth(ctx, authReq1)
 
@@ -166,8 +167,8 @@ func TestE2E_AuthService_RevokeDevice(t *testing.T) {
 					Identifier:        "revokeuser@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "fp-revoke",
-					DeviceName:        "Device to Revoke",
+					DeviceFingerprint: util.Ptr("fp-revoke"),
+					DeviceName:        util.Ptr("Device to Revoke"),
 				}
 				_, _ = grpcClient.AuthClient.Auth(ctx, authReq2)
 
@@ -189,7 +190,7 @@ func TestE2E_AuthService_RevokeDevice(t *testing.T) {
 				return uid, deviceToRevokeUID
 			},
 			wantErr: false,
-			verifyFunc: func(t *testing.T, uid string, grpcClient *util.TestGRPCClient, tokens map[string]*authgrpc.Token) {
+			verifyFunc: func(t *testing.T, uid string, grpcClient *testutil.TestGRPCClient, tokens map[string]*authgrpc.Token) {
 				ctx := context.Background()
 				// Device should no longer be listed
 				devicesAfter, err := grpcClient.UserClient.ListDevice(ctx, &usergrpc.ListDevicesRequest{

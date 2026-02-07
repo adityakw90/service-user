@@ -6,7 +6,8 @@ import (
 
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
-	"github.com/adityakw90/service-user/test/util"
+	"github.com/adityakw90/service-user/pkg/util"
+	testutil "github.com/adityakw90/service-user/test/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ import (
 func TestE2E_AuthService_Auth(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 		authReq    func(t *testing.T) *authgrpc.AuthRequest
 		wantErr    bool
 		errMsg     string
@@ -27,7 +28,7 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 	}{
 		{
 			name: "Auth with email and correct password",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "authemail", "authemail@example.com", "Password123!")
 			},
 			authReq: func(t *testing.T) *authgrpc.AuthRequest {
@@ -35,8 +36,8 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 					Identifier:        "authemail@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device-fingerprint",
-					DeviceName:        "Test Device",
+					DeviceFingerprint: util.Ptr("test-device-fingerprint"),
+					DeviceName:        util.Ptr("Test Device"),
 				}
 			},
 			wantErr: false,
@@ -48,7 +49,7 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 		},
 		{
 			name: "Auth with username and correct password",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "authuser", "authuser@example.com", "Password123!")
 			},
 			authReq: func(t *testing.T) *authgrpc.AuthRequest {
@@ -56,8 +57,8 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 					Identifier:        "authuser",
 					IdentifierType:    "username",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device-fingerprint-2",
-					DeviceName:        "Test Device 2",
+					DeviceFingerprint: util.Ptr("test-device-fingerprint-2"),
+					DeviceName:        util.Ptr("Test Device 2"),
 				}
 			},
 			wantErr: false,
@@ -68,7 +69,7 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 		},
 		{
 			name: "Auth with invalid credentials",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "invalidcredse2e", "invalidcredse2e@example.com", "ValidPassword123!")
 			},
 			authReq: func(t *testing.T) *authgrpc.AuthRequest {
@@ -76,14 +77,14 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 					Identifier:        "invalidcredse2e@example.com",
 					IdentifierType:    "email",
 					Password:          "WrongPassword123!",
-					DeviceFingerprint: "test-device-fingerprint-3",
+					DeviceFingerprint: util.Ptr("test-device-fingerprint-3"),
 				}
 			},
 			wantErr: true,
 		},
 		{
 			name: "Auth with empty identifier type",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "emptytype", "emptytype@example.com", "Password123!")
 			},
 			authReq: func(t *testing.T) *authgrpc.AuthRequest {
@@ -91,15 +92,15 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 					Identifier:        "emptytype@example.com",
 					IdentifierType:    "",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device",
-					DeviceName:        "test",
+					DeviceFingerprint: util.Ptr("test-device"),
+					DeviceName:        util.Ptr("test"),
 				}
 			},
 			wantErr: true,
 		},
 		{
 			name: "Auth with non-existent user",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return "nonexistent"
 			},
 			authReq: func(t *testing.T) *authgrpc.AuthRequest {
@@ -107,8 +108,8 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 					Identifier:        "nonexistent@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device",
-					DeviceName:        "test",
+					DeviceFingerprint: util.Ptr("test-device"),
+					DeviceName:        util.Ptr("test"),
 				}
 			},
 			wantErr: true,
@@ -148,7 +149,7 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 func TestE2E_AuthService_RefreshToken(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) *authgrpc.Token
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token
 		refreshReq func(t *testing.T, initialToken *authgrpc.Token) *authgrpc.RefreshTokenRequest
 		wantErr    bool
 		errMsg     string
@@ -156,15 +157,15 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 	}{
 		{
 			name: "Refresh token with valid token",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) *authgrpc.Token {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token {
 				createTestUser(t, grpcClient, "refreshtokene2e", "refreshtokene2e@example.com", "RefreshToken123!")
 				ctx := context.Background()
 				authReq := &authgrpc.AuthRequest{
 					Identifier:        "refreshtokene2e@example.com",
 					IdentifierType:    "email",
 					Password:          "RefreshToken123!",
-					DeviceFingerprint: "refresh-device-fingerprint",
-					DeviceName:        "Refresh Device",
+					DeviceFingerprint: util.Ptr("refresh-device-fingerprint"),
+					DeviceName:        util.Ptr("Refresh Device"),
 				}
 				token, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)
@@ -184,15 +185,15 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 		},
 		{
 			name: "Refresh token twice (token rotation)",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) *authgrpc.Token {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token {
 				createTestUser(t, grpcClient, "refresh2x", "refresh2x@example.com", "Password123!")
 				ctx := context.Background()
 				authReq := &authgrpc.AuthRequest{
 					Identifier:        "refresh2x@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device-2x",
-					DeviceName:        "Test Device",
+					DeviceFingerprint: util.Ptr("test-device-2x"),
+					DeviceName:        util.Ptr("Test Device"),
 				}
 				token, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)
@@ -216,15 +217,15 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 		},
 		{
 			name: "Refresh token with invalid/expired token",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) *authgrpc.Token {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token {
 				createTestUser(t, grpcClient, "expiredtoken", "expiredtoken@example.com", "Password123!")
 				ctx := context.Background()
 				authReq := &authgrpc.AuthRequest{
 					Identifier:        "expiredtoken@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device-exp",
-					DeviceName:        "Test Device",
+					DeviceFingerprint: util.Ptr("test-device-exp"),
+					DeviceName:        util.Ptr("Test Device"),
 				}
 				token, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)
@@ -271,7 +272,7 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 func TestE2E_AuthService_ValidateToken(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string)
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string)
 		tokenReq   func(t *testing.T, accessToken string) *authgrpc.ValidateTokenRequest
 		wantErr    bool
 		errMsg     string
@@ -279,7 +280,7 @@ func TestE2E_AuthService_ValidateToken(t *testing.T) {
 	}{
 		{
 			name: "Validate valid token",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string) {
 				email := "validatetokene2e@example.com"
 				uid := createTestUser(t, grpcClient, "validatetokene2e", email, "ValidateToken123!")
 				return uid, email
@@ -297,7 +298,7 @@ func TestE2E_AuthService_ValidateToken(t *testing.T) {
 		},
 		{
 			name: "Validate invalid token",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string) {
 				return "", ""
 			},
 			tokenReq: func(t *testing.T, accessToken string) *authgrpc.ValidateTokenRequest {
@@ -323,8 +324,8 @@ func TestE2E_AuthService_ValidateToken(t *testing.T) {
 					Identifier:        email,
 					IdentifierType:    "email",
 					Password:          "ValidateToken123!",
-					DeviceFingerprint: "validate-device-fingerprint",
-					DeviceName:        "Validate Device",
+					DeviceFingerprint: util.Ptr("validate-device-fingerprint"),
+					DeviceName:        util.Ptr("Validate Device"),
 				}
 				token, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)
@@ -354,22 +355,22 @@ func TestE2E_AuthService_ValidateToken(t *testing.T) {
 func TestE2E_AuthService_RevokeToken(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) *authgrpc.Token
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token
 		revokeReq  func(t *testing.T, token *authgrpc.Token) *authgrpc.RevokeTokenRequest
 		wantErr    bool
-		verifyFunc func(t *testing.T, grpcClient *util.TestGRPCClient, token *authgrpc.Token)
+		verifyFunc func(t *testing.T, grpcClient *testutil.TestGRPCClient, token *authgrpc.Token)
 	}{
 		{
 			name: "Revoke refresh token",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) *authgrpc.Token {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token {
 				createTestUser(t, grpcClient, "revoketoken", "revoketoken@example.com", "Password123!")
 				ctx := context.Background()
 				authReq := &authgrpc.AuthRequest{
 					Identifier:        "revoketoken@example.com",
 					IdentifierType:    "email",
 					Password:          "Password123!",
-					DeviceFingerprint: "test-device-revoke",
-					DeviceName:        "Test Device",
+					DeviceFingerprint: util.Ptr("test-device-revoke"),
+					DeviceName:        util.Ptr("Test Device"),
 				}
 				token, err := grpcClient.AuthClient.Auth(ctx, authReq)
 				require.NoError(t, err)
@@ -382,7 +383,7 @@ func TestE2E_AuthService_RevokeToken(t *testing.T) {
 				}
 			},
 			wantErr: false,
-			verifyFunc: func(t *testing.T, grpcClient *util.TestGRPCClient, token *authgrpc.Token) {
+			verifyFunc: func(t *testing.T, grpcClient *testutil.TestGRPCClient, token *authgrpc.Token) {
 				ctx := context.Background()
 				_, err := grpcClient.AuthClient.RefreshToken(ctx, &authgrpc.RefreshTokenRequest{
 					RefreshToken: token.RefreshToken,
@@ -420,14 +421,14 @@ func TestE2E_AuthService_RevokeToken(t *testing.T) {
 func TestE2E_AuthService_VerifyPin(t *testing.T) {
 	tests := []struct {
 		name      string
-		setup     func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		setup     func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 		verifyReq func(t *testing.T) *authgrpc.VerifyPinRequest
 		wantErr   bool
 		wantValid bool
 	}{
 		{
 			name: "Verify correct PIN",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				uid := createTestUser(t, grpcClient, "pinusere2e", "pinusere2e@example.com", "PinPassword123!")
 				ctx := context.Background()
 				_, err := grpcClient.UserClient.UpdatePin(ctx, &usergrpc.UpdatePinRequest{
@@ -448,7 +449,7 @@ func TestE2E_AuthService_VerifyPin(t *testing.T) {
 		},
 		{
 			name: "Verify incorrect PIN",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				uid := createTestUser(t, grpcClient, "invalidpine2e", "invalidpine2e@example.com", "InvalidPin123!")
 				ctx := context.Background()
 				_, err := grpcClient.UserClient.UpdatePin(ctx, &usergrpc.UpdatePinRequest{

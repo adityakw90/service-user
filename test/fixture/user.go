@@ -5,6 +5,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	util "github.com/adityakw90/service-user/pkg/util"
 )
 
 // ValidTestUser returns a valid UserCreateParam for testing.
@@ -75,9 +76,9 @@ func ValidAuthParams() *params.AuthParams {
 		Identifier:        "testuser@example.com",
 		IdentifierType:    "email",
 		Password:          "SecurePassword123!",
-		DeviceFingerprint: "test-device-fingerprint",
-		DeviceName:        "Test Device",
-		DeviceIP:          "127.0.0.1",
+		DeviceFingerprint: util.Ptr("test-device-fingerprint"),
+		DeviceName:        util.Ptr("Test Device"),
+		DeviceIP:          util.Ptr("127.0.0.1"),
 	}
 }
 

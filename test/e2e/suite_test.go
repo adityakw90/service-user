@@ -4,48 +4,48 @@ import (
 	"context"
 	"testing"
 
-	filegrpc "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
+	filegrpc "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/test/util"
+	testutil "github.com/adityakw90/service-user/test/util"
 	"github.com/stretchr/testify/require"
 )
 
 // setupE2ETest creates and starts test infrastructure (services, gRPC server, client).
 // Returns a cleanup function that should be called in defer.
-func setupE2ETest(t *testing.T) (*util.TestServices, *util.TestGRPCClient, func()) {
+func setupE2ETest(t *testing.T) (*testutil.TestServices, *testutil.TestGRPCClient, func()) {
 	t.Helper()
 
 	ctx := context.Background()
 
 	// Setup test services
-	testServices, err := util.SetupTestServices(t, ctx)
+	testServices, err := testutil.SetupTestServices(t, ctx)
 	require.NoError(t, err)
 
 	// Start gRPC server
-	grpcServer, err := util.NewTestGRPCServer(testServices)
+	grpcServer, err := testutil.NewTestGRPCServer(testServices)
 	require.NoError(t, err)
 
 	// Create gRPC clients
-	grpcClient, err := util.NewTestGRPCClient(grpcServer.Addr())
+	grpcClient, err := testutil.NewTestGRPCClient(grpcServer.Addr())
 	require.NoError(t, err)
 
 	// Cleanup function
 	cleanup := func() {
 		grpcClient.Close()
 		grpcServer.Close()
-		// util.TeardownTestServices(testServices)
+		// testutil.TeardownTestServices(testServices)
 	}
 
 	// Clean up test data before each test
-	err = util.CleanupTestData(ctx, testServices)
-	require.NoError(t, err)
+	// err = testutil.CleanupTestData(ctx, testServices)
+	// require.NoError(t, err)
 
 	return testServices, grpcClient, cleanup
 }
 
 // createTestUser creates a test user via gRPC and returns the UID.
-func createTestUser(t *testing.T, grpcClient *util.TestGRPCClient, username, email, password string) string {
+func createTestUser(t *testing.T, grpcClient *testutil.TestGRPCClient, username, email, password string) string {
 	t.Helper()
 	ctx := context.Background()
 	req := &usergrpc.AddRequest{
@@ -62,7 +62,7 @@ func createTestUser(t *testing.T, grpcClient *util.TestGRPCClient, username, ema
 }
 
 // deactivateUser sets a user's status to inactive via gRPC.
-func deactivateUser(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+func deactivateUser(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 	t.Helper()
 	ctx := context.Background()
 	inactive := int32(model.UserStatusInactive)
@@ -74,7 +74,7 @@ func deactivateUser(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
 }
 
 // deleteUser soft-deletes a user via gRPC.
-func deleteUser(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
+func deleteUser(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string) {
 	t.Helper()
 	ctx := context.Background()
 	_, err := grpcClient.UserClient.Delete(ctx, &usergrpc.DeleteRequest{
@@ -84,7 +84,7 @@ func deleteUser(t *testing.T, grpcClient *util.TestGRPCClient, uid string) {
 }
 
 // createTestFile creates a test file via gRPC.
-func createTestFile(t *testing.T, grpcClient *util.TestGRPCClient, userUID, fileName string, fileData []byte, isPublic bool) string {
+func createTestFile(t *testing.T, grpcClient *testutil.TestGRPCClient, userUID, fileName string, fileData []byte, isPublic bool) string {
 	t.Helper()
 	ctx := context.Background()
 	req := &filegrpc.AddRequest{

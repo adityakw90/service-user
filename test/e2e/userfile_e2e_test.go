@@ -4,9 +4,10 @@ import (
 	"context"
 	"testing"
 
-	filegrpc "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	commongrpc "github.com/adityakw90/service-user-proto/gen/go/common"
-	"github.com/adityakw90/service-user/test/util"
+	filegrpc "github.com/adityakw90/service-user-proto/gen/go/user_file"
+	"github.com/adityakw90/service-user/pkg/util"
+	testutil "github.com/adityakw90/service-user/test/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,24 +17,24 @@ const maxFileSize = 10 * 1024 * 1024
 func TestFileAdd(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 		fileName   string
 		fileData   []byte
 		isPublic   bool
 		wantErr    bool
 		errMsg     string
-		verifyFunc func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient)
+		verifyFunc func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient)
 	}{
 		{
 			name: "Add file with valid data",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "fileuser1", "fileuser1@example.com", "Password123!")
 			},
 			fileName: "test-file.txt",
 			fileData: []byte("Hello, World!"),
 			isPublic: false,
 			wantErr:  false,
-			verifyFunc: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				file, err := grpcClient.UserFileClient.Get(ctx, &filegrpc.GetRequest{Uid: fileUID})
 				require.NoError(t, err)
@@ -45,7 +46,7 @@ func TestFileAdd(t *testing.T) {
 		},
 		{
 			name: "Add file with invalid UID",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return "invalid-uid-format"
 			},
 			fileName: "test-file.txt",
@@ -56,7 +57,7 @@ func TestFileAdd(t *testing.T) {
 		},
 		{
 			name: "Add file for non-existent user",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return "01234567-89ab-cdef-0123-456789abcdef"
 			},
 			fileName: "test-file.txt",
@@ -67,7 +68,7 @@ func TestFileAdd(t *testing.T) {
 		},
 		{
 			name: "Add file with empty filename",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "fileuser3", "fileuser3@example.com", "Password123!")
 			},
 			fileName: "",
@@ -78,14 +79,14 @@ func TestFileAdd(t *testing.T) {
 		},
 		{
 			name: "Add file with empty file data",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "fileuser4", "fileuser4@example.com", "Password123!")
 			},
 			fileName: "empty-file.txt",
 			fileData: []byte{},
 			isPublic: false,
 			wantErr:  false, // Service allows empty files
-			verifyFunc: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				file, err := grpcClient.UserFileClient.Get(ctx, &filegrpc.GetRequest{Uid: fileUID})
 				require.NoError(t, err)
@@ -95,14 +96,14 @@ func TestFileAdd(t *testing.T) {
 		},
 		{
 			name: "Add public file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return createTestUser(t, grpcClient, "fileuser5", "fileuser5@example.com", "Password123!")
 			},
 			fileName: "public-file.txt",
 			fileData: []byte("Public content"),
 			isPublic: true,
 			wantErr:  false,
-			verifyFunc: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				file, err := grpcClient.UserFileClient.Get(ctx, &filegrpc.GetRequest{Uid: fileUID})
 				require.NoError(t, err)
@@ -148,14 +149,14 @@ func TestFileAdd(t *testing.T) {
 func TestFileGet(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string)
+		setup   func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string)
 		getUID  func(t *testing.T, fileUID string) string
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "Get existing file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string) {
 				userUID := createTestUser(t, grpcClient, "getfileuser", "getfileuser@example.com", "Password123!")
 				fileUID := createTestFile(t, grpcClient, userUID, "get-test.txt", []byte("test content"), false)
 				return fileUID, userUID
@@ -165,7 +166,7 @@ func TestFileGet(t *testing.T) {
 		},
 		{
 			name: "Get non-existent file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string) {
 				userUID := createTestUser(t, grpcClient, "nofileuser", "nofileuser@example.com", "Password123!")
 				return "01234567-89ab-cdef-0123-456789abcdef", userUID
 			},
@@ -175,7 +176,7 @@ func TestFileGet(t *testing.T) {
 		},
 		{
 			name: "Get deleted file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string) {
 				userUID := createTestUser(t, grpcClient, "deletedfileuser", "deletedfileuser@example.com", "Password123!")
 				fileUID := createTestFile(t, grpcClient, userUID, "deleted-test.txt", []byte("test content"), false)
 				ctx := context.Background()
@@ -275,8 +276,8 @@ func TestFileList(t *testing.T) {
 				Sort:    "asc",
 			},
 			filter: &filegrpc.FilterRequest{
-				UserUid: []string{user1UID},
-				Public:  boolPtr(true),
+				UserUid:    []string{user1UID},
+				Visibility: util.Ptr("public"),
 			},
 			wantCount: 1,
 			wantUIDs:  []string{file2UID},
@@ -290,8 +291,8 @@ func TestFileList(t *testing.T) {
 				Sort:    "asc",
 			},
 			filter: &filegrpc.FilterRequest{
-				UserUid: []string{user1UID},
-				Public:  boolPtr(false),
+				UserUid:    []string{user1UID},
+				Visibility: util.Ptr("private"),
 			},
 			wantCount: 2,
 			wantUIDs:  []string{file1UID, file3UID},
@@ -339,7 +340,7 @@ func TestFileList(t *testing.T) {
 func TestFileUpdate(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 		update     func(t *testing.T) *filegrpc.UpdateRequest
 		wantErr    bool
 		errMsg     string
@@ -347,7 +348,7 @@ func TestFileUpdate(t *testing.T) {
 	}{
 		{
 			name: "Update file name",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "updatefileuser", "updatefileuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "old-name.txt", []byte("content"), false)
 			},
@@ -365,7 +366,7 @@ func TestFileUpdate(t *testing.T) {
 		},
 		{
 			name: "Update file visibility to public",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "visfileuser", "visfileuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "private-file.txt", []byte("content"), false)
 			},
@@ -382,7 +383,7 @@ func TestFileUpdate(t *testing.T) {
 		},
 		{
 			name: "Update file visibility to private",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "privfileuser", "privfileuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "public-file.txt", []byte("content"), true)
 			},
@@ -399,7 +400,7 @@ func TestFileUpdate(t *testing.T) {
 		},
 		{
 			name: "Update file data",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "datafileuser", "datafileuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "data-file.txt", []byte("old content"), false)
 			},
@@ -413,7 +414,7 @@ func TestFileUpdate(t *testing.T) {
 		},
 		{
 			name: "Update multiple fields",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "multifileuser", "multifileuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "multi-old.txt", []byte("old content"), false)
 			},
@@ -436,7 +437,7 @@ func TestFileUpdate(t *testing.T) {
 		},
 		{
 			name: "Update non-existent file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return "01234567-89ab-cdef-0123-456789abcdef"
 			},
 			update: func(t *testing.T) *filegrpc.UpdateRequest {
@@ -484,19 +485,19 @@ func TestFileUpdate(t *testing.T) {
 func TestFileDelete(t *testing.T) {
 	tests := []struct {
 		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) string
+		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
 		wantErr    bool
 		errMsg     string
-		verifyFunc func(t *testing.T, fileUID string, grpcClient *util.TestGRPCClient)
+		verifyFunc func(t *testing.T, fileUID string, grpcClient *testutil.TestGRPCClient)
 	}{
 		{
 			name: "Delete existing file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "deletefileuser", "deletefileuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "delete-me.txt", []byte("content"), false)
 			},
 			wantErr: false,
-			verifyFunc: func(t *testing.T, fileUID string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, fileUID string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				_, err := grpcClient.UserFileClient.Get(ctx, &filegrpc.GetRequest{Uid: fileUID})
 				require.Error(t, err)
@@ -505,7 +506,7 @@ func TestFileDelete(t *testing.T) {
 		},
 		{
 			name: "Delete non-existent file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				return "01234567-89ab-cdef-0123-456789abcdef"
 			},
 			wantErr: true,
@@ -513,12 +514,12 @@ func TestFileDelete(t *testing.T) {
 		},
 		{
 			name: "Verify soft delete behavior",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) string {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) string {
 				userUID := createTestUser(t, grpcClient, "softdeleteuser", "softdeleteuser@example.com", "Password123!")
 				return createTestFile(t, grpcClient, userUID, "soft-delete.txt", []byte("content"), false)
 			},
 			wantErr: false,
-			verifyFunc: func(t *testing.T, fileUID string, grpcClient *util.TestGRPCClient) {
+			verifyFunc: func(t *testing.T, fileUID string, grpcClient *testutil.TestGRPCClient) {
 				ctx := context.Background()
 				// File should not be retrievable after soft delete
 				_, err := grpcClient.UserFileClient.Get(ctx, &filegrpc.GetRequest{Uid: fileUID})
@@ -555,21 +556,21 @@ func TestFileDelete(t *testing.T) {
 
 func TestFileOwnership(t *testing.T) {
 	tests := []struct {
-		name       string
-		setup      func(t *testing.T, grpcClient *util.TestGRPCClient) (fileUID, user1UID, user2UID string)
-		action     func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) error
-		wantErr    bool
-		errMsg     string
+		name    string
+		setup   func(t *testing.T, grpcClient *testutil.TestGRPCClient) (fileUID, user1UID, user2UID string)
+		action  func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) error
+		wantErr bool
+		errMsg  string
 	}{
 		{
 			name: "User can access their own file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string, string) {
 				user1UID := createTestUser(t, grpcClient, "owner1", "owner1@example.com", "Password123!")
 				_ = createTestUser(t, grpcClient, "owner2", "owner2@example.com", "Password123!")
 				fileUID := createTestFile(t, grpcClient, user1UID, "owned-file.txt", []byte("content"), false)
 				return fileUID, user1UID, ""
 			},
-			action: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) error {
+			action: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) error {
 				ctx := context.Background()
 				_, err := grpcClient.UserFileClient.Get(ctx, &filegrpc.GetRequest{Uid: fileUID})
 				return err
@@ -578,14 +579,14 @@ func TestFileOwnership(t *testing.T) {
 		},
 		{
 			name: "User can list their own files",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string, string) {
 				user1UID := createTestUser(t, grpcClient, "listowner1", "listowner1@example.com", "Password123!")
 				user2UID := createTestUser(t, grpcClient, "listowner2", "listowner2@example.com", "Password123!")
 				createTestFile(t, grpcClient, user1UID, "file1.txt", []byte("content1"), false)
 				createTestFile(t, grpcClient, user2UID, "file2.txt", []byte("content2"), false)
 				return "", user1UID, user2UID
 			},
-			action: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) error {
+			action: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) error {
 				ctx := context.Background()
 				_, err := grpcClient.UserFileClient.List(ctx, &filegrpc.ListRequest{
 					Pagination: &commongrpc.Pagination{
@@ -604,13 +605,13 @@ func TestFileOwnership(t *testing.T) {
 		},
 		{
 			name: "User can update their own file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string, string) {
 				user1UID := createTestUser(t, grpcClient, "updateowner1", "updateowner1@example.com", "Password123!")
 				user2UID := createTestUser(t, grpcClient, "updateowner2", "updateowner2@example.com", "Password123!")
 				fileUID := createTestFile(t, grpcClient, user1UID, "updatable-file.txt", []byte("content"), false)
 				return fileUID, user1UID, user2UID
 			},
-			action: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) error {
+			action: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) error {
 				ctx := context.Background()
 				newName := "updated-name.txt"
 				_, err := grpcClient.UserFileClient.Update(ctx, &filegrpc.UpdateRequest{
@@ -624,13 +625,13 @@ func TestFileOwnership(t *testing.T) {
 		},
 		{
 			name: "User can delete their own file",
-			setup: func(t *testing.T, grpcClient *util.TestGRPCClient) (string, string, string) {
+			setup: func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string, string) {
 				user1UID := createTestUser(t, grpcClient, "deleteowner1", "deleteowner1@example.com", "Password123!")
 				user2UID := createTestUser(t, grpcClient, "deleteowner2", "deleteowner2@example.com", "Password123!")
 				fileUID := createTestFile(t, grpcClient, user1UID, "deletable-file.txt", []byte("content"), false)
 				return fileUID, user1UID, user2UID
 			},
-			action: func(t *testing.T, fileUID string, userUID string, grpcClient *util.TestGRPCClient) error {
+			action: func(t *testing.T, fileUID string, userUID string, grpcClient *testutil.TestGRPCClient) error {
 				ctx := context.Background()
 				_, err := grpcClient.UserFileClient.Delete(ctx, &filegrpc.DeleteRequest{Uid: fileUID})
 				return err

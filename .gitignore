@@ -46,5 +46,7 @@ logs/
 *.temp
 
 # project
+config.yaml
 docker-compose.yml
 /docs
+/backup

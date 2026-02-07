@@ -1,4 +1,4 @@
-package util
+package testutil
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func TruncateTestTables(t *testing.T, ctx context.Context, db *pgxpool.Pool) {
 	err := db.QueryRow(ctx, `
 		SELECT array_agg(tablename)
 		FROM pg_tables
-		WHERE schemaname = 'public' AND tablename != 'goose_db_version'
+		WHERE schemaname = 'public' AND tablename != 'databasechangelog' AND tablename != 'databasechangeloglock'
 	`).Scan(&tables)
 	if err != nil {
 		t.Fatalf("Failed to get table names: %v", err)

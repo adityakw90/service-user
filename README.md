@@ -12,12 +12,12 @@ internal/
 ├── adapter/                # External layer (depends on core)
 │   ├── handler/           # Inbound adapters (gRPC handlers)
 │   ├── repository/        # Outbound adapters (PostgreSQL)
-│   └── integration/       # External integrations (logger)
+│   ├── monitoring/        # Outbound adapters (logger, tracer, metrics)
+│   └── security/          # security adapters (jwt generator, password hasher, etc)
 └── core/                   # Domain layer (no external dependencies)
     ├── domain/            # Pure domain entities
     ├── port/              # Interfaces (inbound & outbound contracts)
-    ├── service/           # Business logic implementations
-    └── security/          # Cryptographic operations
+    └── service/           # Business logic implementations
 ```
 
 ## Dependency Flow

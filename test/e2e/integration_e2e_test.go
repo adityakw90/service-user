@@ -8,6 +8,7 @@ import (
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
+	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,8 +40,8 @@ func TestFullUserLifecycle(t *testing.T) {
 		Identifier:        createReq.Email,
 		IdentifierType:    "email",
 		Password:          createReq.Password,
-		DeviceFingerprint: "lifecycle-device",
-		DeviceName:        "Lifecycle Device",
+		DeviceFingerprint: util.Ptr("lifecycle-device"),
+		DeviceName:        util.Ptr("Lifecycle Device"),
 	}
 
 	token, err := grpcClient.AuthClient.Auth(ctx, authReq)
@@ -126,8 +127,8 @@ func TestMultiDeviceLoginFlow(t *testing.T) {
 			Identifier:        "multilogin@example.com",
 			IdentifierType:    "email",
 			Password:          "MultiLogin123!",
-			DeviceFingerprint: d.fingerprint,
-			DeviceName:        d.name,
+			DeviceFingerprint: util.Ptr(d.fingerprint),
+			DeviceName:        util.Ptr(d.name),
 		}
 
 		token, err := grpcClient.AuthClient.Auth(ctx, authReq)
@@ -176,16 +177,16 @@ func TestPasswordChangeInvalidatesTokens(t *testing.T) {
 		Identifier:        "passchange@example.com",
 		IdentifierType:    "email",
 		Password:          "OldPassword123!",
-		DeviceFingerprint: "device-1",
-		DeviceName:        "Device 1",
+		DeviceFingerprint: util.Ptr("device-1"),
+		DeviceName:        util.Ptr("Device 1"),
 	}
 
 	authReq2 := &authgrpc.AuthRequest{
 		Identifier:        "passchange@example.com",
 		IdentifierType:    "email",
 		Password:          "OldPassword123!",
-		DeviceFingerprint: "device-2",
-		DeviceName:        "Device 2",
+		DeviceFingerprint: util.Ptr("device-2"),
+		DeviceName:        util.Ptr("Device 2"),
 	}
 
 	token1, err := grpcClient.AuthClient.Auth(ctx, authReq1)
@@ -237,8 +238,8 @@ func TestPasswordChangeInvalidatesTokens(t *testing.T) {
 		Identifier:        "passchange@example.com",
 		IdentifierType:    "email",
 		Password:          "NewPassword456!",
-		DeviceFingerprint: "device-1",
-		DeviceName:        "Device 1",
+		DeviceFingerprint: util.Ptr("device-1"),
+		DeviceName:        util.Ptr("Device 1"),
 	}
 
 	newToken, err := grpcClient.AuthClient.Auth(ctx, authReqNew)
@@ -257,8 +258,8 @@ func TestAccountDeactivationPreventsLogin(t *testing.T) {
 		Identifier:        "deactivateuser@example.com",
 		IdentifierType:    "email",
 		Password:          "Deactivate123!",
-		DeviceFingerprint: "deactivate-device",
-		DeviceName:        "Test Device",
+		DeviceFingerprint: util.Ptr("deactivate-device"),
+		DeviceName:        util.Ptr("Test Device"),
 	}
 
 	token, err := grpcClient.AuthClient.Auth(ctx, authReq)
@@ -366,8 +367,8 @@ func TestUserDeviceManagementIntegration(t *testing.T) {
 		Identifier:        "devicemgmt@example.com",
 		IdentifierType:    "email",
 		Password:          "DeviceMgmt123!",
-		DeviceFingerprint: "fp-keep",
-		DeviceName:        "Primary Device",
+		DeviceFingerprint: util.Ptr("fp-keep"),
+		DeviceName:        util.Ptr("Primary Device"),
 	}
 
 	primaryToken, err := grpcClient.AuthClient.Auth(ctx, authReq)
@@ -378,8 +379,8 @@ func TestUserDeviceManagementIntegration(t *testing.T) {
 		Identifier:        "devicemgmt@example.com",
 		IdentifierType:    "email",
 		Password:          "DeviceMgmt123!",
-		DeviceFingerprint: "fp-revoke",
-		DeviceName:        "Secondary Device",
+		DeviceFingerprint: util.Ptr("fp-revoke"),
+		DeviceName:        util.Ptr("Secondary Device"),
 	}
 
 	secondaryToken, err := grpcClient.AuthClient.Auth(ctx, authReq2)
