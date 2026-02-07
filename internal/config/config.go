@@ -36,6 +36,13 @@ type Config struct {
 	EventPublisherSource   string        `mapstructure:"EVENT_PUBLISHER_SOURCE"`
 	EventPublisherTimeout  time.Duration `mapstructure:"EVENT_PUBLISHER_TIMEOUT_SECONDS"`
 
+	// Observer settings (individual control)
+	ObserverAuth     bool `mapstructure:"OBSERVER_AUTH_ENABLED"`
+	ObserverUser     bool `mapstructure:"OBSERVER_USER_ENABLED"`
+	ObserverDevice   bool `mapstructure:"OBSERVER_DEVICE_ENABLED"`
+	ObserverUserFile bool `mapstructure:"OBSERVER_USERFILE_ENABLED"`
+	ObserverPin      bool `mapstructure:"OBSERVER_PIN_ENABLED"`
+
 	// Monitoring settings
 	Monitoring MonitoringConfig `mapstructure:",squash"`
 }
@@ -105,6 +112,11 @@ func Load() (*Config, error) {
 	vConfig.SetDefault("RATE_LIMIT_WINDOW_SECONDS", 60)
 	vConfig.SetDefault("EVENT_PUBLISHER_SOURCE", "service-user")
 	vConfig.SetDefault("EVENT_PUBLISHER_TIMEOUT_SECONDS", 5)
+	vConfig.SetDefault("OBSERVER_AUTH_ENABLED", true)
+	vConfig.SetDefault("OBSERVER_USER_ENABLED", true)
+	vConfig.SetDefault("OBSERVER_DEVICE_ENABLED", true)
+	vConfig.SetDefault("OBSERVER_USERFILE_ENABLED", true)
+	vConfig.SetDefault("OBSERVER_PIN_ENABLED", true)
 	vConfig.SetDefault("MONITORING_SERVICE_NAME", "service-user")
 	vConfig.SetDefault("MONITORING_ENVIRONMENT", "development")
 
