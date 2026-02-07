@@ -6,17 +6,21 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
+	"github.com/adityakw90/service-user/internal/core/port/observer"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 type userFileService struct {
-	userFileRepo repository.UserFileRepository
-	userRepo     repository.UserRepository
-	userResolver portResolver.UserResolver
-	uidGen       portSec.UIDGenerator
+	userFileRepo   repository.UserFileRepository
+	userRepo       repository.UserRepository
+	userResolver   portResolver.UserResolver
+	uidGen         portSec.UIDGenerator
+	userFileObserver observer.ServiceObserver[signal.UserFileSignal]
 }
 
 func NewUserFileService(
@@ -24,22 +28,39 @@ func NewUserFileService(
 	userRepo repository.UserRepository,
 	userResolver portResolver.UserResolver,
 	uidGen portSec.UIDGenerator,
+	userFileObserver observer.ServiceObserver[signal.UserFileSignal],
 ) portSvc.UserFileService {
+	if userFileObserver == nil {
+		panic("userFileObserver is required")
+	}
 	return &userFileService{
-		userFileRepo: userFileRepo,
-		userRepo:     userRepo,
-		userResolver: userResolver,
-		uidGen:       uidGen,
+		userFileRepo:     userFileRepo,
+		userRepo:         userRepo,
+		userResolver:     userResolver,
+		uidGen:           uidGen,
+		userFileObserver: userFileObserver,
 	}
 }
 
 func (s *userFileService) Get(ctx context.Context, uid string) (*model.UserFile, error) {
+	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
+		UID:       &uid,
+		Operation: "get",
+	}, nil)
+
 	if uid == "" {
+		s.userFileObserver.OnSignal(ctx, signal.SignalReject, signal.UserFileSignal{
+			Operation: "get",
+		}, domainerrors.ErrInvalidUID)
 		return nil, domainerrors.ErrInvalidUID
 	}
 
 	file, err := s.userFileRepo.GetByUID(ctx, uid)
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "get",
+		}, err)
 		return nil, err
 	}
 
@@ -47,17 +68,39 @@ func (s *userFileService) Get(ctx context.Context, uid string) (*model.UserFile,
 		file.UserID,
 	})
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "get",
+		}, err)
 		return nil, err
 	}
 	file.UserUID = resUserUid[file.UserID]
+
+	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
+		UID:       &uid,
+		UserUID:   &file.UserUID,
+		FileName:  &file.FileName,
+		FileType:  &file.FileType,
+		FileSize:  &file.SizeBytes,
+		Operation: "get",
+	}, nil)
 
 	return file, nil
 }
 
 func (s *userFileService) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) (*model.UserFiles, error) {
+	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
+		Operation: "list",
+	}, nil)
+
 	// Set defaults for pagination
 	if pagination == nil {
-		pagination = params.NewPaginationParam(1, 10, "created_at", "desc")
+		pagination = &params.PaginationParam{
+			Page:    util.Ptr(1),
+			Limit:   util.Ptr(10),
+			Sort:    util.Ptr("asc"),
+			OrderBy: util.Ptr("created_at"),
+		}
 	}
 
 	if filter == nil {
@@ -66,6 +109,9 @@ func (s *userFileService) List(ctx context.Context, pagination *params.Paginatio
 
 	files, err := s.userFileRepo.List(ctx, pagination, filter)
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			Operation: "list",
+		}, err)
 		return nil, err
 	}
 
@@ -76,6 +122,9 @@ func (s *userFileService) List(ctx context.Context, pagination *params.Paginatio
 		}
 		resUserUIDs, err := s.userResolver.UIDsByIDs(ctx, listUserId)
 		if err != nil {
+			s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+				Operation: "list",
+			}, err)
 			return nil, err
 		}
 		for i, item := range files.Items {
@@ -83,18 +132,37 @@ func (s *userFileService) List(ctx context.Context, pagination *params.Paginatio
 		}
 	}
 
+	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
+		Operation: "list",
+	}, nil)
+
 	return files, nil
 }
 
 func (s *userFileService) Add(ctx context.Context, param params.UserFileCreateParam) (*model.UserFile, error) {
+	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
+		UserUID:   &param.UserUID,
+		FileName:  &param.FileName,
+		FileType:  &param.FileType,
+		FileSize:  &param.SizeBytes,
+		Operation: "add",
+	}, nil)
+
 	// Validate input
 	if param.UserUID == "" {
+		s.userFileObserver.OnSignal(ctx, signal.SignalReject, signal.UserFileSignal{
+			Operation: "add",
+		}, domainerrors.ErrInvalidUID)
 		return nil, domainerrors.ErrInvalidUID
 	}
 
 	// Verify user exists
 	user, err := s.userRepo.GetByUID(ctx, param.UserUID)
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UserUID:   &param.UserUID,
+			Operation: "add",
+		}, err)
 		return nil, err
 	}
 
@@ -113,16 +181,38 @@ func (s *userFileService) Add(ctx context.Context, param params.UserFileCreatePa
 
 	file, err = s.userFileRepo.Create(ctx, file)
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UserUID:   &param.UserUID,
+			Operation: "add",
+		}, err)
 		return nil, err
 	}
+
+	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
+		UID:       &file.UID,
+		UserUID:   &file.UserUID,
+		FileName:  &file.FileName,
+		FileType:  &file.FileType,
+		FileSize:  &file.SizeBytes,
+		Operation: "add",
+	}, nil)
 
 	return file, nil
 }
 
 func (s *userFileService) Update(ctx context.Context, uid string, param params.UserFileUpdateParam) error {
+	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
+		UID:       &uid,
+		Operation: "update",
+	}, nil)
+
 	// Get file
 	file, err := s.userFileRepo.GetByUID(ctx, uid)
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "update",
+		}, err)
 		return err
 	}
 
@@ -144,16 +234,61 @@ func (s *userFileService) Update(ctx context.Context, uid string, param params.U
 	}
 
 	// Save changes
-	return s.userFileRepo.Update(ctx, file)
+	err = s.userFileRepo.Update(ctx, file)
+	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "update",
+		}, err)
+		return err
+	}
+
+	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
+		UID:       &uid,
+		UserUID:   &file.UserUID,
+		FileName:  &file.FileName,
+		FileType:  &file.FileType,
+		FileSize:  &file.SizeBytes,
+		Operation: "update",
+	}, nil)
+
+	return nil
 }
 
 func (s *userFileService) Delete(ctx context.Context, uid string) error {
+	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
+		UID:       &uid,
+		Operation: "delete",
+	}, nil)
+
 	// Get file
 	file, err := s.userFileRepo.GetByUID(ctx, uid)
 	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "delete",
+		}, err)
 		return err
 	}
 
 	// Delete file
-	return s.userFileRepo.Delete(ctx, file)
+	err = s.userFileRepo.Delete(ctx, file)
+	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "delete",
+		}, err)
+		return err
+	}
+
+	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
+		UID:       &uid,
+		UserUID:   &file.UserUID,
+		FileName:  &file.FileName,
+		FileType:  &file.FileType,
+		FileSize:  &file.SizeBytes,
+		Operation: "delete",
+	}, nil)
+
+	return nil
 }
