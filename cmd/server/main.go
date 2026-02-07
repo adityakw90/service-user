@@ -210,6 +210,7 @@ func main() {
 		passwordHasher,
 		pinHasher,
 		uidGen,
+		tokenWhitelist,
 		userObserver,
 	)
 
