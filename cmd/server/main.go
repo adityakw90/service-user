@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	gomon "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user-proto/gen/go/auth"
 	"github.com/adityakw90/service-user-proto/gen/go/device"
 	"github.com/adityakw90/service-user-proto/gen/go/user"
@@ -22,8 +23,10 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
+	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/config"
 	"github.com/adityakw90/service-user/internal/core/port"
+	portobserver "github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/service"
 	"github.com/adityakw90/service-user/internal/infra"
 )
@@ -189,8 +192,12 @@ func main() {
 		})
 	}
 
-	// Initialize Observer
-	authObserver := observer.NewAuthObserver(iMon.Logger, iMon.Tracer)
+	// Create observers based on config
+	authObserver := createAuthObserver(cfg, iMon.Logger, iMon.Tracer)
+	userObserver := createUserObserver(cfg, iMon.Logger, iMon.Tracer)
+	deviceObserver := createDeviceObserver(cfg, iMon.Logger, iMon.Tracer)
+	userFileObserver := createUserFileObserver(cfg, iMon.Logger, iMon.Tracer)
+	_ = createPinObserver(cfg, iMon.Logger, iMon.Tracer) // PIN operations handled in UserService
 
 	// Initialize services
 	uidGen := security.NewUIDGenerator()
@@ -203,6 +210,7 @@ func main() {
 		passwordHasher,
 		pinHasher,
 		uidGen,
+		userObserver,
 	)
 
 	// Initialize auth service with all features
@@ -226,11 +234,12 @@ func main() {
 	deviceService := service.NewDeviceService(
 		deviceRepo,
 		userDeviceRepo,
+		deviceObserver,
 	)
 
 	// Initialize user file service
 	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := service.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen)
+	userFileService := service.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver)
 
 	// Initialize gRPC handlers
 	userHandler := grpcadapter.NewUserHandler(userService)
@@ -272,4 +281,39 @@ func main() {
 			"error": err.Error(),
 		})
 	}
+}
+
+func createAuthObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.AuthSignal] {
+	if cfg.ObserverAuth {
+		return observer.NewAuthObserver(logger, tracer)
+	}
+	return observer.NewNoopObserver[domainSignal.AuthSignal]()
+}
+
+func createUserObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserSignal] {
+	if cfg.ObserverUser {
+		return observer.NewUserObserver(logger, tracer)
+	}
+	return observer.NewNoopObserver[domainSignal.UserSignal]()
+}
+
+func createDeviceObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.DeviceSignal] {
+	if cfg.ObserverDevice {
+		return observer.NewDeviceObserver(logger, tracer)
+	}
+	return observer.NewNoopObserver[domainSignal.DeviceSignal]()
+}
+
+func createUserFileObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserFileSignal] {
+	if cfg.ObserverUserFile {
+		return observer.NewUserFileObserver(logger, tracer)
+	}
+	return observer.NewNoopObserver[domainSignal.UserFileSignal]()
+}
+
+func createPinObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.PinSignal] {
+	if cfg.ObserverPin {
+		return observer.NewPinObserver(logger, tracer)
+	}
+	return observer.NewNoopObserver[domainSignal.PinSignal]()
 }
