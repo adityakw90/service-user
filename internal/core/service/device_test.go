@@ -7,6 +7,7 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,6 +57,7 @@ func TestDeviceService_Get(t *testing.T) {
 			svc := NewDeviceService(
 				mockDeviceRepo,
 				mockUserDeviceRepo,
+				NewMockDeviceObserver(),
 			)
 
 			// Execute
@@ -121,8 +123,13 @@ func TestDeviceService_List(t *testing.T) {
 					}, nil
 				}
 			},
-			pagination: createPaginationParams(2, 20, "created_at", "desc"),
-			filter:     nil,
+			pagination: &params.PaginationParam{
+				Page:    util.Ptr(2),
+				Limit:   util.Ptr(20),
+				Sort:    util.Ptr("desc"),
+				OrderBy: util.Ptr("created_at"),
+			},
+			filter: nil,
 			want: &model.Devices{
 				Items: []model.Device{},
 			},
@@ -134,8 +141,13 @@ func TestDeviceService_List(t *testing.T) {
 					return &model.Devices{Items: []model.Device{}}, nil
 				}
 			},
-			pagination: createPaginationParams(1, 10, "created_at", "desc"),
-			filter:     &params.DeviceListFilterParam{},
+			pagination: &params.PaginationParam{
+				Page:    util.Ptr(1),
+				Limit:   util.Ptr(10),
+				Sort:    util.Ptr("asc"),
+				OrderBy: util.Ptr("created_at"),
+			},
+			filter: &params.DeviceListFilterParam{},
 			want: &model.Devices{
 				Items: []model.Device{},
 			},
@@ -157,6 +169,7 @@ func TestDeviceService_List(t *testing.T) {
 			svc := NewDeviceService(
 				mockDeviceRepo,
 				mockUserDeviceRepo,
+				NewMockDeviceObserver(),
 			)
 
 			// Execute
@@ -221,6 +234,7 @@ func TestDeviceService_Delete(t *testing.T) {
 			svc := NewDeviceService(
 				mockDeviceRepo,
 				mockUserDeviceRepo,
+				NewMockDeviceObserver(),
 			)
 
 			// Execute

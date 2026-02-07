@@ -69,6 +69,7 @@ func TestUserFileService_Get(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
+				NewMockUserFileObserver(),
 			)
 
 			// Execute
@@ -133,9 +134,14 @@ func TestUserFileService_List(t *testing.T) {
 					}, nil
 				}
 			},
-			pagination: createPaginationParams(2, 20, "created_at", "desc"),
-			filter:     nil,
-			wantErr:    nil,
+			pagination: &params.PaginationParam{
+				Page:    util.Ptr(2),
+				Limit:   util.Ptr(20),
+				Sort:    util.Ptr("desc"),
+				OrderBy: util.Ptr("created_at"),
+			},
+			filter:  nil,
+			wantErr: nil,
 			verifyFunc: func(t *testing.T, got *model.UserFiles) {
 				require.Len(t, got.Items, 0)
 			},
@@ -147,9 +153,14 @@ func TestUserFileService_List(t *testing.T) {
 					return &model.UserFiles{Items: []model.UserFile{}}, nil
 				}
 			},
-			pagination: createPaginationParams(1, 10, "created_at", "desc"),
+			pagination: &params.PaginationParam{
+				Page:    util.Ptr(1),
+				Limit:   util.Ptr(10),
+				Sort:    util.Ptr("asc"),
+				OrderBy: util.Ptr("created_at"),
+			},
 			filter: &params.UserFileListFilterParam{
-				UserUid: util.Ptr("user-123"),
+				UserUid: []string{"user-123"},
 			},
 			wantErr: nil,
 			verifyFunc: func(t *testing.T, got *model.UserFiles) {
@@ -177,6 +188,7 @@ func TestUserFileService_List(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
+				NewMockUserFileObserver(),
 			)
 
 			// Execute
@@ -292,6 +304,7 @@ func TestUserFileService_Add(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
+				NewMockUserFileObserver(),
 			)
 
 			// Execute
@@ -386,6 +399,7 @@ func TestUserFileService_Update(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
+				NewMockUserFileObserver(),
 			)
 
 			// Execute
@@ -453,6 +467,7 @@ func TestUserFileService_Delete(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
+				NewMockUserFileObserver(),
 			)
 
 			// Execute

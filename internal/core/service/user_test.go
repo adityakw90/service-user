@@ -73,6 +73,7 @@ func TestUserService_Get(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockObserver := NewMockUserObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -89,6 +90,7 @@ func TestUserService_Get(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockObserver,
 			)
 
 			// Execute
@@ -188,6 +190,7 @@ func TestUserService_List(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockObserver := NewMockUserObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -204,6 +207,7 @@ func TestUserService_List(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockObserver,
 			)
 
 			// Execute
@@ -321,6 +325,7 @@ func TestUserService_Create(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
@@ -476,6 +481,7 @@ func TestUserService_Update(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
@@ -534,6 +540,7 @@ func TestUserService_Delete(t *testing.T) {
 			mockUserDeviceRepo := NewMockUserDeviceRepository()
 			mockHasher := NewMockHasher()
 			mockUIDGen := NewMockUIDGenerator()
+			mockObserver := NewMockUserObserver()
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -550,6 +557,7 @@ func TestUserService_Delete(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				mockObserver,
 			)
 
 			// Execute
@@ -639,6 +647,7 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
@@ -761,6 +770,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
@@ -869,6 +879,7 @@ func TestUserService_SetPin(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
@@ -955,10 +966,11 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
-			got, err := svc.ListDevice(context.Background(), tt.userUID, tt.opts)
+			got, err := svc.ListDevice(context.Background(), tt.userUID, nil, &tt.opts)
 
 			// Assert
 			if tt.wantErr != nil {
@@ -1050,6 +1062,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockHasher,
 				mockHasher,
 				mockUIDGen,
+				NewMockUserObserver(),
 			)
 
 			// Execute
@@ -1065,4 +1078,9 @@ func TestUserService_RevokeDevice(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// Helper function to create pagination params for tests
+func createPaginationParams(page, limit int, orderBy, sort string) *params.PaginationParam {
+	return params.NewPaginationParam(page, limit, orderBy, sort)
 }
