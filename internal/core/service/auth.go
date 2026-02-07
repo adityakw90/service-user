@@ -10,6 +10,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/core/port"
+	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
@@ -28,7 +29,7 @@ type authService struct {
 	oauthProvider  port.OAuthProvider
 	tokenWhitelist portSec.TokenStore
 	tokenBlacklist portSec.TokenStore
-	eventPublisher port.EventPublisher
+	eventPublisher portEvent.EventPublisher
 	authObserver   observer.ServiceObserver[domainSignal.AuthSignal]
 }
 
@@ -44,7 +45,7 @@ func NewAuthService(
 	oauthProvider port.OAuthProvider,
 	tokenWhitelist portSec.TokenStore,
 	tokenBlacklist portSec.TokenStore,
-	eventPublisher port.EventPublisher,
+	eventPublisher portEvent.EventPublisher,
 	authObserver observer.ServiceObserver[domainSignal.AuthSignal],
 ) portSvc.AuthService {
 	return &authService{

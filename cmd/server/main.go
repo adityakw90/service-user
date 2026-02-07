@@ -23,9 +23,10 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
-	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/config"
+	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/core/port"
+	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	portobserver "github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/service"
 	"github.com/adityakw90/service-user/internal/infra"
@@ -170,7 +171,7 @@ func main() {
 	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "token-whitelist:", 15*time.Minute)
 
 	// Initialize event publisher
-	var eventPublisher port.EventPublisher
+	var eventPublisher portEvent.EventPublisher
 	if cfg.EventPublisherEndpoint != "" {
 		eventPublisher = publisher.NewHTTPPublisher(publisher.HttpPublisherConfig{
 			Endpoint: cfg.EventPublisherEndpoint,
