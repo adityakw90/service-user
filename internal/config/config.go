@@ -16,17 +16,11 @@ type Config struct {
 	Database       DatabaseConfig   `mapstructure:"database"`
 	Redis          RedisConfig      `mapstructure:"redis"`
 	Monitoring     MonitoringConfig `mapstructure:"monitoring"`
+	Observer       ObserverConfig   `mapstructure:"observer"`
+	Security       SecurityConfig   `mapstructure:"security"`
 	Jwt            JWTConfig        `mapstructure:"jwt"`
 	PasswordHasher HasherConfig     `mapstructure:"password_hasher"`
 	PINHasher      HasherConfig     `mapstructure:"pin_hasher"`
-
-	// Lockout settings
-	LockoutMaxAttempts int           `mapstructure:"LOCKOUT_MAX_ATTEMPTS"`
-	LockoutDuration    time.Duration `mapstructure:"LOCKOUT_DURATION_MINUTES"`
-
-	// Rate limiting settings
-	RateLimitLimit  int           `mapstructure:"RATE_LIMIT_LIMIT"`
-	RateLimitWindow time.Duration `mapstructure:"RATE_LIMIT_WINDOW_SECONDS"`
 
 	// OAuth settings
 	OAuthGoogleClientID     string `mapstructure:"OAUTH_GOOGLE_CLIENT_ID"`
@@ -37,16 +31,6 @@ type Config struct {
 	EventPublisherEndpoint string        `mapstructure:"EVENT_PUBLISHER_ENDPOINT"`
 	EventPublisherSource   string        `mapstructure:"EVENT_PUBLISHER_SOURCE"`
 	EventPublisherTimeout  time.Duration `mapstructure:"EVENT_PUBLISHER_TIMEOUT_SECONDS"`
-
-	// Observer settings (individual control)
-	ObserverAuth     bool `mapstructure:"OBSERVER_AUTH_ENABLED"`
-	ObserverUser     bool `mapstructure:"OBSERVER_USER_ENABLED"`
-	ObserverDevice   bool `mapstructure:"OBSERVER_DEVICE_ENABLED"`
-	ObserverUserFile bool `mapstructure:"OBSERVER_USERFILE_ENABLED"`
-	ObserverPin      bool `mapstructure:"OBSERVER_PIN_ENABLED"`
-
-	// Security adapter settings
-	Security SecurityConfig `mapstructure:"security"`
 }
 
 // Load reads configuration from environment variables using Viper.
@@ -74,25 +58,15 @@ func Load() (*Config, error) {
 	defaultDatabaseConfig("database", vConfig)
 	defaultRedisConfig("redis", vConfig)
 	defaultMonitoringConfig("monitoring", vConfig)
+	defaultObserverConfig("observer", vConfig)
 	defaultJWTConfig("jwt", vConfig)
 	defaultHasherConfig("password_hasher", vConfig)
 	defaultHasherConfig("pin_hasher", vConfig)
 	defaultSecurityConfig("security", vConfig)
 
 	// Set defaults
-	vConfig.SetDefault("LOCKOUT_MAX_ATTEMPTS", 5)
-	vConfig.SetDefault("LOCKOUT_DURATION_MINUTES", 15)
-	vConfig.SetDefault("RATE_LIMIT_LIMIT", 10)
-	vConfig.SetDefault("RATE_LIMIT_WINDOW_SECONDS", 60)
 	vConfig.SetDefault("EVENT_PUBLISHER_SOURCE", "service-user")
 	vConfig.SetDefault("EVENT_PUBLISHER_TIMEOUT_SECONDS", 5)
-	vConfig.SetDefault("OBSERVER_AUTH_ENABLED", true)
-	vConfig.SetDefault("OBSERVER_USER_ENABLED", true)
-	vConfig.SetDefault("OBSERVER_DEVICE_ENABLED", true)
-	vConfig.SetDefault("OBSERVER_USERFILE_ENABLED", true)
-	vConfig.SetDefault("OBSERVER_PIN_ENABLED", true)
-	vConfig.SetDefault("MONITORING_SERVICE_NAME", "service-user")
-	vConfig.SetDefault("MONITORING_ENVIRONMENT", "development")
 
 	// test
 	vConfig.SafeWriteConfig()

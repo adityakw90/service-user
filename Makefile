@@ -43,7 +43,7 @@ lint:
 
 run:
 	@echo "Running the application..."
-	@go run cmd/server/main.go
+	@go run cmd/main.go
 
 # Help target
 help:

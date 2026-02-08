@@ -54,6 +54,32 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 			PoolTimeout:       5 * time.Second,
 			ConnectionIdleMin: 1,
 		},
+		Observer: config.ObserverConfig{
+			Auth:     true,
+			User:     true,
+			Device:   true,
+			UserFile: true,
+			Pin:      true,
+		},
+		Security: config.SecurityConfig{
+			LoginTracker: config.AttemptTrackerConfig{
+				Backend:           "redis",
+				LockoutCounterTTL: 30 * time.Minute,
+				LockoutDuration:   15 * time.Minute,
+				LockoutThreshold:  5,
+			},
+			PINTracker: config.AttemptTrackerConfig{
+				Backend:           "redis",
+				LockoutCounterTTL: 30 * time.Minute,
+				LockoutDuration:   15 * time.Minute,
+				LockoutThreshold:  3,
+			},
+			RateLimiter: config.RateLimiterConfig{
+				Backend:    "redis",
+				Limit:      100,
+				WindowSize: time.Hour,
+			},
+		},
 		Jwt: config.JWTConfig{
 			SecretKey:     "test-secret-key",
 			AccessExpiry:  15 * time.Minute,
@@ -79,8 +105,6 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 			SaltLength:  16,
 			KeyLength:   32,
 		},
-		LockoutDuration:       15 * time.Minute,
-		RateLimitWindow:       time.Minute,
 		EventPublisherTimeout: 5 * time.Second,
 	}, nil
 }

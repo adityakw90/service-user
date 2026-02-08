@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -315,35 +315,35 @@ func main() {
 }
 
 func createAuthObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.AuthSignal] {
-	if cfg.ObserverAuth {
+	if cfg.Observer.Auth {
 		return observer.NewAuthObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.AuthSignal]()
 }
 
 func createUserObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserSignal] {
-	if cfg.ObserverUser {
+	if cfg.Observer.User {
 		return observer.NewUserObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.UserSignal]()
 }
 
 func createDeviceObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.DeviceSignal] {
-	if cfg.ObserverDevice {
+	if cfg.Observer.Device {
 		return observer.NewDeviceObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.DeviceSignal]()
 }
 
 func createUserFileObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserFileSignal] {
-	if cfg.ObserverUserFile {
+	if cfg.Observer.UserFile {
 		return observer.NewUserFileObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.UserFileSignal]()
 }
 
 func createPinObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.PinSignal] {
-	if cfg.ObserverPin {
+	if cfg.Observer.Pin {
 		return observer.NewPinObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.PinSignal]()
