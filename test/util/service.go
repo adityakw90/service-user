@@ -197,6 +197,8 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		tokenBlacklist,
 		eventPublisher,
 		authObserver,
+		security.NewNoopAttemptTracker(),
+		security.NewNoopRateLimiter(),
 	)
 
 	// Initialize device service

@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"context"
@@ -170,6 +170,33 @@ func main() {
 	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "token-blacklist:", 24*time.Hour)
 	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "token-whitelist:", 15*time.Minute)
 
+	// Initialize security adapters
+	securityAdapters, err := security.NewSecurityAdapters(ctx, security.SecurityConfig{
+		LoginTracker: security.AttemptTrackerConfig{
+			Backend:           cfg.Security.LoginTracker.Backend,
+			LockoutThreshold:  cfg.Security.LoginTracker.LockoutThreshold,
+			LockoutDuration:   cfg.Security.LoginTracker.LockoutDuration,
+			LockoutCounterTTL: cfg.Security.LoginTracker.LockoutCounterTTL,
+		},
+		PINTracker: security.AttemptTrackerConfig{
+			Backend:           cfg.Security.PINTracker.Backend,
+			LockoutThreshold:  cfg.Security.PINTracker.LockoutThreshold,
+			LockoutDuration:   cfg.Security.PINTracker.LockoutDuration,
+			LockoutCounterTTL: cfg.Security.PINTracker.LockoutCounterTTL,
+		},
+		RateLimiter: security.RateLimiterConfig{
+			Backend:    cfg.Security.RateLimiter.Backend,
+			Limit:      cfg.Security.RateLimiter.Limit,
+			WindowSize: cfg.Security.RateLimiter.WindowSize,
+		},
+	}, redisClient)
+	if err != nil {
+		logger.Fatal("failed to initialize security adapters", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+	defer securityAdapters.Close()
+
 	// Initialize event publisher
 	var eventPublisher portEvent.EventPublisher
 	if cfg.EventPublisherEndpoint != "" {
@@ -230,6 +257,8 @@ func main() {
 		tokenBlacklist,
 		eventPublisher,
 		authObserver,
+		securityAdapters.LoginTracker,
+		securityAdapters.RateLimiter,
 	)
 
 	// Initialize device service

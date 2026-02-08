@@ -35,8 +35,7 @@ test-clean:
 
 build:
 	@echo "Building the application..."
-# 	@go build -o bin/app cmd/server/main.go
-	@GOOS=linux GOARCH=amd64 go build -o bin/app cmd/server/main.go
+	@GOOS=linux GOARCH=amd64 go build -o bin/app cmd/main.go
 
 lint:
 	@echo "Linting the application..."

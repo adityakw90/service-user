@@ -8,6 +8,7 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	adaptersec "github.com/adityakw90/service-user/internal/adapter/security"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -225,6 +226,8 @@ func TestAuthService_Authenticate(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				adaptersec.NewNoopAttemptTracker(),
+				adaptersec.NewNoopRateLimiter(),
 			)
 
 			// Execute
@@ -316,6 +319,8 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				nil, // attemptTracker
+				nil, // rateLimiter
 			)
 
 			// Execute
@@ -465,6 +470,8 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				nil, // attemptTracker
+				nil, // rateLimiter
 			)
 
 			// Execute
@@ -651,6 +658,8 @@ func TestAuthService_RefreshToken(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				nil, // attemptTracker
+				nil, // rateLimiter
 			)
 
 			// Execute
@@ -785,6 +794,8 @@ func TestAuthService_ValidateToken(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				nil, // attemptTracker
+				nil, // rateLimiter
 			)
 
 			// Execute
@@ -877,6 +888,8 @@ func TestAuthService_RevokeToken(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				nil, // attemptTracker
+				nil, // rateLimiter
 			)
 
 			// Execute
@@ -1005,6 +1018,8 @@ func TestAuthService_VerifyPin(t *testing.T) {
 				mockTokenBlacklist,
 				mockEventPublisher,
 				mockAuthObserver,
+				nil, // attemptTracker
+				nil, // rateLimiter
 			)
 
 			// Execute

@@ -31,6 +31,8 @@ type authService struct {
 	tokenBlacklist portSec.TokenStore
 	eventPublisher portEvent.EventPublisher
 	authObserver   observer.ServiceObserver[domainSignal.AuthSignal]
+	attemptTracker   portSec.AttemptTracker
+	rateLimiter    portSec.RateLimiter
 }
 
 func NewAuthService(
@@ -47,6 +49,8 @@ func NewAuthService(
 	tokenBlacklist portSec.TokenStore,
 	eventPublisher portEvent.EventPublisher,
 	authObserver observer.ServiceObserver[domainSignal.AuthSignal],
+	attemptTracker portSec.AttemptTracker,
+	rateLimiter portSec.RateLimiter,
 ) portSvc.AuthService {
 	return &authService{
 		userRepo:       userRepo,
@@ -62,6 +66,8 @@ func NewAuthService(
 		tokenBlacklist: tokenBlacklist,
 		eventPublisher: eventPublisher,
 		authObserver:   authObserver,
+		attemptTracker:   attemptTracker,
+		rateLimiter:    rateLimiter,
 	}
 }
 
@@ -76,6 +82,25 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 	}, nil)
 	var userDevice *model.UserDevice
 	var device *model.Device
+
+	// Check IP rate limiting first (if IP provided)
+	if payload.DeviceIP != nil && *payload.DeviceIP != "" {
+		allowed, err := s.rateLimiter.Acquire(ctx, *payload.DeviceIP)
+		if err != nil {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				Identifier:     payload.Identifier,
+				IdentifierType: payload.IdentifierType,
+			}, err)
+			return nil, err
+		}
+		if !allowed {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+				Identifier:     payload.Identifier,
+				IdentifierType: payload.IdentifierType,
+			}, domainerrors.ErrRateLimitExceeded)
+			return nil, domainerrors.ErrRateLimitExceeded
+		}
+	}
 
 	user, err := s.findUser(ctx, payload.IdentifierType, payload.Identifier)
 
@@ -118,13 +143,47 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		return nil, domainerrors.ErrUserInactive
 	}
 
+	// Check if account is locked (before password verification)
+	locked, err := s.attemptTracker.IsLocked(ctx, user.UID)
+	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			Username:       &user.Username,
+			IdentifierType: payload.IdentifierType,
+		}, err)
+		return nil, err
+	}
+	if locked {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			Username:       &user.Username,
+			IdentifierType: payload.IdentifierType,
+		}, domainerrors.ErrAccountLockedOut)
+		return nil, domainerrors.ErrAccountLockedOut
+	}
+
 	// Verify password
 	if !s.passwordHasher.Compare(user.Password, payload.Password) {
+		// Track failed attempt
+		_ = s.attemptTracker.Track(ctx, user.UID)
+
 		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
 			Identifier:     payload.Identifier,
 			IdentifierType: payload.IdentifierType,
 		}, domainerrors.ErrInvalidCredentials)
 		return nil, domainerrors.ErrInvalidCredentials
+	}
+
+	// Reset failed attempts on successful authentication
+	if resetErr := s.attemptTracker.Reset(ctx, user.UID); resetErr != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			Username:       &user.Username,
+			IdentifierType: payload.IdentifierType,
+		}, resetErr)
 	}
 
 	// Generate session ID first - needed for device tracking

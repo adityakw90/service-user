@@ -32,6 +32,9 @@ var (
 	ErrInvalidCredentials    = errors.New("invalid credentials")
 	ErrInvalidIdentifierType = errors.New("invalid identifier type")
 
+	// rate limiting errors
+	ErrRateLimitExceeded = errors.New("rate limit exceeded")
+
 	// oauth errors
 	ErrOAuthInvalidState           = &OAuthError{Code: "invalid_state", Description: "Invalid or expired state parameter"}
 	ErrOAuthExchangeFailed         = errors.New("oauth: token exchange failed")

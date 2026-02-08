@@ -44,6 +44,9 @@ type Config struct {
 	ObserverDevice   bool `mapstructure:"OBSERVER_DEVICE_ENABLED"`
 	ObserverUserFile bool `mapstructure:"OBSERVER_USERFILE_ENABLED"`
 	ObserverPin      bool `mapstructure:"OBSERVER_PIN_ENABLED"`
+
+	// Security adapter settings
+	Security SecurityConfig `mapstructure:"security"`
 }
 
 // Load reads configuration from environment variables using Viper.
@@ -74,6 +77,7 @@ func Load() (*Config, error) {
 	defaultJWTConfig("jwt", vConfig)
 	defaultHasherConfig("password_hasher", vConfig)
 	defaultHasherConfig("pin_hasher", vConfig)
+	defaultSecurityConfig("security", vConfig)
 
 	// Set defaults
 	vConfig.SetDefault("LOCKOUT_MAX_ATTEMPTS", 5)
