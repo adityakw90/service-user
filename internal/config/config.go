@@ -11,12 +11,14 @@ import (
 
 // Config holds all configuration for the service.
 type Config struct {
-	App            AppConfig      `mapstructure:"app"`
-	Database       DatabaseConfig `mapstructure:"database"`
-	Redis          RedisConfig    `mapstructure:"redis"`
-	Jwt            JWTConfig      `mapstructure:"jwt"`
-	PasswordHasher HasherConfig   `mapstructure:"password_hasher"`
-	PINHasher      HasherConfig   `mapstructure:"pin_hasher"`
+	App            AppConfig        `mapstructure:"app"`
+	Instance       InstanceConfig   `mapstructure:"instance"`
+	Database       DatabaseConfig   `mapstructure:"database"`
+	Redis          RedisConfig      `mapstructure:"redis"`
+	Monitoring     MonitoringConfig `mapstructure:"monitoring"`
+	Jwt            JWTConfig        `mapstructure:"jwt"`
+	PasswordHasher HasherConfig     `mapstructure:"password_hasher"`
+	PINHasher      HasherConfig     `mapstructure:"pin_hasher"`
 
 	// Lockout settings
 	LockoutMaxAttempts int           `mapstructure:"LOCKOUT_MAX_ATTEMPTS"`
@@ -42,40 +44,6 @@ type Config struct {
 	ObserverDevice   bool `mapstructure:"OBSERVER_DEVICE_ENABLED"`
 	ObserverUserFile bool `mapstructure:"OBSERVER_USERFILE_ENABLED"`
 	ObserverPin      bool `mapstructure:"OBSERVER_PIN_ENABLED"`
-
-	// Monitoring settings
-	Monitoring MonitoringConfig `mapstructure:",squash"`
-}
-
-type InstanceConfig struct {
-	Name string `mapstructure:"name"`
-	Host string `mapstructure:"host"`
-}
-
-type MonitoringConfig struct {
-	ServiceName string                 `mapstructure:"service_name"`
-	Environment string                 `mapstructure:"environment"`
-	Logger      MonitoringLogConfig    `mapstructure:"logger"`
-	Tracer      MonitoringTraceConfig  `mapstructure:"tracer"`
-	Metric      MonitoringMetricConfig `mapstructure:"metric"`
-	Instance    InstanceConfig
-}
-
-type MonitoringLogConfig struct {
-	Level string `mapstructure:"level"`
-}
-
-type MonitoringTraceConfig struct {
-	Provider     string  `mapstructure:"provider"`      // "stdout", "jaeger", "otlp"
-	ProviderHost string  `mapstructure:"provider_host"` // provider host
-	ProviderPort int     `mapstructure:"provider_port"` // provider port
-	SampleRatio  float64 `mapstructure:"sample_ratio"`  // provider port
-}
-
-type MonitoringMetricConfig struct {
-	Provider     string `mapstructure:"provider"`      // "stdout", "jaeger", "otlp"
-	ProviderHost string `mapstructure:"provider_host"` // provider host
-	ProviderPort int    `mapstructure:"provider_port"` // provider port
 }
 
 // Load reads configuration from environment variables using Viper.
@@ -99,8 +67,10 @@ func Load() (*Config, error) {
 
 	// default config
 	defaultAppConfig("app", vConfig)
+	defaultInstanceConfig("instance", vConfig)
 	defaultDatabaseConfig("database", vConfig)
 	defaultRedisConfig("redis", vConfig)
+	defaultMonitoringConfig("monitoring", vConfig)
 	defaultJWTConfig("jwt", vConfig)
 	defaultHasherConfig("password_hasher", vConfig)
 	defaultHasherConfig("pin_hasher", vConfig)

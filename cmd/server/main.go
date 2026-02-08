@@ -46,8 +46,8 @@ func main() {
 	iMon, err := infra.NewMonitoring(&infra.MonitoringConfig{
 		ServiceName:        cfg.Monitoring.ServiceName,
 		Environment:        cfg.Monitoring.Environment,
-		InstanceName:       cfg.Monitoring.Instance.Name,
-		InstanceHost:       cfg.Monitoring.Instance.Host,
+		InstanceName:       cfg.Instance.Name,
+		InstanceHost:       cfg.Instance.Host,
 		LoggerLevel:        cfg.Monitoring.Logger.Level,
 		TracerProvider:     cfg.Monitoring.Tracer.Provider,
 		TracerProviderHost: cfg.Monitoring.Tracer.ProviderHost,
