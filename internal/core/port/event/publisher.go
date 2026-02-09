@@ -6,11 +6,11 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 )
 
-// EventPublisher is the secondary port for publishing authentication events.
+// EventPublisher is the secondary port for publishing domain events.
 // Supports pluggable implementations (CloudEvents, Kafka, Pub/Sub).
 type EventPublisher interface {
-	// Publish publishes an authentication event.
-	Publish(ctx context.Context, event *event.AuthEvent) error
+	// Publish publishes a domain event with the given event type and data.
+	Publish(ctx context.Context, eventType event.EventType, eventData any) error
 
 	// Close closes the publisher connection.
 	Close() error
