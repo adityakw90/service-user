@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 
+	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
@@ -16,12 +18,14 @@ type deviceService struct {
 	deviceRepo     repository.DeviceRepository
 	userDeviceRepo repository.UserDeviceRepository
 	deviceObserver observer.ServiceObserver[signal.DeviceSignal]
+	eventPublisher portEvent.EventPublisher
 }
 
 func NewDeviceService(
 	deviceRepo repository.DeviceRepository,
 	userDeviceRepo repository.UserDeviceRepository,
 	deviceObserver observer.ServiceObserver[signal.DeviceSignal],
+	eventPublisher portEvent.EventPublisher,
 ) portSvc.DeviceService {
 	if deviceObserver == nil {
 		panic("deviceObserver is required")
@@ -30,6 +34,7 @@ func NewDeviceService(
 		deviceRepo:     deviceRepo,
 		userDeviceRepo: userDeviceRepo,
 		deviceObserver: deviceObserver,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -117,6 +122,13 @@ func (s *deviceService) Delete(ctx context.Context, uid string) error {
 			Operation: "delete",
 		}, err)
 		return err
+	}
+
+	// Publish device deleted event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventDeviceDeleted, event.EventDeviceDeletedData{
+			DeviceUID: uid,
+		})
 	}
 
 	s.deviceObserver.OnSignal(ctx, signal.SignalSuccess, signal.DeviceSignal{

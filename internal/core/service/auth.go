@@ -6,6 +6,7 @@ import (
 	"time"
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
@@ -31,7 +32,7 @@ type authService struct {
 	tokenBlacklist portSec.TokenStore
 	eventPublisher portEvent.EventPublisher
 	authObserver   observer.ServiceObserver[domainSignal.AuthSignal]
-	attemptTracker   portSec.AttemptTracker
+	attemptTracker portSec.AttemptTracker
 	rateLimiter    portSec.RateLimiter
 }
 
@@ -66,7 +67,7 @@ func NewAuthService(
 		tokenBlacklist: tokenBlacklist,
 		eventPublisher: eventPublisher,
 		authObserver:   authObserver,
-		attemptTracker:   attemptTracker,
+		attemptTracker: attemptTracker,
 		rateLimiter:    rateLimiter,
 	}
 }
@@ -161,6 +162,14 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 			Username:       &user.Username,
 			IdentifierType: payload.IdentifierType,
 		}, domainerrors.ErrAccountLockedOut)
+
+		// Publish login locked event
+		s.eventPublisher.Publish(ctx, event.EventLoginLocked, event.EventLoginLockedData{
+			Identifier:     payload.Identifier,
+			IdentifierType: payload.IdentifierType,
+			FailureReason:  "Account is locked",
+		})
+
 		return nil, domainerrors.ErrAccountLockedOut
 	}
 
@@ -173,6 +182,14 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 			Identifier:     payload.Identifier,
 			IdentifierType: payload.IdentifierType,
 		}, domainerrors.ErrInvalidCredentials)
+
+		// Publish login failed event
+		s.eventPublisher.Publish(ctx, event.EventLoginFailed, event.EventLoginFailedData{
+			Identifier:     payload.Identifier,
+			IdentifierType: payload.IdentifierType,
+			FailureReason:  "invalid_credentials",
+		})
+
 		return nil, domainerrors.ErrInvalidCredentials
 	}
 
@@ -288,6 +305,12 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		IdentifierType: payload.IdentifierType,
 		Extra:          payload.Extra,
 	}, nil)
+
+	// Publish login event
+	s.eventPublisher.Publish(ctx, event.EventLogin, event.EventLoginData{
+		Identifier:     payload.Identifier,
+		IdentifierType: payload.IdentifierType,
+	})
 
 	return &model.Token{
 		Access:  accessToken,
@@ -420,10 +443,11 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 		// Log error but don't fail
 	}
 
-	// Publish auth event
-	if s.eventPublisher != nil {
-		// TODO: publish event
-	}
+	// Publish OAuth login event
+	s.eventPublisher.Publish(ctx, "auth.oauth_login", event.EventOAuthLoginData{
+		UserUID:  user.UID,
+		Provider: "google",
+	})
 
 	active := true
 	deleted := false
@@ -580,6 +604,12 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 		// Log error but don't fail
 	}
 
+	// Publish token refresh event
+	s.eventPublisher.Publish(ctx, event.EventTokenRefresh, event.EventTokenRefreshData{
+		Identifier:     claims.Identifier,
+		IdentifierType: claims.IdentifierType,
+	})
+
 	active := true
 	deleted := false
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
@@ -670,6 +700,12 @@ func (s *authService) RevokeToken(ctx context.Context, token string, tokenType s
 		return err
 	}
 
+	// Publish revoke event
+	s.eventPublisher.Publish(ctx, event.EventRevokeToken, event.EventRevokeTokenData{
+		Identifier:     claims.Identifier,
+		IdentifierType: claims.IdentifierType,
+	})
+
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
 		UID:            &claims.Uid,
 		IdentifierType: "revoke",
@@ -730,8 +766,22 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 			Email:          &user.Email,
 			IdentifierType: "verify_pin",
 		}, nil) // Invalid PIN, but not an error - just reject
+
+		// Publish PIN verify failed event
+		s.eventPublisher.Publish(ctx, event.EventPINFail, event.EventPinFailData{
+			UserUID: userUid,
+			Reason:  "invalid_pin",
+		})
+
 		return false, nil
 	}
+
+	// Publish PIN verify success event
+	s.eventPublisher.Publish(ctx, event.EventPINVerify, event.EventPinVerifyData{
+		UserUID: userUid,
+		Success: true,
+		Reason:  "pin_verified",
+	})
 
 	active := user.IsActive()
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{

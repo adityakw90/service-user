@@ -5,9 +5,11 @@ import (
 	"errors"
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
@@ -26,6 +28,7 @@ type userService struct {
 	uidGen         portSec.UIDGenerator
 	tokenWhitelist portSec.TokenStore
 	userObserver   observer.ServiceObserver[signal.UserSignal]
+	eventPublisher portEvent.EventPublisher
 }
 
 func NewUserService(
@@ -39,6 +42,7 @@ func NewUserService(
 	uidGen portSec.UIDGenerator,
 	tokenWhitelist portSec.TokenStore,
 	userObserver observer.ServiceObserver[signal.UserSignal],
+	eventPublisher portEvent.EventPublisher,
 ) portSvc.UserService {
 	if userObserver == nil {
 		panic("userObserver is required")
@@ -54,6 +58,7 @@ func NewUserService(
 		uidGen:         uidGen,
 		tokenWhitelist: tokenWhitelist,
 		userObserver:   userObserver,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -231,6 +236,17 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 		// Log error but don't fail user creation
 	}
 
+	// Publish user created event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventUserCreated, event.EventUserCreatedData{
+			UserUID:  user.UID,
+			ActorUID: user.UID,
+			Username: user.Username,
+			Email:    user.Email,
+			Status:   string(user.Status),
+		})
+	}
+
 	active := user.IsActive()
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
 		UID:       &user.UID,
@@ -364,6 +380,15 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 		return err
 	}
 
+	// Publish user updated event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventUserUpdated, event.EventUserUpdatedData{
+			UserUID:      uid,
+			ActorUID:     uid,
+			ChangesCount: changesCount,
+		})
+	}
+
 	active := user.IsActive()
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
 		UID:          &uid,
@@ -402,6 +427,14 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 			Operation: "delete",
 		}, err)
 		return err
+	}
+
+	// Publish user deleted event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventUserDeleted, event.EventUserDeletedData{
+			UserUID:  uid,
+			ActorUID: uid,
+		})
 	}
 
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
@@ -517,6 +550,14 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 		return err
 	}
 
+	// Publish user update profile event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventUserUpdateProfile, event.EventUserUpdateProfileData{
+			UserUID:  userUID,
+			ActorUID: userUID,
+		})
+	}
+
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
 		UID:       &userUID,
 		Username:  &user.Username,
@@ -572,23 +613,24 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 
 	// Check if PIN already exists
 	existingPin, err := s.pinRepo.GetByUserID(ctx, user.ID)
-	if err != nil {
-		if errors.Is(err, domainerrors.ErrUserNotFound) || errors.Is(err, domainerrors.ErrPinNotSet) {
-			// Create new PIN
-			userPin := &model.UserPin{
-				UserID:  user.ID,
-				UserUID: user.UID,
-				Code:    hashedPin,
-			}
-			_, err = s.pinRepo.Create(ctx, userPin)
-			if err != nil {
-				s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-					UID:       &userUID,
-					Operation: "set_pin",
-				}, err)
-				return err
-			}
-		} else {
+	isNewPIN := errors.Is(err, domainerrors.ErrUserNotFound) || errors.Is(err, domainerrors.ErrPinNotSet)
+	if err != nil && !isNewPIN {
+		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
+			UID:       &userUID,
+			Operation: "set_pin",
+		}, err)
+		return err
+	}
+
+	if isNewPIN {
+		// Create new PIN
+		userPin := &model.UserPin{
+			UserID:  user.ID,
+			UserUID: user.UID,
+			Code:    hashedPin,
+		}
+		_, err = s.pinRepo.Create(ctx, userPin)
+		if err != nil {
 			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 				UID:       &userUID,
 				Operation: "set_pin",
@@ -605,6 +647,23 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 				Operation: "set_pin",
 			}, err)
 			return err
+		}
+	}
+
+	// Publish user update pin event
+	if isNewPIN {
+		if s.eventPublisher != nil {
+			_ = s.eventPublisher.Publish(ctx, event.EventUserCreatePin, event.EventUserCreatePinData{
+				UserUID:  userUID,
+				ActorUID: userUID,
+			})
+		}
+	} else {
+		if s.eventPublisher != nil {
+			_ = s.eventPublisher.Publish(ctx, event.EventUserUpdatePin, event.EventUserUpdatePinData{
+				UserUID:  userUID,
+				ActorUID: userUID,
+			})
 		}
 	}
 
@@ -724,6 +783,19 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 		return err
 	}
 
+	// Publish device revoked event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventDeviceDeleted, event.EventDeviceDeletedData{
+			UserUID:   userUID,
+			DeviceUID: deviceUID,
+		})
+		_ = s.eventPublisher.Publish(ctx, event.EventUserRevokeDevice, event.EventUserRevokeDeviceData{
+			UserUID:   userUID,
+			ActorUID:  userUID,
+			DeviceUID: deviceUID,
+		})
+	}
+
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
 		UID:       &userUID,
 		Username:  &user.Username,
@@ -802,6 +874,14 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, param 
 			Operation: "change_password",
 		}, err)
 		return err
+	}
+
+	// Publish user update password event
+	if s.eventPublisher != nil {
+		_ = s.eventPublisher.Publish(ctx, event.EventUserUpdatePassword, event.EventUserUpdatePasswordData{
+			UserUID:  userUID,
+			ActorUID: userUID,
+		})
 	}
 
 	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{

@@ -70,6 +70,7 @@ func TestUserFileService_Get(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				NewMockUserFileObserver(),
+				NewMockEventPublisher(),
 			)
 
 			// Execute
@@ -189,6 +190,7 @@ func TestUserFileService_List(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				NewMockUserFileObserver(),
+				NewMockEventPublisher(),
 			)
 
 			// Execute
@@ -305,6 +307,7 @@ func TestUserFileService_Add(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				NewMockUserFileObserver(),
+				NewMockEventPublisher(),
 			)
 
 			// Execute
@@ -400,6 +403,7 @@ func TestUserFileService_Update(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				NewMockUserFileObserver(),
+				NewMockEventPublisher(),
 			)
 
 			// Execute
@@ -468,6 +472,7 @@ func TestUserFileService_Delete(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				NewMockUserFileObserver(),
+				NewMockEventPublisher(),
 			)
 
 			// Execute

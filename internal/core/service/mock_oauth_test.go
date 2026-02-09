@@ -56,27 +56,25 @@ func (m *MockOAuthProvider) GetUserInfo(ctx context.Context, accessToken string)
 
 // MockEventPublisher is a mock implementation of port.EventPublisher.
 type MockEventPublisher struct {
-	PublishFunc func(ctx context.Context, event interface{}) error
+	PublishFunc func(ctx context.Context, eventType event.EventType, eventData any) error
 	CloseFunc   func() error
 
 	publishCalls int
-	closeCalls   int
 }
 
 func NewMockEventPublisher() *MockEventPublisher {
 	return &MockEventPublisher{}
 }
 
-func (m *MockEventPublisher) Publish(ctx context.Context, event *event.AuthEvent) error {
+func (m *MockEventPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
 	m.publishCalls++
 	if m.PublishFunc != nil {
-		return m.PublishFunc(ctx, event)
+		return m.PublishFunc(ctx, eventType, eventData)
 	}
 	return nil
 }
 
 func (m *MockEventPublisher) Close() error {
-	m.closeCalls++
 	if m.CloseFunc != nil {
 		return m.CloseFunc()
 	}

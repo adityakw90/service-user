@@ -157,7 +157,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "test-token-blacklist:", 24*time.Hour)
 	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "test-token-whitelist:", 15*time.Minute)
 
-	// Create event publisher (no-op for tests)
+	// Create event publishers (no-op for tests)
 	eventPublisher := publisher.NewNoOpPublisher()
 
 	// Initialize UID generator
@@ -181,6 +181,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		uidGen,
 		tokenWhitelist,
 		userObserver,
+		eventPublisher,
 	)
 
 	authService := svc.NewAuthService(
@@ -206,11 +207,12 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		deviceRepo,
 		userDeviceRepo,
 		deviceObserver,
+		eventPublisher,
 	)
 
 	// Initialize user file service with resolver
 	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := svc.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver)
+	userFileService := svc.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver, eventPublisher)
 
 	// prepare db and redis
 	TruncateTestTables(t, ctx, dbPool)

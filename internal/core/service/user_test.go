@@ -8,6 +8,7 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,6 +94,7 @@ func TestUserService_Get(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -222,6 +224,7 @@ func TestUserService_List(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -342,6 +345,7 @@ func TestUserService_Create(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -500,6 +504,7 @@ func TestUserService_Update(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -578,6 +583,7 @@ func TestUserService_Delete(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -670,6 +676,7 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -795,6 +802,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -906,6 +914,7 @@ func TestUserService_SetPin(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -995,6 +1004,7 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -1100,6 +1110,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				NewMockUserObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute

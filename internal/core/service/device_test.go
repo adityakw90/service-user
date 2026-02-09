@@ -7,6 +7,7 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,6 +59,7 @@ func TestDeviceService_Get(t *testing.T) {
 				mockDeviceRepo,
 				mockUserDeviceRepo,
 				NewMockDeviceObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -170,6 +172,7 @@ func TestDeviceService_List(t *testing.T) {
 				mockDeviceRepo,
 				mockUserDeviceRepo,
 				NewMockDeviceObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute
@@ -235,6 +238,7 @@ func TestDeviceService_Delete(t *testing.T) {
 				mockDeviceRepo,
 				mockUserDeviceRepo,
 				NewMockDeviceObserver(),
+				publisher.NewNoOpPublisher(),
 			)
 
 			// Execute

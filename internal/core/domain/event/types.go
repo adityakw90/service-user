@@ -6,7 +6,7 @@ type EventType string
 const (
 	// Auth Events
 	EventLogin        EventType = "auth.login"
-	EventLoginFail    EventType = "auth.login_fail"
+	EventLoginFailed  EventType = "auth.login_failed"
 	EventLoginLocked  EventType = "auth.login_locked"
 	EventTokenRefresh EventType = "auth.token_refresh"
 	EventRevokeToken  EventType = "auth.revoke_token"
@@ -18,6 +18,7 @@ const (
 	EventUserUpdated        EventType = "user.updated"
 	EventUserDeleted        EventType = "user.deleted"
 	EventUserUpdatePassword EventType = "user.update_password"
+	EventUserCreatePin      EventType = "user.create_pin"
 	EventUserUpdatePin      EventType = "user.update_pin"
 	EventUserUpdateProfile  EventType = "user.update_profile"
 	EventUserRevokeDevice   EventType = "user.revoke_device"
