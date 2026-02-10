@@ -10,6 +10,7 @@ import (
 	"time"
 
 	gomon "github.com/adityakw90/go-monitoring"
+	"github.com/IBM/sarama"
 	"github.com/adityakw90/service-user-proto/gen/go/auth"
 	"github.com/adityakw90/service-user-proto/gen/go/device"
 	"github.com/adityakw90/service-user-proto/gen/go/user"
@@ -110,6 +111,30 @@ func main() {
 	defer redisClient.Close()
 	logger.Info("connected to redis", nil)
 
+	// Connect to RabbitMQ using infra layer (if enabled)
+	var rabbitmqConn *infra.RabbitMQConnection
+	if cfg.EventPublisher.RabbitMQ.Enabled {
+		rabbitmqConn, err = infra.NewRabbitMQConnection(ctx, infra.RabbitMQConfig{
+			URL:                  cfg.EventPublisher.RabbitMQ.URL,
+			Exchange:             cfg.EventPublisher.RabbitMQ.Exchange,
+			ExchangeType:         cfg.EventPublisher.RabbitMQ.ExchangeType,
+			RoutingKeyPrefix:     cfg.EventPublisher.RabbitMQ.RoutingKeyPrefix,
+			Durable:              cfg.EventPublisher.RabbitMQ.Durable,
+			ReconnectInterval:    time.Duration(cfg.EventPublisher.RabbitMQ.ReconnectInterval) * time.Second,
+			MaxReconnectAttempts: cfg.EventPublisher.RabbitMQ.MaxReconnectAttempts,
+			ReconnectDelay:       time.Duration(cfg.EventPublisher.RabbitMQ.ReconnectDelay) * time.Second,
+		}, iMon.Logger)
+		if err != nil {
+			logger.Fatal("failed to connect to rabbitmq", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+		defer rabbitmqConn.Close()
+		logger.Info("connected to rabbitmq", map[string]interface{}{
+			"exchange": cfg.EventPublisher.RabbitMQ.Exchange,
+		})
+	}
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
 	profileRepo := repository.NewProfileRepository(dbPool)
@@ -197,17 +222,84 @@ func main() {
 	}
 	defer securityAdapters.Close()
 
-	// Initialize event publisher
+	// --- Event Publishers Setup ---
+	// Create a single unified event publisher for all event types
+
 	var eventPublisher portEvent.EventPublisher
-	if cfg.EventPublisherEndpoint != "" {
-		eventPublisher = publisher.NewHTTPPublisher(publisher.HttpPublisherConfig{
-			Endpoint: cfg.EventPublisherEndpoint,
-			Source:   cfg.EventPublisherSource,
-			Timeout:  cfg.EventPublisherTimeout,
-		})
-	} else {
+	if cfg.EventPublisher.Enabled {
+		var backends []portEvent.EventPublisher
+
+		// Redis Pub/Sub backend for all events
+		if cfg.EventPublisher.RedisPubSub && redisClient != nil {
+			backends = append(backends, publisher.NewRedisPubSubPublisher(
+				redisClient,
+				cfg.EventPublisher.RedisChannel,
+				cfg.Instance.Name,
+			))
+		}
+
+		// Kafka backend for all events
+		if cfg.EventPublisher.Kafka.Enabled {
+			kafkaPub, err := publisher.NewKafkaPublisher(
+				publisher.KafkaConfig{
+					Brokers:         cfg.EventPublisher.Kafka.Brokers,
+					Topic:           cfg.EventPublisher.Kafka.Topic,
+					MaxMessageBytes: cfg.EventPublisher.Kafka.MaxMessageBytes,
+					Timeout:         time.Duration(cfg.EventPublisher.Kafka.TimeoutSeconds) * time.Second,
+					Compression:     parseCompression(cfg.EventPublisher.Kafka.Compression),
+				},
+				cfg.Instance.Name,
+			)
+			if err != nil {
+				logger.Fatal("failed to initialize Kafka publisher", map[string]interface{}{
+					"error": err.Error(),
+				})
+			}
+			backends = append(backends, kafkaPub)
+		}
+
+		// RabbitMQ backend for all events
+		// Use the existing connection if available (created earlier in main.go)
+		if cfg.EventPublisher.RabbitMQ.Enabled {
+			if rabbitmqConn == nil {
+				logger.Fatal("rabbitmq connection is nil but rabbitmq is enabled", nil)
+			}
+			rabbitPub := publisher.NewRabbitMQPublisherWithConn(
+				rabbitmqConn,
+				cfg.Instance.Name,
+			)
+			backends = append(backends, rabbitPub)
+		}
+
+		// HTTP backend for all events
+		if cfg.EventPublisher.HTTPEndpoint != "" {
+			backends = append(backends, publisher.NewHTTPPublisher(
+				publisher.HttpPublisherConfig{
+					Endpoint: cfg.EventPublisher.HTTPEndpoint,
+					Source:   cfg.Instance.Name,
+					Timeout:  cfg.EventPublisherTimeout,
+				},
+			))
+		}
+
+		// Combine backends and wrap with async
+		if len(backends) > 0 {
+			multiBackend := publisher.NewMultiPublisher(backends...)
+			eventPublisher = publisher.NewAsyncPublisher(multiBackend, publisher.AsyncPublisherConfig{
+				WorkerCount:  cfg.EventPublisher.WorkerCount,
+				QueueSize:    cfg.EventPublisher.QueueSize,
+				BatchSize:    cfg.EventPublisher.BatchSize,
+				BatchTimeout: cfg.EventPublisher.BatchTimeout,
+			})
+		}
+	}
+
+	// Default to no-op if no publishers configured
+	if eventPublisher == nil {
 		eventPublisher = publisher.NewNoOpPublisher()
 	}
+
+	// Close publisher on shutdown
 	defer eventPublisher.Close()
 
 	// Initialize OAuth provider
@@ -240,6 +332,7 @@ func main() {
 		uidGen,
 		tokenWhitelist,
 		userObserver,
+		eventPublisher,
 	)
 
 	// Initialize auth service with all features
@@ -266,11 +359,12 @@ func main() {
 		deviceRepo,
 		userDeviceRepo,
 		deviceObserver,
+		eventPublisher,
 	)
 
 	// Initialize user file service
 	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := service.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver)
+	userFileService := service.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver, eventPublisher)
 
 	// Initialize gRPC handlers
 	userHandler := grpcadapter.NewUserHandler(userService)
@@ -347,4 +441,22 @@ func createPinObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tra
 		return observer.NewPinObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.PinSignal]()
+}
+
+// parseCompression converts a compression string to Sarama CompressionCodec.
+func parseCompression(compression string) sarama.CompressionCodec {
+	switch compression {
+	case "none":
+		return sarama.CompressionNone
+	case "gzip":
+		return sarama.CompressionGZIP
+	case "snappy":
+		return sarama.CompressionSnappy
+	case "lz4":
+		return sarama.CompressionLZ4
+	case "zstd":
+		return sarama.CompressionZSTD
+	default:
+		return sarama.CompressionSnappy
+	}
 }

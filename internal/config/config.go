@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -11,26 +10,22 @@ import (
 
 // Config holds all configuration for the service.
 type Config struct {
-	App            AppConfig        `mapstructure:"app"`
-	Instance       InstanceConfig   `mapstructure:"instance"`
-	Database       DatabaseConfig   `mapstructure:"database"`
-	Redis          RedisConfig      `mapstructure:"redis"`
-	Monitoring     MonitoringConfig `mapstructure:"monitoring"`
-	Observer       ObserverConfig   `mapstructure:"observer"`
-	Security       SecurityConfig   `mapstructure:"security"`
-	Jwt            JWTConfig        `mapstructure:"jwt"`
-	PasswordHasher HasherConfig     `mapstructure:"password_hasher"`
-	PINHasher      HasherConfig     `mapstructure:"pin_hasher"`
+	App            AppConfig            `mapstructure:"app"`
+	Instance       InstanceConfig       `mapstructure:"instance"`
+	Database       DatabaseConfig       `mapstructure:"database"`
+	Redis          RedisConfig          `mapstructure:"redis"`
+	Monitoring     MonitoringConfig     `mapstructure:"monitoring"`
+	Observer       ObserverConfig       `mapstructure:"observer"`
+	Security       SecurityConfig       `mapstructure:"security"`
+	Jwt            JWTConfig            `mapstructure:"jwt"`
+	PasswordHasher HasherConfig         `mapstructure:"password_hasher"`
+	PINHasher      HasherConfig         `mapstructure:"pin_hasher"`
+	EventPublisher EventPublisherConfig `mapstructure:"event_publisher"`
 
 	// OAuth settings
 	OAuthGoogleClientID     string `mapstructure:"OAUTH_GOOGLE_CLIENT_ID"`
 	OAuthGoogleClientSecret string `mapstructure:"OAUTH_GOOGLE_CLIENT_SECRET"`
 	OAuthRedirectURI        string `mapstructure:"OAUTH_REDIRECT_URI"`
-
-	// Event publisher settings
-	EventPublisherEndpoint string        `mapstructure:"EVENT_PUBLISHER_ENDPOINT"`
-	EventPublisherSource   string        `mapstructure:"EVENT_PUBLISHER_SOURCE"`
-	EventPublisherTimeout  time.Duration `mapstructure:"EVENT_PUBLISHER_TIMEOUT_SECONDS"`
 }
 
 // Load reads configuration from environment variables using Viper.
@@ -63,10 +58,7 @@ func Load() (*Config, error) {
 	defaultHasherConfig("password_hasher", vConfig)
 	defaultHasherConfig("pin_hasher", vConfig)
 	defaultSecurityConfig("security", vConfig)
-
-	// Set defaults
-	vConfig.SetDefault("EVENT_PUBLISHER_SOURCE", "service-user")
-	vConfig.SetDefault("EVENT_PUBLISHER_TIMEOUT_SECONDS", 5)
+	defaultEventPublisherConfig("event_publisher", vConfig)
 
 	// test
 	vConfig.SafeWriteConfig()

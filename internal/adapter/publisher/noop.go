@@ -16,7 +16,7 @@ func NewNoOpPublisher() portEvent.EventPublisher {
 }
 
 // Publish is a no-op.
-func (p *NoOpPublisher) Publish(ctx context.Context, event *event.AuthEvent) error {
+func (p *NoOpPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
 	return nil
 }
 

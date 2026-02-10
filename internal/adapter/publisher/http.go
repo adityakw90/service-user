@@ -36,27 +36,10 @@ func NewHTTPPublisher(config HttpPublisherConfig) portEvent.EventPublisher {
 	}
 }
 
-// Publish publishes an authentication event.
-func (p *HTTPPublisher) Publish(ctx context.Context, event *event.AuthEvent) error {
+// Publish publishes an event via HTTP.
+func (p *HTTPPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
 	// Convert to CloudEvent format
-	ce := CloudEvent{
-		Type:        string(event.Type),
-		Source:      p.config.Source,
-		SpecVersion: "1.0",
-		ID:          event.ID,
-		Time:        event.Timestamp.Format(time.RFC3339),
-		Data: map[string]interface{}{
-			"type":               event.Type,
-			"user_uid":           event.UserUID,
-			"identifier":         event.Identifier,
-			"identifier_type":    event.IdentifierType,
-			"success":            event.Success,
-			"failure_reason":     event.FailureReason,
-			"device_fingerprint": event.DeviceFingerprint,
-			"ip_address":         event.IPAddress,
-			"metadata":           event.Metadata,
-		},
-	}
+	ce := toCloudEventData(eventType, eventData, p.config.Source)
 
 	body, err := json.Marshal(ce)
 	if err != nil {
