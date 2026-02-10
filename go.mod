@@ -85,9 +85,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/adityakw90/service-user-proto => /media/adit/SSD/project/MTAmedia/repo/service-user/service-user-proto
-
-replace github.com/adityakw90/go-cache => /media/adit/SSD/project/MTAmedia/repo/go-lib/go-cache
-
-replace github.com/adityakw90/go-monitoring => /media/adit/SSD/project/MTAmedia/repo/go-lib/go-monitoring

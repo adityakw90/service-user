@@ -115,13 +115,8 @@ func main() {
 	if cfg.EventPublisher.RabbitMQ.Enabled {
 		rabbitmqConn, err = infra.NewRabbitMQConnection(ctx, infra.RabbitMQConfig{
 			URL:                  cfg.EventPublisher.RabbitMQ.URL,
-			Exchange:             cfg.EventPublisher.RabbitMQ.Exchange,
-			ExchangeType:         cfg.EventPublisher.RabbitMQ.ExchangeType,
-			RoutingKeyPrefix:     cfg.EventPublisher.RabbitMQ.RoutingKeyPrefix,
-			Durable:              cfg.EventPublisher.RabbitMQ.Durable,
-			ReconnectInterval:    time.Duration(cfg.EventPublisher.RabbitMQ.ReconnectInterval) * time.Second,
+			ReconnectInterval:    time.Duration(cfg.EventPublisher.RabbitMQ.ReconnectDelay) * time.Second,
 			MaxReconnectAttempts: cfg.EventPublisher.RabbitMQ.MaxReconnectAttempts,
-			ReconnectDelay:       time.Duration(cfg.EventPublisher.RabbitMQ.ReconnectDelay) * time.Second,
 		}, iMon.Logger)
 		if err != nil {
 			logger.Fatal("failed to connect to rabbitmq", map[string]interface{}{
@@ -142,9 +137,8 @@ func main() {
 			MaxMessageBytes:      cfg.Kafka.MaxMessageBytes,
 			Timeout:              time.Duration(cfg.Kafka.TimeoutSeconds) * time.Second,
 			Compression:          cfg.Kafka.Compression,
-			ReconnectInterval:    5 * time.Second,
-			MaxReconnectAttempts: 0, // 0 means infinite retries
-			ReconnectDelay:       1 * time.Second,
+			ReconnectInterval:    1 * time.Second,
+			ReconnectMaxAttempts: 0, // 0 means infinite retries
 		}, iMon.Logger)
 		if err != nil {
 			logger.Fatal("failed to connect to kafka", map[string]interface{}{
@@ -283,8 +277,19 @@ func main() {
 			}
 			rabbitPub := publisher.NewRabbitMQPublisherWithConn(
 				rabbitmqConn,
+				cfg.EventPublisher.RabbitMQ.Exchange,
+				cfg.EventPublisher.RabbitMQ.ExchangeType,
+				cfg.EventPublisher.RabbitMQ.RoutingKeyPrefix,
+				cfg.EventPublisher.RabbitMQ.Durable,
 				cfg.Instance.Name,
 			)
+			// Declare the exchange
+			if err := rabbitPub.DeclareExchange(); err != nil {
+				logger.Fatal("failed to declare rabbitmq exchange", map[string]interface{}{
+					"error":    err.Error(),
+					"exchange": cfg.EventPublisher.RabbitMQ.Exchange,
+				})
+			}
 			backends = append(backends, rabbitPub)
 		}
 

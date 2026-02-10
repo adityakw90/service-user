@@ -28,9 +28,8 @@ type KafkaConfig struct {
 	Compression     sarama.CompressionCodec
 
 	// Reconnection settings (optional, defaults provided)
+	ReconnectMaxAttempts int
 	ReconnectInterval    time.Duration
-	MaxReconnectAttempts int
-	ReconnectDelay       time.Duration
 }
 
 // NewKafkaPublisher creates a new Kafka event publisher with reconnection support.
@@ -40,9 +39,8 @@ func NewKafkaPublisher(config KafkaConfig, source string, logger gomon.Logger) (
 		MaxMessageBytes:      config.MaxMessageBytes,
 		Timeout:              config.Timeout,
 		Compression:          config.Compression,
+		ReconnectMaxAttempts: config.ReconnectMaxAttempts,
 		ReconnectInterval:    config.ReconnectInterval,
-		MaxReconnectAttempts: config.MaxReconnectAttempts,
-		ReconnectDelay:       config.ReconnectDelay,
 	}
 
 	conn, err := infra.NewKafkaConnection(context.Background(), infraCfg, logger)

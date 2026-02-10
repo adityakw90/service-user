@@ -15,6 +15,7 @@ type Config struct {
 	Instance       InstanceConfig       `mapstructure:"instance"`
 	Database       DatabaseConfig       `mapstructure:"database"`
 	Redis          RedisConfig          `mapstructure:"redis"`
+	Rabbit         RabbitConfig         `mapstructure:"rabbitmq"`
 	Kafka          KafkaConfig          `mapstructure:"kafka"`
 	Monitoring     MonitoringConfig     `mapstructure:"monitoring"`
 	Observer       ObserverConfig       `mapstructure:"observer"`
@@ -63,6 +64,7 @@ func Load() (*Config, error) {
 	defaultInstanceConfig("instance", vConfig)
 	defaultDatabaseConfig("database", vConfig)
 	defaultRedisConfig("redis", vConfig)
+	defaultRabbitConfig("rabbitmq", vConfig)
 	defaultKafkaConfig("kafka", vConfig)
 	defaultMonitoringConfig("monitoring", vConfig)
 	defaultObserverConfig("observer", vConfig)

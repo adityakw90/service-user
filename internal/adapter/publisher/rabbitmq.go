@@ -6,63 +6,46 @@ import (
 	"fmt"
 	"time"
 
-	gomon "github.com/adityakw90/go-monitoring"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/infra"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // RabbitMQPublisher publishes events to RabbitMQ using the infra layer connection manager.
 type RabbitMQPublisher struct {
-	conn   *infra.RabbitMQConnection
-	source string
+	conn             *infra.RabbitMQConnection
+	exchange         string
+	exchangeType     string
+	routingKeyPrefix string
+	durable          bool
+	source           string
 }
 
-// RabbitMQConfig holds configuration for the RabbitMQ event publisher.
-type RabbitMQConfig struct {
-	URL              string
+// RabbitMQPublisherConfig holds configuration for the RabbitMQ event publisher.
+type RabbitMQPublisherConfig struct {
+	Source           string
 	Exchange         string
 	ExchangeType     string
 	RoutingKeyPrefix string
 	Durable          bool
-
-	// Reconnection settings (optional, defaults provided)
-	ReconnectInterval    time.Duration
-	MaxReconnectAttempts int
-	ReconnectDelay       time.Duration
 }
 
-// NewRabbitMQPublisher creates a new RabbitMQ event publisher with reconnection support.
-func NewRabbitMQPublisher(config RabbitMQConfig, source string, logger gomon.Logger) (*RabbitMQPublisher, error) {
-	infraCfg := infra.RabbitMQConfig{
-		URL:                  config.URL,
-		Exchange:             config.Exchange,
-		ExchangeType:         config.ExchangeType,
-		RoutingKeyPrefix:     config.RoutingKeyPrefix,
-		Durable:              config.Durable,
-		ReconnectInterval:    config.ReconnectInterval,
-		MaxReconnectAttempts: config.MaxReconnectAttempts,
-		ReconnectDelay:       config.ReconnectDelay,
-	}
-
-	conn, err := infra.NewRabbitMQConnection(context.Background(), infraCfg, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create RabbitMQ connection: %w", err)
-	}
-
+// NewRabbitMQPublisher creates a new RabbitMQ event publisher.
+// The exchange must be declared before calling this method, or by calling DeclareExchange().
+func NewRabbitMQPublisher(conn *infra.RabbitMQConnection, config RabbitMQPublisherConfig) *RabbitMQPublisher {
 	return &RabbitMQPublisher{
-		conn:   conn,
-		source: source,
-	}, nil
+		conn:             conn,
+		exchange:         config.Exchange,
+		exchangeType:     config.ExchangeType,
+		routingKeyPrefix: config.RoutingKeyPrefix,
+		durable:          config.Durable,
+		source:           config.Source,
+	}
 }
 
-// NewRabbitMQPublisherWithConn creates a new RabbitMQ event publisher using an existing connection.
-// This is useful when the connection is managed externally (e.g., in main.go).
-func NewRabbitMQPublisherWithConn(conn *infra.RabbitMQConnection, source string) *RabbitMQPublisher {
-	return &RabbitMQPublisher{
-		conn:   conn,
-		source: source,
-	}
+// DeclareExchange declares the exchange on the RabbitMQ server.
+func (r *RabbitMQPublisher) DeclareExchange() error {
+	return r.conn.DeclareExchange(r.exchange, r.exchangeType, r.durable)
 }
 
 // Publish publishes an event to RabbitMQ with automatic reconnection handling.
@@ -75,10 +58,11 @@ func (r *RabbitMQPublisher) Publish(ctx context.Context, eventType event.EventTy
 		return fmt.Errorf("failed to marshal cloud event: %w", err)
 	}
 
-	routingKey := r.conn.GetRoutingKey(string(eventType))
+	routingKey := r.getRoutingKey(string(eventType))
 
 	err = r.conn.PublishWithContext(
 		ctx,
+		r.exchange,
 		routingKey,
 		amqp.Publishing{
 			ContentType:  "application/json",
@@ -98,6 +82,11 @@ func (r *RabbitMQPublisher) Publish(ctx context.Context, eventType event.EventTy
 	}
 
 	return nil
+}
+
+// getRoutingKey returns the full routing key for an event type.
+func (r *RabbitMQPublisher) getRoutingKey(eventType string) string {
+	return r.routingKeyPrefix + eventType
 }
 
 // Close closes the RabbitMQ connection.

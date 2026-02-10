@@ -19,9 +19,8 @@ type KafkaConfig struct {
 	Compression     sarama.CompressionCodec
 
 	// Reconnection settings
+	ReconnectMaxAttempts int
 	ReconnectInterval    time.Duration
-	MaxReconnectAttempts int
-	ReconnectDelay       time.Duration
 }
 
 // KafkaConnection manages a Kafka producer connection with automatic reconnection.
@@ -47,13 +46,10 @@ func NewKafkaConnection(ctx context.Context, cfg KafkaConfig, logger gomon.Logge
 
 	// Set defaults
 	if cfg.ReconnectInterval == 0 {
-		cfg.ReconnectInterval = 5 * time.Second
+		cfg.ReconnectInterval = 1 * time.Second
 	}
-	if cfg.MaxReconnectAttempts == 0 {
-		cfg.MaxReconnectAttempts = 0 // 0 means infinite retries
-	}
-	if cfg.ReconnectDelay == 0 {
-		cfg.ReconnectDelay = 1 * time.Second
+	if cfg.ReconnectMaxAttempts == 0 {
+		cfg.ReconnectMaxAttempts = 0 // 0 means infinite retries
 	}
 	if cfg.Compression == sarama.CompressionNone {
 		cfg.Compression = sarama.CompressionSnappy
@@ -90,12 +86,12 @@ func (k *KafkaConnection) connect(ctx context.Context) error {
 	var lastErr error
 
 	// Attempt connection with retry
-	for attempt := 0; k.config.MaxReconnectAttempts == 0 || attempt < k.config.MaxReconnectAttempts; attempt++ {
+	for attempt := 0; k.config.ReconnectMaxAttempts == 0 || attempt < k.config.ReconnectMaxAttempts; attempt++ {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(k.config.ReconnectDelay * time.Duration(min(attempt, 5))):
+			case <-time.After(k.config.ReconnectInterval * time.Duration(min(attempt, 5))):
 				// Exponential backoff (capped at 5x)
 			}
 		}
@@ -143,11 +139,10 @@ func (k *KafkaConnection) connect(ctx context.Context) error {
 }
 
 // monitorConnection handles reconnection logic.
+// Sarama's internal health checking handles connection state detection.
+// Publish operations trigger reconnection on failure.
 func (k *KafkaConnection) monitorConnection() {
 	defer k.wg.Done()
-
-	ticker := time.NewTicker(k.config.ReconnectInterval)
-	defer ticker.Stop()
 
 	for {
 		select {
@@ -160,10 +155,6 @@ func (k *KafkaConnection) monitorConnection() {
 					"error": err.Error(),
 				})
 			}
-		case <-ticker.C:
-			// Periodic health check
-			// Note: Sarama SyncProducer doesn't have an explicit IsConnected method
-			// We'll check on next publish operation
 		}
 	}
 }

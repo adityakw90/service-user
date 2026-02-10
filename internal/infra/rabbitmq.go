@@ -9,26 +9,23 @@ import (
 
 	gomon "github.com/adityakw90/go-monitoring"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // RabbitMQConfig holds configuration for RabbitMQ connection.
 type RabbitMQConfig struct {
-	URL              string
-	Exchange         string
-	ExchangeType     string
-	RoutingKeyPrefix string
-	Durable          bool
-
-	// Reconnection settings
+	Host                 string
+	Port                 int
+	User                 string
+	Password             string
+	Vhost                string
 	ReconnectInterval    time.Duration
-	MaxReconnectAttempts int
-	ReconnectDelay       time.Duration
+	ReconnectMaxAttempts int
 }
 
 // RabbitMQConnection manages a RabbitMQ connection with automatic reconnection.
 // Each publish operation creates a new channel, providing better isolation
 // for concurrent operations.
+// Exchanges and routing keys are managed by the adapter layer.
 type RabbitMQConnection struct {
 	config        RabbitMQConfig
 	conn          *amqp.Connection
@@ -41,18 +38,6 @@ type RabbitMQConnection struct {
 	logger        gomon.Logger
 }
 
-// NoopLogger is a no-op logger implementation.
-type NoopLogger struct{}
-
-func (l *NoopLogger) SetLogLevel(level string)                            {}
-func (l *NoopLogger) Debug(message string, fields map[string]interface{}) {}
-func (l *NoopLogger) Info(message string, fields map[string]interface{})  {}
-func (l *NoopLogger) Warn(message string, fields map[string]interface{})  {}
-func (l *NoopLogger) Error(message string, fields map[string]interface{}) {}
-func (l *NoopLogger) Fatal(message string, fields map[string]interface{}) {}
-func (l *NoopLogger) WithSpanContext(span trace.SpanContext) gomon.Logger { return l }
-func (l *NoopLogger) Sync() error                                         { return nil }
-
 // NewRabbitMQConnection creates a new RabbitMQ connection with reconnection support.
 func NewRabbitMQConnection(ctx context.Context, cfg RabbitMQConfig, logger gomon.Logger) (*RabbitMQConnection, error) {
 	if logger == nil {
@@ -61,13 +46,10 @@ func NewRabbitMQConnection(ctx context.Context, cfg RabbitMQConfig, logger gomon
 
 	// Set defaults
 	if cfg.ReconnectInterval == 0 {
-		cfg.ReconnectInterval = 5 * time.Second
+		cfg.ReconnectInterval = 1 * time.Second
 	}
-	if cfg.MaxReconnectAttempts == 0 {
-		cfg.MaxReconnectAttempts = 0 // 0 means infinite retries
-	}
-	if cfg.ReconnectDelay == 0 {
-		cfg.ReconnectDelay = 1 * time.Second
+	if cfg.ReconnectMaxAttempts == 0 {
+		cfg.ReconnectMaxAttempts = 0 // 0 means infinite retries
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -93,8 +75,7 @@ func NewRabbitMQConnection(ctx context.Context, cfg RabbitMQConfig, logger gomon
 	return r, nil
 }
 
-// connect establishes a new connection and declares the exchange.
-// The exchange is declared once during connection using a temporary channel.
+// connect establishes a new connection.
 func (r *RabbitMQConnection) connect(ctx context.Context) error {
 	r.connMu.Lock()
 	defer r.connMu.Unlock()
@@ -102,62 +83,27 @@ func (r *RabbitMQConnection) connect(ctx context.Context) error {
 	var lastErr error
 
 	// Attempt connection with retry
-	for attempt := 0; r.config.MaxReconnectAttempts == 0 || attempt < r.config.MaxReconnectAttempts; attempt++ {
+	for attempt := 0; r.config.ReconnectMaxAttempts == 0 || attempt < r.config.ReconnectMaxAttempts; attempt++ {
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(r.config.ReconnectDelay * time.Duration(min(attempt, 5))):
+			case <-time.After(r.config.ReconnectInterval * time.Duration(min(attempt, 5))):
 				// Exponential backoff (capped at 5x)
 			}
 		}
 
 		// Dial connection
-		conn, err := amqp.DialConfig(r.config.URL, amqp.Config{
+		rabbitUrl := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", r.config.User, r.config.Password, r.config.Host, r.config.Port, r.config.Vhost)
+		conn, err := amqp.DialConfig(rabbitUrl, amqp.Config{
 			Heartbeat: 10 * time.Second,
 			Locale:    "en_US",
 		})
 		if err != nil {
 			lastErr = fmt.Errorf("failed to dial RabbitMQ (attempt %d): %w", attempt+1, err)
-			r.logger.Error("rabbitmq connection failed", map[string]interface{}{
+			r.logger.Error("rabbitmq connection failed", map[string]any{
 				"attempt": attempt + 1,
 				"error":   err.Error(),
-			})
-			continue
-		}
-
-		// Open temporary channel to declare exchange
-		tempCh, err := conn.Channel()
-		if err != nil {
-			conn.Close()
-			lastErr = fmt.Errorf("failed to open channel (attempt %d): %w", attempt+1, err)
-			r.logger.Error("rabbitmq channel open failed", map[string]interface{}{
-				"attempt": attempt + 1,
-				"error":   err.Error(),
-			})
-			continue
-		}
-
-		// Declare exchange
-		err = tempCh.ExchangeDeclare(
-			r.config.Exchange,
-			r.config.ExchangeType,
-			r.config.Durable,
-			false, // auto-delete
-			false, // internal
-			false, // no-wait
-			nil,   // arguments
-		)
-		// Close temp channel immediately after exchange declaration
-		tempCh.Close()
-
-		if err != nil {
-			conn.Close()
-			lastErr = fmt.Errorf("failed to declare exchange (attempt %d): %w", attempt+1, err)
-			r.logger.Error("rabbitmq exchange declare failed", map[string]interface{}{
-				"attempt":  attempt + 1,
-				"exchange": r.config.Exchange,
-				"error":    err.Error(),
 			})
 			continue
 		}
@@ -168,9 +114,10 @@ func (r *RabbitMQConnection) connect(ctx context.Context) error {
 		}
 		r.conn = conn
 
-		r.logger.Info("rabbitmq connected successfully", map[string]interface{}{
-			"url":      r.config.URL,
-			"exchange": r.config.Exchange,
+		r.logger.Info("rabbitmq connected successfully", map[string]any{
+			"host":  r.config.Host,
+			"port":  r.config.Port,
+			"vhost": r.config.Vhost,
 		})
 
 		// Setup close listener
@@ -186,7 +133,7 @@ func (r *RabbitMQConnection) connect(ctx context.Context) error {
 func (r *RabbitMQConnection) waitForClose(conn *amqp.Connection) {
 	err := <-conn.NotifyClose(make(chan *amqp.Error, 1))
 	if err != nil {
-		r.logger.Warn("rabbitmq connection closed", map[string]interface{}{
+		r.logger.Warn("rabbitmq connection closed", map[string]any{
 			"error": err.Error(),
 		})
 		select {
@@ -197,11 +144,10 @@ func (r *RabbitMQConnection) waitForClose(conn *amqp.Connection) {
 }
 
 // monitorConnection handles reconnection logic.
+// Relies on waitForClose() to detect connection failures via NotifyClose.
+// Publish operations also trigger reconnection on failure.
 func (r *RabbitMQConnection) monitorConnection() {
 	defer r.wg.Done()
-
-	ticker := time.NewTicker(r.config.ReconnectInterval)
-	defer ticker.Stop()
 
 	for {
 		select {
@@ -210,28 +156,17 @@ func (r *RabbitMQConnection) monitorConnection() {
 		case <-r.reconnectChan:
 			r.logger.Info("rabbitmq reconnection triggered", nil)
 			if err := r.connect(r.ctx); err != nil {
-				r.logger.Error("rabbitmq reconnection failed", map[string]interface{}{
+				r.logger.Error("rabbitmq reconnection failed", map[string]any{
 					"error": err.Error(),
 				})
-			}
-		case <-ticker.C:
-			// Periodic health check
-			if !r.IsConnected() {
-				r.logger.Warn("rabbitmq connection check failed, attempting reconnect", nil)
-				if err := r.connect(r.ctx); err != nil {
-					r.logger.Error("rabbitmq reconnection failed", map[string]interface{}{
-						"error": err.Error(),
-					})
-				}
 			}
 		}
 	}
 }
 
 // PublishWithContext publishes a message with context support.
-// Each publish creates a new channel, publishes, then closes it.
-// This provides better isolation for concurrent publish operations.
-func (r *RabbitMQConnection) PublishWithContext(ctx context.Context, routingKey string, publishing amqp.Publishing) error {
+// The exchange, routing key, and publishing properties are provided by the caller.
+func (r *RabbitMQConnection) PublishWithContext(ctx context.Context, exchange, routingKey string, publishing amqp.Publishing) error {
 	if r.closed.Load() {
 		return fmt.Errorf("connection is closed")
 	}
@@ -248,8 +183,9 @@ func (r *RabbitMQConnection) PublishWithContext(ctx context.Context, routingKey 
 	// Create a new channel for this publish
 	ch, err := conn.Channel()
 	if err != nil {
-		r.logger.Error("failed to open channel for publish", map[string]interface{}{
+		r.logger.Error("failed to open channel for publish", map[string]any{
 			"error":       err.Error(),
+			"exchange":    exchange,
 			"routing_key": routingKey,
 		})
 		r.triggerReconnect()
@@ -259,7 +195,7 @@ func (r *RabbitMQConnection) PublishWithContext(ctx context.Context, routingKey 
 	// Ensure channel is closed when done
 	defer func() {
 		if closeErr := ch.Close(); closeErr != nil {
-			r.logger.Warn("error closing channel after publish", map[string]interface{}{
+			r.logger.Warn("error closing channel after publish", map[string]any{
 				"error": closeErr.Error(),
 			})
 		}
@@ -268,7 +204,7 @@ func (r *RabbitMQConnection) PublishWithContext(ctx context.Context, routingKey 
 	// Publish with the channel
 	err = ch.PublishWithContext(
 		ctx,
-		r.config.Exchange,
+		exchange,
 		routingKey,
 		false, // mandatory
 		false, // immediate
@@ -276,13 +212,58 @@ func (r *RabbitMQConnection) PublishWithContext(ctx context.Context, routingKey 
 	)
 
 	if err != nil {
-		r.logger.Error("rabbitmq publish failed", map[string]interface{}{
+		r.logger.Error("rabbitmq publish failed", map[string]any{
 			"error":       err.Error(),
+			"exchange":    exchange,
 			"routing_key": routingKey,
 		})
 		r.triggerReconnect()
 		return fmt.Errorf("publish failed: %w", err)
 	}
+
+	return nil
+}
+
+// DeclareExchange declares an exchange on the RabbitMQ server.
+// This is typically called by the adapter layer during initialization.
+func (r *RabbitMQConnection) DeclareExchange(exchange, exchangeType string, durable bool) error {
+	if r.closed.Load() {
+		return fmt.Errorf("connection is closed")
+	}
+
+	r.connMu.RLock()
+	conn := r.conn
+	r.connMu.RUnlock()
+
+	if conn == nil || conn.IsClosed() {
+		return fmt.Errorf("no active connection")
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to open channel: %w", err)
+	}
+	defer ch.Close()
+
+	err = ch.ExchangeDeclare(
+		exchange,
+		exchangeType,
+		durable,
+		false, // auto-delete
+		false, // internal
+		false, // no-wait
+		nil,   // arguments
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to declare exchange: %w", err)
+	}
+
+	r.logger.Info("rabbitmq exchange declared", map[string]any{
+		"exchange": exchange,
+		"type":     exchangeType,
+		"durable":  durable,
+	})
 
 	return nil
 }
@@ -339,11 +320,6 @@ func (r *RabbitMQConnection) Close() error {
 
 	r.logger.Info("rabbitmq connection closed", nil)
 	return nil
-}
-
-// GetRoutingKey returns the full routing key for an event type.
-func (r *RabbitMQConnection) GetRoutingKey(eventType string) string {
-	return r.config.RoutingKeyPrefix + eventType
 }
 
 // Config returns the RabbitMQ configuration.

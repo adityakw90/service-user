@@ -26,9 +26,8 @@ func TestInfra_Kafka_NewKafkaConnection(t *testing.T) {
 			name: "Custom reconnection settings",
 			config: KafkaConfig{
 				Brokers:              []string{"localhost:9092"},
-				ReconnectInterval:    10 * time.Second,
-				MaxReconnectAttempts: 5,
-				ReconnectDelay:       2 * time.Second,
+				ReconnectInterval:    2 * time.Second,
+				ReconnectMaxAttempts: 5,
 				Compression:          sarama.CompressionGZIP,
 			},
 		},
@@ -61,9 +60,8 @@ func TestKafkaConnection_ReconnectSettings(t *testing.T) {
 			name: "Custom reconnection settings",
 			config: KafkaConfig{
 				Brokers:              []string{"localhost:9092"},
-				ReconnectInterval:    10 * time.Second,
-				MaxReconnectAttempts: 5,
-				ReconnectDelay:       2 * time.Second,
+				ReconnectInterval:    2 * time.Second,
+				ReconnectMaxAttempts: 5,
 			},
 		},
 	}
@@ -108,8 +106,8 @@ func TestKafkaConnection_Close(t *testing.T) {
 	conn := &KafkaConnection{
 		config: KafkaConfig{
 			Brokers:              []string{"invalid:9999"}, // Will fail to connect
-			ReconnectDelay:       10 * time.Millisecond,
-			MaxReconnectAttempts: 1,
+			ReconnectInterval:    10 * time.Millisecond,
+			ReconnectMaxAttempts: 1,
 		},
 		ctx:    ctx,
 		cancel: cancel,

@@ -97,16 +97,28 @@ func (p *AsyncPublisher) Publish(ctx context.Context, eventType event.EventType,
 }
 
 // worker processes events from the queue.
+// Uses a timer that only starts when events are queued to avoid idle wake-ups.
 func (p *AsyncPublisher) worker(id int) {
 	defer p.wg.Done()
 
 	batch := make([]*eventWrapper, 0, p.config.BatchSize)
-	ticker := time.NewTicker(p.config.BatchTimeout)
-	defer ticker.Stop()
+	// Create timer but don't start it yet - only start when we have events
+	timer := time.NewTimer(0)
+	if !timer.Stop() {
+		<-timer.C
+	}
 
 	flushBatch := func() {
 		if len(batch) == 0 {
 			return
+		}
+
+		// Stop timer while flushing
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
 		}
 
 		// Publish all events in batch
@@ -123,14 +135,29 @@ func (p *AsyncPublisher) worker(id int) {
 		batch = batch[:0]
 	}
 
+	resetTimer := func() {
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		timer.Reset(p.config.BatchTimeout)
+	}
+
 	for {
 		select {
 		case ew := <-p.queue:
 			batch = append(batch, ew)
+			// Start/reset timer only when batch becomes non-empty
+			if len(batch) == 1 {
+				// First event in batch - start the timer
+				resetTimer()
+			}
 			if len(batch) >= p.config.BatchSize {
 				flushBatch()
 			}
-		case <-ticker.C:
+		case <-timer.C:
 			flushBatch()
 		case <-p.stopCh:
 			flushBatch()

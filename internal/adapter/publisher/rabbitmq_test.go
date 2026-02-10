@@ -234,10 +234,10 @@ func TestNewRabbitMQPublisher_ConnectionError(t *testing.T) {
 		{
 			name: "Invalid URL",
 			config: RabbitMQConfig{
-				URL:                 "amqp://invalid:9999/", // Invalid connection
-				Exchange:            "test-exchange",
-				ExchangeType:        "topic",
-				ReconnectDelay:      10 * time.Millisecond,  // Fast failure for tests
+				URL:                  "amqp://invalid:9999/", // Invalid connection
+				Exchange:             "test-exchange",
+				ExchangeType:         "topic",
+				ReconnectInterval:    10 * time.Millisecond,  // Fast failure for tests
 				MaxReconnectAttempts: 2,                      // Limit retries for tests
 			},
 			source:  "test-source",

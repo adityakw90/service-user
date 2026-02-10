@@ -12,14 +12,14 @@ import (
 // NoopTestLogger is a no-op logger for testing.
 type NoopTestLogger struct{}
 
-func (l *NoopTestLogger) SetLogLevel(level string)                               {}
-func (l *NoopTestLogger) Debug(message string, fields map[string]interface{})    {}
-func (l *NoopTestLogger) Info(message string, fields map[string]interface{})     {}
-func (l *NoopTestLogger) Warn(message string, fields map[string]interface{})     {}
-func (l *NoopTestLogger) Error(message string, fields map[string]interface{})    {}
-func (l *NoopTestLogger) Fatal(message string, fields map[string]interface{})    {}
-func (l *NoopTestLogger) WithSpanContext(span trace.SpanContext) gomon.Logger     { return l }
-func (l *NoopTestLogger) Sync() error                                            { return nil }
+func (l *NoopTestLogger) SetLogLevel(level string)                            {}
+func (l *NoopTestLogger) Debug(message string, fields map[string]interface{}) {}
+func (l *NoopTestLogger) Info(message string, fields map[string]interface{})  {}
+func (l *NoopTestLogger) Warn(message string, fields map[string]interface{})  {}
+func (l *NoopTestLogger) Error(message string, fields map[string]interface{}) {}
+func (l *NoopTestLogger) Fatal(message string, fields map[string]interface{}) {}
+func (l *NoopTestLogger) WithSpanContext(span trace.SpanContext) gomon.Logger { return l }
+func (l *NoopTestLogger) Sync() error                                         { return nil }
 
 // TestKafkaPublisher_Publish tests the Publish method using table-driven tests.
 // Note: These tests use the real KafkaPublisher struct but avoid actual Kafka connections
@@ -69,8 +69,8 @@ func TestKafkaPublisher_Publish(t *testing.T) {
 			name:      "File created event",
 			eventType: event.EventUserFileCreated,
 			eventData: map[string]interface{}{
-				"user_uid":  "user-123",
-				"file_uid":  "file-789",
+				"user_uid": "user-123",
+				"file_uid": "file-789",
 			},
 			source:  "test-source",
 			wantErr: false,
@@ -193,8 +193,8 @@ func TestNewKafkaPublisher_ConnectionError(t *testing.T) {
 			config: KafkaConfig{
 				Brokers:              []string{"localhost:9999"}, // Unlikely to have Kafka here
 				Topic:                "test-topic",
-				MaxReconnectAttempts: 1,                    // Fail fast for testing
-				ReconnectDelay:       10 * time.Millisecond, // Minimal delay for testing
+				ReconnectMaxAttempts: 1,                        // Fail fast for testing
+				ReconnectInterval:    10 * time.Millisecond,    // Minimal delay for testing
 			},
 			source:  "test-source",
 			wantErr: true, // Should fail to connect
