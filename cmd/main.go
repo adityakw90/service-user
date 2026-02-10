@@ -10,7 +10,6 @@ import (
 	"time"
 
 	gomon "github.com/adityakw90/go-monitoring"
-	"github.com/IBM/sarama"
 	"github.com/adityakw90/service-user-proto/gen/go/auth"
 	"github.com/adityakw90/service-user-proto/gen/go/device"
 	"github.com/adityakw90/service-user-proto/gen/go/user"
@@ -135,6 +134,30 @@ func main() {
 		})
 	}
 
+	// Connect to Kafka using infra layer (if enabled)
+	var kafkaConn *infra.KafkaConnection
+	if cfg.EventPublisher.Kafka.Enabled {
+		kafkaConn, err = infra.NewKafkaConnection(ctx, infra.KafkaConfig{
+			Brokers:              cfg.Kafka.Brokers,
+			MaxMessageBytes:      cfg.Kafka.MaxMessageBytes,
+			Timeout:              time.Duration(cfg.Kafka.TimeoutSeconds) * time.Second,
+			Compression:          cfg.Kafka.Compression,
+			ReconnectInterval:    5 * time.Second,
+			MaxReconnectAttempts: 0, // 0 means infinite retries
+			ReconnectDelay:       1 * time.Second,
+		}, iMon.Logger)
+		if err != nil {
+			logger.Fatal("failed to connect to kafka", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+		defer kafkaConn.Close()
+		logger.Info("connected to kafka", map[string]interface{}{
+			"brokers": cfg.Kafka.Brokers,
+			"topic":   cfg.EventPublisher.Kafka.Topic,
+		})
+	}
+
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
 	profileRepo := repository.NewProfileRepository(dbPool)
@@ -239,22 +262,16 @@ func main() {
 		}
 
 		// Kafka backend for all events
+		// Use the existing connection if available (created earlier in main.go)
 		if cfg.EventPublisher.Kafka.Enabled {
-			kafkaPub, err := publisher.NewKafkaPublisher(
-				publisher.KafkaConfig{
-					Brokers:         cfg.EventPublisher.Kafka.Brokers,
-					Topic:           cfg.EventPublisher.Kafka.Topic,
-					MaxMessageBytes: cfg.EventPublisher.Kafka.MaxMessageBytes,
-					Timeout:         time.Duration(cfg.EventPublisher.Kafka.TimeoutSeconds) * time.Second,
-					Compression:     parseCompression(cfg.EventPublisher.Kafka.Compression),
-				},
+			if kafkaConn == nil {
+				logger.Fatal("kafka connection is nil but kafka is enabled", nil)
+			}
+			kafkaPub := publisher.NewKafkaPublisherWithConn(
+				kafkaConn,
+				cfg.EventPublisher.Kafka.Topic,
 				cfg.Instance.Name,
 			)
-			if err != nil {
-				logger.Fatal("failed to initialize Kafka publisher", map[string]interface{}{
-					"error": err.Error(),
-				})
-			}
 			backends = append(backends, kafkaPub)
 		}
 
@@ -277,7 +294,7 @@ func main() {
 				publisher.HttpPublisherConfig{
 					Endpoint: cfg.EventPublisher.HTTPEndpoint,
 					Source:   cfg.Instance.Name,
-					Timeout:  cfg.EventPublisherTimeout,
+					Timeout:  cfg.EventPublisher.HTTPTimeout,
 				},
 			))
 		}
@@ -441,22 +458,4 @@ func createPinObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tra
 		return observer.NewPinObserver(logger, tracer)
 	}
 	return observer.NewNoopObserver[domainSignal.PinSignal]()
-}
-
-// parseCompression converts a compression string to Sarama CompressionCodec.
-func parseCompression(compression string) sarama.CompressionCodec {
-	switch compression {
-	case "none":
-		return sarama.CompressionNone
-	case "gzip":
-		return sarama.CompressionGZIP
-	case "snappy":
-		return sarama.CompressionSnappy
-	case "lz4":
-		return sarama.CompressionLZ4
-	case "zstd":
-		return sarama.CompressionZSTD
-	default:
-		return sarama.CompressionSnappy
-	}
 }

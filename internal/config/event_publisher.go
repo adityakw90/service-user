@@ -9,9 +9,9 @@ import (
 // EventPublisherConfig holds configuration for the async event publisher.
 type EventPublisherConfig struct {
 	// Async settings
-	Enabled    bool          `mapstructure:"enabled"`
-	WorkerCount int          `mapstructure:"worker_count"`
-	QueueSize   int          `mapstructure:"queue_size"`
+	Enabled     bool `mapstructure:"enabled"`
+	WorkerCount int  `mapstructure:"worker_count"`
+	QueueSize   int  `mapstructure:"queue_size"`
 
 	// Batching settings
 	BatchSize    int           `mapstructure:"batch_size"`
@@ -22,23 +22,20 @@ type EventPublisherConfig struct {
 	RedisChannel string `mapstructure:"redis_channel"`
 
 	// Kafka
-	Kafka KafkaConfig `mapstructure:"kafka"`
+	Kafka PublisherKafkaConfig `mapstructure:"kafka"`
 
 	// RabbitMQ
 	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
 
 	// HTTP
-	HTTPEndpoint string `mapstructure:"http_endpoint"`
+	HTTPEndpoint string        `mapstructure:"http_endpoint"`
+	HTTPTimeout  time.Duration `mapstructure:"http_timeout_seconds"`
 }
 
 // KafkaConfig holds configuration for the Kafka event publisher.
-type KafkaConfig struct {
-	Enabled         bool     `mapstructure:"enabled"`
-	Brokers         []string `mapstructure:"brokers"`
-	Topic           string   `mapstructure:"topic"`
-	MaxMessageBytes int      `mapstructure:"max_message_bytes"`
-	TimeoutSeconds  int      `mapstructure:"timeout_seconds"`
-	Compression     string   `mapstructure:"compression"`
+type PublisherKafkaConfig struct {
+	Enabled bool   `mapstructure:"enabled"`
+	Topic   string `mapstructure:"topic"`
 }
 
 // RabbitMQConfig holds configuration for the RabbitMQ event publisher.
@@ -87,4 +84,5 @@ func defaultEventPublisherConfig(key string, v *viper.Viper) {
 
 	// HTTP defaults
 	v.SetDefault(key+".http_endpoint", "")
+	v.SetDefault(key+".http_timeout_seconds", 5)
 }

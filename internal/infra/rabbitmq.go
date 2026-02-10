@@ -44,14 +44,14 @@ type RabbitMQConnection struct {
 // NoopLogger is a no-op logger implementation.
 type NoopLogger struct{}
 
-func (l *NoopLogger) SetLogLevel(level string)                               {}
-func (l *NoopLogger) Debug(message string, fields map[string]interface{})    {}
-func (l *NoopLogger) Info(message string, fields map[string]interface{})     {}
-func (l *NoopLogger) Warn(message string, fields map[string]interface{})     {}
-func (l *NoopLogger) Error(message string, fields map[string]interface{})    {}
-func (l *NoopLogger) Fatal(message string, fields map[string]interface{})    {}
-func (l *NoopLogger) WithSpanContext(span trace.SpanContext) gomon.Logger     { return l }
-func (l *NoopLogger) Sync() error                                            { return nil }
+func (l *NoopLogger) SetLogLevel(level string)                            {}
+func (l *NoopLogger) Debug(message string, fields map[string]interface{}) {}
+func (l *NoopLogger) Info(message string, fields map[string]interface{})  {}
+func (l *NoopLogger) Warn(message string, fields map[string]interface{})  {}
+func (l *NoopLogger) Error(message string, fields map[string]interface{}) {}
+func (l *NoopLogger) Fatal(message string, fields map[string]interface{}) {}
+func (l *NoopLogger) WithSpanContext(span trace.SpanContext) gomon.Logger { return l }
+func (l *NoopLogger) Sync() error                                         { return nil }
 
 // NewRabbitMQConnection creates a new RabbitMQ connection with reconnection support.
 func NewRabbitMQConnection(ctx context.Context, cfg RabbitMQConfig, logger gomon.Logger) (*RabbitMQConnection, error) {
@@ -349,11 +349,4 @@ func (r *RabbitMQConnection) GetRoutingKey(eventType string) string {
 // Config returns the RabbitMQ configuration.
 func (r *RabbitMQConnection) Config() RabbitMQConfig {
 	return r.config
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

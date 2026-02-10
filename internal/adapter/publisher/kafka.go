@@ -7,50 +7,71 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	gomon "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
+	"github.com/adityakw90/service-user/internal/infra"
 )
 
-// KafkaPublisher publishes events to Kafka using Sarama SyncProducer.
+// KafkaPublisher publishes events to Kafka using the infra layer connection manager.
 type KafkaPublisher struct {
-	producer sarama.SyncProducer
-	config   KafkaConfig
-	source   string
+	conn   *infra.KafkaConnection
+	topic  string
+	source string
 }
 
 // KafkaConfig holds configuration for the Kafka event publisher.
 type KafkaConfig struct {
 	Brokers         []string
-	Topic           string
+	Topic           string // Publisher-specific topic
 	MaxMessageBytes int
 	Timeout         time.Duration
 	Compression     sarama.CompressionCodec
+
+	// Reconnection settings (optional, defaults provided)
+	ReconnectInterval    time.Duration
+	MaxReconnectAttempts int
+	ReconnectDelay       time.Duration
 }
 
-// NewKafkaPublisher creates a new Kafka event publisher.
-func NewKafkaPublisher(config KafkaConfig, source string) (*KafkaPublisher, error) {
-	saramaConfig := sarama.NewConfig()
-	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	saramaConfig.Producer.Retry.Max = 5
-	saramaConfig.Producer.Return.Successes = true
-	saramaConfig.Producer.Compression = config.Compression
-
-	if config.MaxMessageBytes > 0 {
-		saramaConfig.Producer.MaxMessageBytes = config.MaxMessageBytes
+// NewKafkaPublisher creates a new Kafka event publisher with reconnection support.
+func NewKafkaPublisher(config KafkaConfig, source string, logger gomon.Logger) (*KafkaPublisher, error) {
+	infraCfg := infra.KafkaConfig{
+		Brokers:              config.Brokers,
+		MaxMessageBytes:      config.MaxMessageBytes,
+		Timeout:              config.Timeout,
+		Compression:          config.Compression,
+		ReconnectInterval:    config.ReconnectInterval,
+		MaxReconnectAttempts: config.MaxReconnectAttempts,
+		ReconnectDelay:       config.ReconnectDelay,
 	}
 
-	producer, err := sarama.NewSyncProducer(config.Brokers, saramaConfig)
+	conn, err := infra.NewKafkaConnection(context.Background(), infraCfg, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create Kafka producer: %w", err)
+		return nil, fmt.Errorf("failed to create Kafka connection: %w", err)
+	}
+
+	if config.Topic == "" {
+		return nil, fmt.Errorf("topic must be specified in config")
 	}
 
 	return &KafkaPublisher{
-		producer: producer,
-		config:   config,
-		source:   source,
+		conn:   conn,
+		topic:  config.Topic,
+		source: source,
 	}, nil
 }
 
-// Publish publishes an event to Kafka.
+// NewKafkaPublisherWithConn creates a new Kafka event publisher using an existing connection.
+// This is useful when the connection is managed externally (e.g., in main.go).
+func NewKafkaPublisherWithConn(conn *infra.KafkaConnection, topic string, source string) *KafkaPublisher {
+	return &KafkaPublisher{
+		conn:   conn,
+		topic:  topic,
+		source: source,
+	}
+}
+
+// Publish publishes an event to Kafka with automatic reconnection handling.
 func (k *KafkaPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
 	// Convert to CloudEvents format
 	ce := toCloudEventData(eventType, eventData, k.source)
@@ -61,7 +82,7 @@ func (k *KafkaPublisher) Publish(ctx context.Context, eventType event.EventType,
 	}
 
 	msg := &sarama.ProducerMessage{
-		Topic: k.config.Topic,
+		Topic: k.topic,
 		Key:   sarama.StringEncoder(ce.ID),
 		Value: sarama.ByteEncoder(data),
 		Headers: []sarama.RecordHeader{
@@ -72,7 +93,7 @@ func (k *KafkaPublisher) Publish(ctx context.Context, eventType event.EventType,
 		},
 	}
 
-	_, _, err = k.producer.SendMessage(msg)
+	err = k.conn.PublishWithContext(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("failed to send message to Kafka: %w", err)
 	}
@@ -80,7 +101,12 @@ func (k *KafkaPublisher) Publish(ctx context.Context, eventType event.EventType,
 	return nil
 }
 
-// Close closes the Kafka producer connection.
+// Close closes the Kafka connection.
 func (k *KafkaPublisher) Close() error {
-	return k.producer.Close()
+	return k.conn.Close()
+}
+
+// IsConnected returns true if the Kafka connection is active.
+func (k *KafkaPublisher) IsConnected() bool {
+	return k.conn.IsConnected()
 }

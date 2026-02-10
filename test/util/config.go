@@ -105,6 +105,8 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 			SaltLength:  16,
 			KeyLength:   32,
 		},
-		EventPublisherTimeout: 5 * time.Second,
+		EventPublisher: config.EventPublisherConfig{
+			HTTPTimeout: 5 * time.Second,
+		},
 	}, nil
 }

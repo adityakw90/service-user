@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -14,6 +15,7 @@ type Config struct {
 	Instance       InstanceConfig       `mapstructure:"instance"`
 	Database       DatabaseConfig       `mapstructure:"database"`
 	Redis          RedisConfig          `mapstructure:"redis"`
+	Kafka          KafkaConfig          `mapstructure:"kafka"`
 	Monitoring     MonitoringConfig     `mapstructure:"monitoring"`
 	Observer       ObserverConfig       `mapstructure:"observer"`
 	Security       SecurityConfig       `mapstructure:"security"`
@@ -35,6 +37,15 @@ func Load() (*Config, error) {
 	pflag.Int("port", 50051, "Service listening port")
 	pflag.Parse()
 
+	// prepare decoder
+	// Create a DecoderConfigOption with the custom hook
+	decodeOption := viper.DecoderConfigOption(func(dc *mapstructure.DecoderConfig) {
+		dc.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			dc.DecodeHook, // Keep existing hooks
+			kafkaCompressionHookFunc(),
+		)
+	})
+
 	// initialize
 	vConfig := viper.New()
 
@@ -52,6 +63,7 @@ func Load() (*Config, error) {
 	defaultInstanceConfig("instance", vConfig)
 	defaultDatabaseConfig("database", vConfig)
 	defaultRedisConfig("redis", vConfig)
+	defaultKafkaConfig("kafka", vConfig)
 	defaultMonitoringConfig("monitoring", vConfig)
 	defaultObserverConfig("observer", vConfig)
 	defaultJWTConfig("jwt", vConfig)
@@ -79,7 +91,7 @@ func Load() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := vConfig.Unmarshal(&cfg); err != nil {
+	if err := vConfig.Unmarshal(&cfg, decodeOption); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
