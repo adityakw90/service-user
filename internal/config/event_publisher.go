@@ -25,7 +25,7 @@ type EventPublisherConfig struct {
 	Kafka PublisherKafkaConfig `mapstructure:"kafka"`
 
 	// RabbitMQ
-	RabbitMQ RabbitMQConfig `mapstructure:"rabbitmq"`
+	RabbitMQ PublisherRabbitMQConfig `mapstructure:"rabbitmq"`
 
 	// HTTP
 	HTTPEndpoint string        `mapstructure:"http_endpoint"`
@@ -38,19 +38,13 @@ type PublisherKafkaConfig struct {
 	Topic   string `mapstructure:"topic"`
 }
 
-// RabbitMQConfig holds configuration for the RabbitMQ event publisher.
-type RabbitMQConfig struct {
+// RabbitMQPublisherConfig holds configuration for the RabbitMQ event publisher.
+type PublisherRabbitMQConfig struct {
 	Enabled          bool   `mapstructure:"enabled"`
-	URL              string `mapstructure:"url"`
 	Exchange         string `mapstructure:"exchange"`
 	ExchangeType     string `mapstructure:"exchange_type"`
 	RoutingKeyPrefix string `mapstructure:"routing_key_prefix"`
 	Durable          bool   `mapstructure:"durable"`
-
-	// Reconnection settings (optional, defaults provided)
-	ReconnectInterval    int `mapstructure:"reconnect_interval_seconds"`
-	MaxReconnectAttempts int `mapstructure:"max_reconnect_attempts"`
-	ReconnectDelay       int `mapstructure:"reconnect_delay_seconds"`
 }
 
 // defaultEventPublisherConfig sets default values for event publisher configuration.
@@ -65,22 +59,14 @@ func defaultEventPublisherConfig(key string, v *viper.Viper) {
 
 	// Kafka defaults
 	v.SetDefault(key+".kafka.enabled", false)
-	v.SetDefault(key+".kafka.brokers", []string{"localhost:9092"})
 	v.SetDefault(key+".kafka.topic", "user-service-events")
-	v.SetDefault(key+".kafka.max_message_bytes", 1048576)
-	v.SetDefault(key+".kafka.timeout_seconds", 10)
-	v.SetDefault(key+".kafka.compression", "snappy")
 
 	// RabbitMQ defaults
 	v.SetDefault(key+".rabbitmq.enabled", false)
-	v.SetDefault(key+".rabbitmq.url", "amqp://guest:guest@localhost:5672/")
 	v.SetDefault(key+".rabbitmq.exchange", "user-service")
 	v.SetDefault(key+".rabbitmq.exchange_type", "topic")
 	v.SetDefault(key+".rabbitmq.routing_key_prefix", "user.service.")
 	v.SetDefault(key+".rabbitmq.durable", true)
-	v.SetDefault(key+".rabbitmq.reconnect_interval_seconds", 5)
-	v.SetDefault(key+".rabbitmq.max_reconnect_attempts", 0) // 0 means infinite retries
-	v.SetDefault(key+".rabbitmq.reconnect_delay_seconds", 1)
 
 	// HTTP defaults
 	v.SetDefault(key+".http_endpoint", "")

@@ -114,9 +114,13 @@ func main() {
 	var rabbitmqConn *infra.RabbitMQConnection
 	if cfg.EventPublisher.RabbitMQ.Enabled {
 		rabbitmqConn, err = infra.NewRabbitMQConnection(ctx, infra.RabbitMQConfig{
-			URL:                  cfg.EventPublisher.RabbitMQ.URL,
-			ReconnectInterval:    time.Duration(cfg.EventPublisher.RabbitMQ.ReconnectDelay) * time.Second,
-			MaxReconnectAttempts: cfg.EventPublisher.RabbitMQ.MaxReconnectAttempts,
+			Host:                 cfg.Rabbit.Host,
+			Port:                 cfg.Rabbit.Port,
+			User:                 cfg.Rabbit.User,
+			Password:             cfg.Rabbit.Password,
+			Vhost:                cfg.Rabbit.Vhost,
+			ReconnectInterval:    cfg.Rabbit.ReconnectInterval,
+			ReconnectMaxAttempts: cfg.Rabbit.ReconnectMaxAttempts,
 		}, iMon.Logger)
 		if err != nil {
 			logger.Fatal("failed to connect to rabbitmq", map[string]interface{}{
@@ -275,13 +279,15 @@ func main() {
 			if rabbitmqConn == nil {
 				logger.Fatal("rabbitmq connection is nil but rabbitmq is enabled", nil)
 			}
-			rabbitPub := publisher.NewRabbitMQPublisherWithConn(
+			rabbitPub := publisher.NewRabbitMQPublisher(
 				rabbitmqConn,
-				cfg.EventPublisher.RabbitMQ.Exchange,
-				cfg.EventPublisher.RabbitMQ.ExchangeType,
-				cfg.EventPublisher.RabbitMQ.RoutingKeyPrefix,
-				cfg.EventPublisher.RabbitMQ.Durable,
-				cfg.Instance.Name,
+				publisher.RabbitMQPublisherConfig{
+					Source:           cfg.Instance.Name,
+					Exchange:         cfg.EventPublisher.RabbitMQ.Exchange,
+					ExchangeType:     cfg.EventPublisher.RabbitMQ.ExchangeType,
+					RoutingKeyPrefix: cfg.EventPublisher.RabbitMQ.RoutingKeyPrefix,
+					Durable:          cfg.EventPublisher.RabbitMQ.Durable,
+				},
 			)
 			// Declare the exchange
 			if err := rabbitPub.DeclareExchange(); err != nil {

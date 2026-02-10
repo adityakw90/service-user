@@ -20,15 +20,23 @@ func TestRabbitMQConnection_ReconnectSettings(t *testing.T) {
 		{
 			name: "Default reconnection settings",
 			config: RabbitMQConfig{
-				URL: "amqp://guest:guest@localhost:5672/",
+				Host:     "localhost",
+				Port:     5672,
+				User:     "guest",
+				Password: "guest",
+				Vhost:    "/",
 			},
 		},
 		{
 			name: "Custom reconnection settings",
 			config: RabbitMQConfig{
-				URL:                  "amqp://guest:guest@localhost:5672/",
+				Host:                 "localhost",
+				Port:                 5672,
+				User:                 "guest",
+				Password:             "guest",
+				Vhost:                "/",
 				ReconnectInterval:    2 * time.Second,
-				MaxReconnectAttempts: 5,
+				ReconnectMaxAttempts: 5,
 			},
 		},
 	}
@@ -36,8 +44,8 @@ func TestRabbitMQConnection_ReconnectSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Just verify the config is parsed correctly
-			if tt.config.URL == "" {
-				t.Error("URL should not be empty")
+			if tt.config.Host == "" {
+				t.Error("Host should not be empty")
 			}
 		})
 	}
@@ -47,7 +55,11 @@ func TestRabbitMQConnection_ReconnectSettings(t *testing.T) {
 func TestRabbitMQConnection_Concurrency(t *testing.T) {
 	conn := &RabbitMQConnection{
 		config: RabbitMQConfig{
-			URL: "amqp://guest:guest@localhost:5672/",
+			Host:     "localhost",
+			Port:     5672,
+			User:     "guest",
+			Password: "guest",
+			Vhost:    "/",
 		},
 	}
 
@@ -85,9 +97,13 @@ func TestRabbitMQConnection_Close(t *testing.T) {
 
 	conn := &RabbitMQConnection{
 		config: RabbitMQConfig{
-			URL:                  "amqp://invalid:9999/", // Will fail to connect
+			Host:                 "localhost",
+			Port:                 5672,
+			User:                 "guest",
+			Password:             "guest",
+			Vhost:                "/",
 			ReconnectInterval:    10 * time.Millisecond,
-			MaxReconnectAttempts: 1,
+			ReconnectMaxAttempts: 1,
 		},
 		ctx:    ctx,
 		cancel: cancel,
@@ -114,7 +130,11 @@ func TestRabbitMQConnection_PublishWithContext_Concurrent(t *testing.T) {
 
 	conn := &RabbitMQConnection{
 		config: RabbitMQConfig{
-			URL: "amqp://guest:guest@localhost:5672/",
+			Host:     "localhost",
+			Port:     5672,
+			User:     "guest",
+			Password: "guest",
+			Vhost:    "/",
 		},
 		closed: atomic.Bool{},
 		logger: &NoopLogger{},
@@ -141,7 +161,13 @@ func TestRabbitMQConnection_DeclareExchange(t *testing.T) {
 
 	conn := &RabbitMQConnection{
 		config: RabbitMQConfig{
-			URL: "amqp://invalid:9999/", // Will fail to connect
+			Host:                 "localhost",
+			Port:                 5672,
+			User:                 "guest",
+			Password:             "guest",
+			Vhost:                "/",
+			ReconnectInterval:    10 * time.Millisecond,
+			ReconnectMaxAttempts: 1,
 		},
 		ctx:    ctx,
 		cancel: cancel,

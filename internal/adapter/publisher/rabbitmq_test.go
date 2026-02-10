@@ -2,10 +2,8 @@ package publisher
 
 import (
 	"testing"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/event"
-	"github.com/adityakw90/service-user/internal/infra"
 )
 
 // TestRabbitMQPublisher_Publish tests the CloudEvents conversion for RabbitMQ.
@@ -51,8 +49,8 @@ func TestRabbitMQPublisher_Publish(t *testing.T) {
 			name:      "File created",
 			eventType: event.EventUserFileCreated,
 			eventData: map[string]interface{}{
-				"user_uid":  "user-123",
-				"file_uid":  "file-789",
+				"user_uid": "user-123",
+				"file_uid": "file-789",
 			},
 			source: "rabbitmq-publisher",
 			prefix: "user.service.",
@@ -105,8 +103,8 @@ func TestRabbitMQPublisher_Publish(t *testing.T) {
 }
 
 func TestRabbitMQConfig_Defaults(t *testing.T) {
-	config := RabbitMQConfig{
-		URL:              "amqp://guest:guest@localhost:5672/",
+	config := RabbitMQPublisherConfig{
+		Source:           "user-service",
 		Exchange:         "user-service",
 		ExchangeType:     "topic",
 		RoutingKeyPrefix: "user.service.",
@@ -129,10 +127,10 @@ func TestRabbitMQConfig_Defaults(t *testing.T) {
 
 func TestRabbitMQRoutingKey(t *testing.T) {
 	tests := []struct {
-		name          string
-		eventType     event.EventType
-		prefix        string
-		expectedKey   string
+		name        string
+		eventType   event.EventType
+		prefix      string
+		expectedKey string
 	}{
 		{
 			name:        "Login event routing key",
@@ -217,42 +215,6 @@ func TestToCloudEventData_RabbitMQ(t *testing.T) {
 			}
 			if ce.Source != tt.source {
 				t.Errorf("expected Source = %v, got %v", tt.source, ce.Source)
-			}
-		})
-	}
-}
-
-// TestNewRabbitMQPublisher_ConnectionError verifies that connection errors are handled.
-// Note: This is an integration-style test and would fail without actual RabbitMQ running.
-func TestNewRabbitMQPublisher_ConnectionError(t *testing.T) {
-	tests := []struct {
-		name    string
-		config  RabbitMQConfig
-		source  string
-		wantErr bool
-	}{
-		{
-			name: "Invalid URL",
-			config: RabbitMQConfig{
-				URL:                  "amqp://invalid:9999/", // Invalid connection
-				Exchange:             "test-exchange",
-				ExchangeType:         "topic",
-				ReconnectInterval:    10 * time.Millisecond,  // Fast failure for tests
-				MaxReconnectAttempts: 2,                      // Limit retries for tests
-			},
-			source:  "test-source",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			noopLogger := &infra.NoopLogger{}
-			_, err := NewRabbitMQPublisher(tt.config, tt.source, noopLogger)
-
-			// We expect connection to fail
-			if tt.wantErr && err == nil {
-				t.Error("expected error connecting to invalid RabbitMQ, got nil")
 			}
 		})
 	}
