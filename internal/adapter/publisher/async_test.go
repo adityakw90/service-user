@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ type mockPublisher struct {
 	publishFunc func(ctx context.Context, eventType event.EventType, eventData any) error
 	closeFunc   func() error
 	published   []mockPublishedEvent
+	mu          sync.Mutex
 }
 
 type mockPublishedEvent struct {
@@ -21,7 +23,9 @@ type mockPublishedEvent struct {
 }
 
 func (m *mockPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
+	m.mu.Lock()
 	m.published = append(m.published, mockPublishedEvent{eventType: eventType, eventData: eventData})
+	m.mu.Unlock()
 	if m.publishFunc != nil {
 		return m.publishFunc(ctx, eventType, eventData)
 	}
@@ -102,7 +106,10 @@ func TestAsyncPublisher_Publish(t *testing.T) {
 				t.Errorf("Expected error when queue is full, got none")
 			}
 
-			if tt.wantPublish && len(mockPub.published) == 0 {
+			mockPub.mu.Lock()
+			publishedCount := len(mockPub.published)
+			mockPub.mu.Unlock()
+			if tt.wantPublish && publishedCount == 0 {
 				t.Errorf("Expected events to be published, got none")
 			}
 		})
@@ -137,8 +144,11 @@ func TestAsyncPublisher_BatchAccumulator(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Verify events were published after timeout
-	if len(mockPub.published) != 3 {
-		t.Errorf("Expected 3 events to be published after timeout, got %d", len(mockPub.published))
+	mockPub.mu.Lock()
+	publishedCount := len(mockPub.published)
+	mockPub.mu.Unlock()
+	if publishedCount != 3 {
+		t.Errorf("Expected 3 events to be published after timeout, got %d", publishedCount)
 	}
 }
 
@@ -175,7 +185,10 @@ func TestAsyncPublisher_Close(t *testing.T) {
 	}
 
 	// Verify events were published (at least one batch)
-	if len(mockPub.published) == 0 {
+	mockPub.mu.Lock()
+	publishedCount := len(mockPub.published)
+	mockPub.mu.Unlock()
+	if publishedCount == 0 {
 		t.Errorf("Expected events to be published after close, got 0")
 	}
 }
