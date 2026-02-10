@@ -15,6 +15,19 @@ const (
 	UserStatusBanned   UserStatus = -1
 )
 
+func (s *UserStatus) String() string {
+	switch *s {
+	case UserStatusInactive:
+		return "inactive"
+	case UserStatusActive:
+		return "active"
+	case UserStatusBanned:
+		return "banned"
+	default:
+		return "unknown"
+	}
+}
+
 // User represents the core user entity in the domain layer.
 // This is a pure domain object with no external dependencies.
 type User struct {

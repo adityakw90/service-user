@@ -8,8 +8,8 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
-	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
+	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
 	"github.com/adityakw90/service-user/pkg/util"
 )
@@ -125,10 +125,15 @@ func (s *deviceService) Delete(ctx context.Context, uid string) error {
 	}
 
 	// Publish device deleted event
-	if s.eventPublisher != nil {
-		_ = s.eventPublisher.Publish(ctx, event.EventDeviceDeleted, event.EventDeviceDeletedData{
-			DeviceUID: uid,
-		})
+	err = s.eventPublisher.Publish(ctx, event.EventDeviceDeleted, event.EventDeviceDeletedData{
+		DeviceUID: uid,
+	})
+	if err != nil {
+		s.deviceObserver.OnSignal(ctx, signal.SignalFail, signal.DeviceSignal{
+			UID:       &uid,
+			Operation: "delete",
+		}, err)
+		return err
 	}
 
 	s.deviceObserver.OnSignal(ctx, signal.SignalSuccess, signal.DeviceSignal{

@@ -8,9 +8,9 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
-	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
+	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
@@ -194,12 +194,18 @@ func (s *userFileService) Add(ctx context.Context, param params.UserFileCreatePa
 	}
 
 	// Publish user file created event
-	if s.eventPublisher != nil {
-		_ = s.eventPublisher.Publish(ctx, event.EventUserFileCreated, event.EventUserFileCreatedData{
-			UserUID:  file.UserUID,
-			FileUID:  file.UID,
-			FileName: file.FileName,
-		})
+
+	err = s.eventPublisher.Publish(ctx, event.EventUserFileCreated, event.EventUserFileCreatedData{
+		UserUID:  file.UserUID,
+		FileUID:  file.UID,
+		FileName: file.FileName,
+	})
+	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UserUID:   &param.UserUID,
+			Operation: "add",
+		}, err)
+		return nil, err
 	}
 
 	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
@@ -258,11 +264,16 @@ func (s *userFileService) Update(ctx context.Context, uid string, param params.U
 	}
 
 	// Publish user file updated event
-	if s.eventPublisher != nil {
-		_ = s.eventPublisher.Publish(ctx, event.EventUserFileUpdated, event.EventUserFileUpdatedData{
-			UserUID: file.UserUID,
-			FileUID: uid,
-		})
+	err = s.eventPublisher.Publish(ctx, event.EventUserFileUpdated, event.EventUserFileUpdatedData{
+		UserUID: file.UserUID,
+		FileUID: uid,
+	})
+	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "update",
+		}, err)
+		return err
 	}
 
 	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
@@ -304,11 +315,17 @@ func (s *userFileService) Delete(ctx context.Context, uid string) error {
 	}
 
 	// Publish user file deleted event
-	if s.eventPublisher != nil {
-		_ = s.eventPublisher.Publish(ctx, event.EventUserFileDeleted, event.EventUserFileDeletedData{
-			UserUID: file.UserUID,
-			FileUID: uid,
-		})
+
+	err = s.eventPublisher.Publish(ctx, event.EventUserFileDeleted, event.EventUserFileDeletedData{
+		UserUID: file.UserUID,
+		FileUID: uid,
+	})
+	if err != nil {
+		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
+			UID:       &uid,
+			Operation: "delete",
+		}, err)
+		return err
 	}
 
 	s.userFileObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{

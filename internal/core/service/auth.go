@@ -768,20 +768,36 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 		}, nil) // Invalid PIN, but not an error - just reject
 
 		// Publish PIN verify failed event
-		s.eventPublisher.Publish(ctx, event.EventPINFail, event.EventPinFailData{
+		err = s.eventPublisher.Publish(ctx, event.EventPINFail, event.EventPinFailData{
 			UserUID: userUid,
 			Reason:  "invalid_pin",
 		})
+		if err != nil {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:            &userUid,
+				Email:          &user.Email,
+				IdentifierType: "verify_pin",
+			}, err)
+			return false, err
+		}
 
 		return false, nil
 	}
 
 	// Publish PIN verify success event
-	s.eventPublisher.Publish(ctx, event.EventPINVerify, event.EventPinVerifyData{
+	err = s.eventPublisher.Publish(ctx, event.EventPINVerify, event.EventPinVerifyData{
 		UserUID: userUid,
 		Success: true,
 		Reason:  "pin_verified",
 	})
+	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &userUid,
+			Email:          &user.Email,
+			IdentifierType: "verify_pin",
+		}, err)
+		return false, err
+	}
 
 	active := user.IsActive()
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{

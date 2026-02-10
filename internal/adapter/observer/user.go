@@ -31,7 +31,7 @@ func NewUserObserver(
 				attrs = append(attrs, attribute.String("user.email", *s.Email))
 			}
 			if s.Status != nil {
-				attrs = append(attrs, attribute.String("user.status", string(*s.Status)))
+				attrs = append(attrs, attribute.String("user.status", s.Status.String()))
 			}
 			if s.Active != nil {
 				attrs = append(attrs, attribute.Bool("user.active", *s.Active))
@@ -58,7 +58,7 @@ func NewUserObserver(
 				fields["user.email"] = *s.Email
 			}
 			if s.Status != nil {
-				fields["user.status"] = string(*s.Status)
+				fields["user.status"] = s.Status.String()
 			}
 			if s.Active != nil {
 				fields["user.active"] = *s.Active
