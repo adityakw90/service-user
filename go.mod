@@ -6,7 +6,7 @@ toolchain go1.25.7
 
 require (
 	github.com/IBM/sarama v1.46.3
-	github.com/adityakw90/go-monitoring v0.0.0-00010101000000-000000000000
+	github.com/adityakw90/go-monitoring v0.3.1
 	github.com/adityakw90/service-user-proto v0.1.0
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/alicebob/miniredis/v2 v2.36.1
