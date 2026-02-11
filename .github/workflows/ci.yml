@@ -98,7 +98,11 @@ jobs:
 
       - name: Run tests
         env:
-          TEST_REDIS_ADDR: localhost:6379
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_NAME: service_db
         run: make test-cover
 
       - name: Upload coverage
