@@ -250,13 +250,23 @@ func main() {
 	if cfg.EventPublisher.Enabled {
 		var backends []portEvent.EventPublisher
 
-		// Redis Pub/Sub backend for all events
-		if cfg.EventPublisher.RedisPubSub && redisClient != nil {
-			backends = append(backends, publisher.NewRedisPubSubPublisher(
+		// Redis Stream backend for all events
+		if cfg.EventPublisher.Redis.Enabled && redisClient != nil {
+			redisStreamPub, err := publisher.NewRedisPublisher(
 				redisClient,
-				cfg.EventPublisher.RedisChannel,
-				cfg.Instance.Name,
-			))
+				publisher.RedisPublisherConfig{
+					Stream: cfg.EventPublisher.Redis.Name,
+					MaxLen: cfg.EventPublisher.Redis.MaxLen,
+					Source: cfg.Instance.Name,
+				},
+				logger,
+			)
+			if err != nil {
+				logger.Fatal("failed to create redis stream publisher", map[string]interface{}{
+					"error": err.Error(),
+				})
+			}
+			backends = append(backends, redisStreamPub)
 		}
 
 		// Kafka backend for all events
@@ -300,19 +310,24 @@ func main() {
 		}
 
 		// HTTP backend for all events
-		if cfg.EventPublisher.HTTPEndpoint != "" {
+		if cfg.EventPublisher.HTTP.Enabled {
 			backends = append(backends, publisher.NewHTTPPublisher(
 				publisher.HttpPublisherConfig{
-					Endpoint: cfg.EventPublisher.HTTPEndpoint,
+					Endpoint: cfg.EventPublisher.HTTP.URL,
 					Source:   cfg.Instance.Name,
-					Timeout:  cfg.EventPublisher.HTTPTimeout,
+					Timeout:  cfg.EventPublisher.HTTP.Timeout,
 				},
 			))
 		}
 
 		// Combine backends and wrap with async
 		if len(backends) > 0 {
-			multiBackend := publisher.NewMultiPublisher(backends...)
+			multiBackend, err := publisher.NewMultiPublisher(logger, backends...)
+			if err != nil {
+				logger.Fatal("failed to create multi publisher", map[string]interface{}{
+					"error": err.Error(),
+				})
+			}
 			eventPublisher = publisher.NewAsyncPublisher(multiBackend, publisher.AsyncPublisherConfig{
 				WorkerCount:  cfg.EventPublisher.WorkerCount,
 				QueueSize:    cfg.EventPublisher.QueueSize,

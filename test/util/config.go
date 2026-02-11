@@ -27,6 +27,10 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	rabbitPort, err := strconv.Atoi(getEnv("RABBITMQ_PORT", "5672"))
+	if err != nil {
+		return nil, err
+	}
 	return &config.Config{
 		Database: config.DatabaseConfig{
 			Host:                  getEnv("DATABASE_HOST", "localhost"),
@@ -53,6 +57,15 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 			PoolSize:          10,
 			PoolTimeout:       5 * time.Second,
 			ConnectionIdleMin: 1,
+		},
+		Rabbit: config.RabbitConfig{
+			Host:                 getEnv("RABBITMQ_HOST", "localhost"),
+			Port:                 rabbitPort,
+			User:                 getEnv("RABBITMQ_USER", "rabbit"),
+			Password:             getEnv("RABBITMQ_PASSWORD", "password"),
+			Vhost:                getEnv("RABBITMQ_VHOST", "/"),
+			ReconnectInterval:    1 * time.Second,
+			ReconnectMaxAttempts: 0, // 0 means infinite retries
 		},
 		Observer: config.ObserverConfig{
 			Auth:     true,
@@ -106,7 +119,22 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 			KeyLength:   32,
 		},
 		EventPublisher: config.EventPublisherConfig{
-			HTTPTimeout: 5 * time.Second,
+			HTTP: config.PublisherHTTPConfig{
+				Enabled: true,
+				URL:     "http://localhost:8080",
+				Timeout: 5 * time.Second,
+			},
+			Redis: config.PublisherRedisConfig{
+				Enabled: true,
+				Name:    "test_service_user",
+			},
+			RabbitMQ: config.PublisherRabbitMQConfig{
+				Enabled:          true,
+				Exchange:         "test_service_user",
+				ExchangeType:     "topic",
+				RoutingKeyPrefix: "test_service_user.",
+				Durable:          true,
+			},
 		},
 	}, nil
 }

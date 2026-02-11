@@ -27,6 +27,7 @@ type AsyncPublisher struct {
 type eventWrapper struct {
 	eventType event.EventType
 	eventData any
+	queuedAt  time.Time // For latency tracking
 }
 
 // AsyncPublisherConfig holds configuration for the async publisher.
@@ -42,7 +43,12 @@ type asyncMetrics struct {
 	queuedEvents     atomic.Int64
 	publishedEvents  atomic.Int64
 	failedEvents     atomic.Int64
+	droppedEvents    atomic.Int64 // Queue full drops
 	currentQueueSize atomic.Int64
+
+	// Latency tracking (in milliseconds)
+	totalLatencyMs atomic.Int64
+	latencyCount   atomic.Int64
 }
 
 // NewAsyncPublisher creates a new async wrapper for any EventPublisher.
@@ -82,8 +88,14 @@ func NewAsyncPublisher(
 
 // Publish is non-blocking, queues event for background publishing.
 func (p *AsyncPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
+	wrapper := &eventWrapper{
+		eventType: eventType,
+		eventData: eventData,
+		queuedAt:  time.Now(),
+	}
+
 	select {
-	case p.queue <- &eventWrapper{eventType: eventType, eventData: eventData}:
+	case p.queue <- wrapper:
 		p.metrics.queuedEvents.Add(1)
 		p.metrics.currentQueueSize.Add(1)
 		return nil
@@ -91,14 +103,14 @@ func (p *AsyncPublisher) Publish(ctx context.Context, eventType event.EventType,
 		return ctx.Err()
 	default:
 		// Queue is full, drop the event
-		p.metrics.failedEvents.Add(1)
+		p.metrics.droppedEvents.Add(1)
 		return fmt.Errorf("event queue is full")
 	}
 }
 
 // worker processes events from the queue.
 // Uses a timer that only starts when events are queued to avoid idle wake-ups.
-func (p *AsyncPublisher) worker(id int) {
+func (p *AsyncPublisher) worker(int) {
 	defer p.wg.Done()
 
 	batch := make([]*eventWrapper, 0, p.config.BatchSize)
@@ -123,6 +135,10 @@ func (p *AsyncPublisher) worker(id int) {
 
 		// Publish all events in batch
 		for _, ew := range batch {
+			// Track latency from queuing to publishing
+			latency := time.Since(ew.queuedAt)
+			p.recordLatency(latency)
+
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			if err := p.underlying.Publish(ctx, ew.eventType, ew.eventData); err != nil {
 				p.metrics.failedEvents.Add(1)
@@ -166,6 +182,13 @@ func (p *AsyncPublisher) worker(id int) {
 	}
 }
 
+// recordLatency records the publish latency in milliseconds.
+func (p *AsyncPublisher) recordLatency(latency time.Duration) {
+	ms := latency.Milliseconds()
+	p.metrics.totalLatencyMs.Add(ms)
+	p.metrics.latencyCount.Add(1)
+}
+
 // Close closes the underlying publisher and stops workers.
 func (p *AsyncPublisher) Close() error {
 	close(p.stopCh)
@@ -185,4 +208,36 @@ func (p *AsyncPublisher) Close() error {
 		// Timeout, but still try to close
 		return p.underlying.Close()
 	}
+}
+
+// GetMetrics returns the current metrics for observability.
+func (p *AsyncPublisher) GetMetrics() AsyncMetricsSnapshot {
+	return AsyncMetricsSnapshot{
+		QueuedEvents:     p.metrics.queuedEvents.Load(),
+		PublishedEvents:  p.metrics.publishedEvents.Load(),
+		FailedEvents:     p.metrics.failedEvents.Load(),
+		DroppedEvents:    p.metrics.droppedEvents.Load(),
+		CurrentQueueSize: p.metrics.currentQueueSize.Load(),
+		AvgLatencyMs:     p.getAvgLatencyMs(),
+	}
+}
+
+// getAvgLatencyMs calculates the average latency in milliseconds.
+func (p *AsyncPublisher) getAvgLatencyMs() float64 {
+	count := p.metrics.latencyCount.Load()
+	if count == 0 {
+		return 0
+	}
+	total := p.metrics.totalLatencyMs.Load()
+	return float64(total) / float64(count)
+}
+
+// AsyncMetricsSnapshot is a snapshot of async publisher metrics.
+type AsyncMetricsSnapshot struct {
+	QueuedEvents     int64
+	PublishedEvents  int64
+	FailedEvents     int64
+	DroppedEvents    int64
+	CurrentQueueSize int64
+	AvgLatencyMs     float64
 }
