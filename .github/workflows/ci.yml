@@ -103,17 +103,15 @@ jobs:
           path: service-user-db
 
       - name: Run Migrations
+        working-directory: service-user-db
         run: |
-          docker run --rm \
-            -v $(pwd)/service-user-db:/liquibase/changelog \
-            --network host \
-            liquibase/liquibase:latest \
-            --defaultsFile=/liquibase/changelog/liquibase.properties \
-            --changelogFile=master.yml \
-            --url=jdbc:postgresql://localhost:5432/service_db \
-            --username=postgres \
-            --password=postgres \
-            update
+          echo "DATABASE_URL=jdbc:postgresql://localhost:5432/service_db" > .env
+          echo "DATABASE_USER=postgres" >> .env
+          echo "DATABASE_PASSWORD=postgres" >> .env
+          # Patch Makefile to use host network for CI
+          sed -i 's/docker run --rm/docker run --rm --network host/g' Makefile
+          make build
+          make update
 
       - name: Run tests
         env:
