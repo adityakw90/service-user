@@ -55,7 +55,7 @@ jobs:
           # KRaft mode settings (no Zookeeper needed)
           KAFKA_NODE_ID: "1"
           KAFKA_PROCESS_ROLES: "controller,broker"
-          KAFKA_CONTROLLER_QUORUM_VOTERS: "1@svc-kafka:9093"
+          KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
           # Listener configuration
           KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
           KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
