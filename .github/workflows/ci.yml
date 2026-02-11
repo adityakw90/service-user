@@ -96,6 +96,25 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Checkout service-user-db
+        uses: actions/checkout@v6
+        with:
+          repository: adityakw90/service-user-db
+          path: service-user-db
+
+      - name: Run Migrations
+        run: |
+          docker run --rm \
+            -v $(pwd)/service-user-db:/liquibase/changelog \
+            --network host \
+            liquibase/liquibase:latest \
+            --defaultsFile=/liquibase/changelog/liquibase.properties \
+            --changelogFile=master.yml \
+            --url=jdbc:postgresql://localhost:5432/service_db \
+            --username=postgres \
+            --password=postgres \
+            update
+
       - name: Run tests
         env:
           DATABASE_USER: postgres
