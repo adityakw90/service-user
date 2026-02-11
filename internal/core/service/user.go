@@ -547,7 +547,16 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	if opts.Attributes != nil {
 		profile.Attributes = opts.Attributes
 	}
-	// TODO: Handle avatar file if opts.Avatar is provided
+	// Handle avatar file if opts.Avatar is provided
+	if len(opts.Avatar) > 0 {
+		// Log that avatar was provided but not processed
+		// Avatar handling requires UserFileService dependency to be added to userService
+		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
+			UID:       &userUID,
+			Operation: "update_profile",
+		}, errors.New("avatar file handling not yet implemented - requires UserFileService integration"))
+		// Continue without updating avatar - this is a non-breaking change
+	}
 
 	// Save changes
 	err = s.profileRepo.Update(ctx, profile)

@@ -26,7 +26,7 @@ jobs:
           --health-retries 5
       postgres:
         image: postgres:18-alpine
-        environment:
+        env:
           POSTGRES_DB: service_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -39,6 +39,9 @@ jobs:
           --health-retries 5
       rabbitmq:
         image: rabbitmq:4.2.3-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: rabbit
+          RABBITMQ_DEFAULT_PASS: password
         ports:
           - 5672:5672
         options: >-
@@ -48,7 +51,7 @@ jobs:
           --health-retries 5
       kafka:
         image: confluentinc/cp-kafka:8.0.3
-        environment:
+        env:
           # KRaft mode settings (no Zookeeper needed)
           KAFKA_NODE_ID: "1"
           KAFKA_PROCESS_ROLES: "controller,broker"
@@ -99,7 +102,7 @@ jobs:
         run: make test-cover
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage.txt
           flags: unittests

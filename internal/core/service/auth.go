@@ -215,7 +215,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 		)
 		if err != nil {
 			// Log error but don't fail authentication - devices are optional
-			// TODO: add proper logging
+			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				DeviceFingerprint: payload.DeviceFingerprint,
+				DeviceName:        payload.DeviceName,
+				Extra:             &map[string]any{"context": "find_or_create_device"},
+			}, err)
 		}
 		if device != nil {
 			var deviceIP string
@@ -231,7 +235,12 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 			)
 			if err != nil {
 				// Log error but don't fail authentication
-				// TODO: add proper logging
+				s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					UID:      &user.UID,
+					Email:    &user.Email,
+					Username: &user.Username,
+					Extra:    &map[string]any{"context": "find_or_create_user_device", "device_uid": device.UID},
+				}, err)
 			}
 		}
 	}
@@ -290,6 +299,12 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 	// Add refresh token to whitelist
 	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
 		// Log error but don't fail authentication
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:      &user.UID,
+			Email:    &user.Email,
+			Username: &user.Username,
+			Extra:    &map[string]any{"context": "Failed to add to whitelist"},
+		}, err)
 	}
 
 	active := true
@@ -441,6 +456,12 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 	// Add refresh token to whitelist
 	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
 		// Log error but don't fail
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			IdentifierType: "oauth",
+			Extra:          &map[string]any{"context": "Failed to add to whitelist"},
+		}, err)
 	}
 
 	// Publish OAuth login event
@@ -667,12 +688,21 @@ func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*m
 		return nil, domainerrors.ErrTokenRevoked
 	}
 
+	// Check if token's session is in the blacklist (for immediate revocation)
+	blacklisted, err := s.tokenBlacklist.IsAllowed(ctx, claims.Uid, claims.Sid)
+	if err != nil || !blacklisted {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "validate",
+			Extra:          &map[string]any{"context": "token_blacklisted"},
+		}, domainerrors.ErrTokenRevoked)
+		return nil, domainerrors.ErrTokenRevoked
+	}
+
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
 		UID:            &claims.Uid,
 		IdentifierType: "validate",
 	}, nil)
-
-	// TODO: Optionally check blacklist if needed
 
 	return claims, nil
 }
@@ -696,6 +726,17 @@ func (s *authService) RevokeToken(ctx context.Context, token string, tokenType s
 		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 			UID:            &claims.Uid,
 			IdentifierType: "revoke",
+			Extra:          &map[string]any{"context": "Failed to remove from whitelist"},
+		}, err)
+		return err
+	}
+
+	// Add to blacklist
+	if err := s.tokenBlacklist.Add(ctx, claims.Uid, claims.Sid); err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &claims.Uid,
+			IdentifierType: "revoke",
+			Extra:          &map[string]any{"context": "Failed to add to blacklist"},
 		}, err)
 		return err
 	}

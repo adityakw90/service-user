@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -113,8 +114,29 @@ func (s *deviceService) Delete(ctx context.Context, uid string) error {
 		return err
 	}
 
-	// TODO: Check if there are active user devices linked to this device
-	// For now, just delete the device
+	// Check if there are active user devices linked to this device
+	revoked := false
+	userDevices, err := s.userDeviceRepo.List(ctx, &params.PaginationParam{Page: util.Ptr(1), Limit: util.Ptr(1)}, &params.UserDeviceListFilterParam{
+		DeviceUids: []string{uid},
+		Revoked:    &revoked,
+	})
+	if err != nil {
+		s.deviceObserver.OnSignal(ctx, signal.SignalFail, signal.DeviceSignal{
+			UID:       &uid,
+			Operation: "delete",
+		}, err)
+		return err
+	}
+	if userDevices != nil && len(userDevices.Items) > 0 {
+		s.deviceObserver.OnSignal(ctx, signal.SignalReject, signal.DeviceSignal{
+			UID:         &uid,
+			DeviceName:  &device.DeviceName,
+			Fingerprint: &device.DeviceFingerprint,
+			Operation:   "delete",
+		}, fmt.Errorf("device has active user devices"))
+		return fmt.Errorf("cannot delete device with %d active user devices linked", userDevices.Meta.Total)
+	}
+
 	err = s.deviceRepo.Delete(ctx, device)
 	if err != nil {
 		s.deviceObserver.OnSignal(ctx, signal.SignalFail, signal.DeviceSignal{
