@@ -2,7 +2,6 @@ package publisher
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -36,6 +35,9 @@ type AsyncPublisherConfig struct {
 	QueueSize    int
 	BatchSize    int
 	BatchTimeout time.Duration
+	// Retry settings for failed publishes
+	MaxRetries    int
+	RetryInterval time.Duration
 }
 
 // asyncMetrics holds atomic metrics.
@@ -43,7 +45,8 @@ type asyncMetrics struct {
 	queuedEvents     atomic.Int64
 	publishedEvents  atomic.Int64
 	failedEvents     atomic.Int64
-	droppedEvents    atomic.Int64 // Queue full drops
+	droppedEvents    atomic.Int64 // Queue full drops (should be 0 with blocking behavior)
+	retriedEvents    atomic.Int64 // Number of events that were retried
 	currentQueueSize atomic.Int64
 
 	// Latency tracking (in milliseconds)
@@ -68,6 +71,13 @@ func NewAsyncPublisher(
 	if config.BatchTimeout <= 0 {
 		config.BatchTimeout = 5 * time.Second
 	}
+	// Retry defaults
+	if config.MaxRetries <= 0 {
+		config.MaxRetries = 3
+	}
+	if config.RetryInterval <= 0 {
+		config.RetryInterval = 2 * time.Second
+	}
 
 	p := &AsyncPublisher{
 		underlying: underlying,
@@ -87,6 +97,7 @@ func NewAsyncPublisher(
 }
 
 // Publish is non-blocking, queues event for background publishing.
+// Blocks if the queue is full (instead of dropping events).
 func (p *AsyncPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
 	wrapper := &eventWrapper{
 		eventType: eventType,
@@ -101,11 +112,8 @@ func (p *AsyncPublisher) Publish(ctx context.Context, eventType event.EventType,
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
-	default:
-		// Queue is full, drop the event
-		p.metrics.droppedEvents.Add(1)
-		return fmt.Errorf("event queue is full")
 	}
+	// Note: No default case - we block when queue is full instead of dropping events
 }
 
 // worker processes events from the queue.
@@ -133,19 +141,46 @@ func (p *AsyncPublisher) worker(int) {
 			}
 		}
 
-		// Publish all events in batch
+		// Publish all events in batch with retry
 		for _, ew := range batch {
-			// Track latency from queuing to publishing
-			latency := time.Since(ew.queuedAt)
-			p.recordLatency(latency)
+			var publishErr error
 
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			if err := p.underlying.Publish(ctx, ew.eventType, ew.eventData); err != nil {
-				p.metrics.failedEvents.Add(1)
-			} else {
-				p.metrics.publishedEvents.Add(1)
+			// Retry loop with exponential backoff
+			for attempt := 0; attempt < p.config.MaxRetries; attempt++ {
+				if attempt > 0 {
+					p.metrics.retriedEvents.Add(1)
+					// Exponential backoff (capped at 5x)
+					backoffDuration := p.config.RetryInterval * time.Duration(min(attempt, 5))
+					select {
+					case <-time.After(backoffDuration):
+					case <-p.stopCh:
+						// Worker is stopping, exit retry loop
+						break
+					}
+				}
+
+				// Track latency from queuing to publishing
+				latency := time.Since(ew.queuedAt)
+				p.recordLatency(latency)
+
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				publishErr = p.underlying.Publish(ctx, ew.eventType, ew.eventData)
+				cancel()
+
+				if publishErr == nil {
+					p.metrics.publishedEvents.Add(1)
+					break // Success, exit retry loop
+				}
+
+				// Log retry attempt
+				if attempt < p.config.MaxRetries-1 {
+					// Will retry
+				} else {
+					// Last attempt failed
+					p.metrics.failedEvents.Add(1)
+				}
 			}
-			cancel()
+
 			p.metrics.currentQueueSize.Add(-1)
 		}
 		batch = batch[:0]
@@ -217,6 +252,7 @@ func (p *AsyncPublisher) GetMetrics() AsyncMetricsSnapshot {
 		PublishedEvents:  p.metrics.publishedEvents.Load(),
 		FailedEvents:     p.metrics.failedEvents.Load(),
 		DroppedEvents:    p.metrics.droppedEvents.Load(),
+		RetriedEvents:    p.metrics.retriedEvents.Load(),
 		CurrentQueueSize: p.metrics.currentQueueSize.Load(),
 		AvgLatencyMs:     p.getAvgLatencyMs(),
 	}
@@ -238,6 +274,7 @@ type AsyncMetricsSnapshot struct {
 	PublishedEvents  int64
 	FailedEvents     int64
 	DroppedEvents    int64
+	RetriedEvents    int64
 	CurrentQueueSize int64
 	AvgLatencyMs     float64
 }

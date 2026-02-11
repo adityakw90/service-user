@@ -297,11 +297,19 @@ func main() {
 					ExchangeType:     cfg.EventPublisher.RabbitMQ.ExchangeType,
 					RoutingKeyPrefix: cfg.EventPublisher.RabbitMQ.RoutingKeyPrefix,
 					Durable:          cfg.EventPublisher.RabbitMQ.Durable,
+					ConfirmTimeout:   cfg.EventPublisher.RabbitMQ.ConfirmTimeout,
+					MaxRetries:       cfg.EventPublisher.RabbitMQ.MaxRetries,
+					RetryInterval:    cfg.EventPublisher.RabbitMQ.RetryInterval,
+					QueueName:        cfg.EventPublisher.RabbitMQ.QueueName,
+					QueueDurable:     cfg.EventPublisher.RabbitMQ.QueueDurable,
+					QueueAutoDelete:  cfg.EventPublisher.RabbitMQ.QueueAutoDelete,
+					QueueExclusive:   cfg.EventPublisher.RabbitMQ.QueueExclusive,
+					QueueEnabled:     cfg.EventPublisher.RabbitMQ.QueueEnabled,
 				},
 			)
-			// Declare the exchange
-			if err := rabbitPub.DeclareExchange(); err != nil {
-				logger.Fatal("failed to declare rabbitmq exchange", map[string]interface{}{
+			// Setup infrastructure (exchange and optionally queue)
+			if err := rabbitPub.SetupInfrastructure(); err != nil {
+				logger.Fatal("failed to setup rabbitmq infrastructure", map[string]interface{}{
 					"error":    err.Error(),
 					"exchange": cfg.EventPublisher.RabbitMQ.Exchange,
 				})
@@ -329,10 +337,12 @@ func main() {
 				})
 			}
 			eventPublisher = publisher.NewAsyncPublisher(multiBackend, publisher.AsyncPublisherConfig{
-				WorkerCount:  cfg.EventPublisher.WorkerCount,
-				QueueSize:    cfg.EventPublisher.QueueSize,
-				BatchSize:    cfg.EventPublisher.BatchSize,
-				BatchTimeout: cfg.EventPublisher.BatchTimeout,
+				WorkerCount:   cfg.EventPublisher.WorkerCount,
+				QueueSize:     cfg.EventPublisher.QueueSize,
+				BatchSize:     cfg.EventPublisher.BatchSize,
+				BatchTimeout:  cfg.EventPublisher.BatchTimeout,
+				MaxRetries:    cfg.EventPublisher.MaxRetries,
+				RetryInterval: cfg.EventPublisher.RetryInterval,
 			})
 		}
 	}

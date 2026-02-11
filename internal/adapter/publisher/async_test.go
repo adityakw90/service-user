@@ -65,12 +65,12 @@ func TestAsyncPublisher_Publish(t *testing.T) {
 			wantError:   false,
 		},
 		{
-			name:        "Queue full returns error",
+			name:        "Queue full blocks and eventually publishes",
 			queueSize:   2,
 			batchSize:   5,
 			eventCount:  5,
 			wantPublish: true,
-			wantError:   true,
+			wantError:   false, // Now blocks instead of dropping
 		},
 	}
 
