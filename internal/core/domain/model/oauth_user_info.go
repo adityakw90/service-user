@@ -2,6 +2,8 @@ package model
 
 import (
 	"crypto/rand"
+	"encoding/hex"
+	"math/big"
 	"time"
 )
 
@@ -103,10 +105,19 @@ func generateOAuthState() string {
 // randomString generates a cryptographically secure random alphanumeric string.
 func randomString(n int) string {
 	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	rand.Read(b)
-	for i := range b {
-		b[i] = letters[b[i]%byte(len(letters))]
+	result := make([]byte, n)
+	letterCount := big.NewInt(int64(len(letters)))
+
+	for i := range result {
+		// Use crypto/rand.Int to avoid modulo bias
+		num, err := rand.Int(rand.Reader, letterCount)
+		if err != nil {
+			// Fallback to hex encoding if crypto/rand fails
+			b := make([]byte, (n+1)/2) // hex encoding doubles length
+			rand.Read(b)
+			return hex.EncodeToString(b)[:n]
+		}
+		result[i] = letters[num.Int64()]
 	}
-	return string(b)
+	return string(result)
 }

@@ -10,8 +10,9 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
 	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
-	"github.com/adityakw90/service-user/internal/core/port"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
+	port "github.com/adityakw90/service-user/internal/core/port/oauth"
+	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
@@ -27,7 +28,7 @@ type authService struct {
 	pinHasher      portSec.Hasher
 	tokenGen       portSec.TokenGenerator
 	uidGen         portSec.UIDGenerator
-	oauthProvider  port.OAuthProvider
+	oauthProvider  portOAuth.OAuthProvider
 	tokenWhitelist portSec.TokenStore
 	tokenBlacklist portSec.TokenStore
 	eventPublisher portEvent.EventPublisher

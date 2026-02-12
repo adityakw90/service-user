@@ -24,11 +24,7 @@ type Config struct {
 	PasswordHasher HasherConfig         `mapstructure:"password_hasher"`
 	PINHasher      HasherConfig         `mapstructure:"pin_hasher"`
 	EventPublisher EventPublisherConfig `mapstructure:"event_publisher"`
-
-	// OAuth settings
-	OAuthGoogleClientID     string `mapstructure:"OAUTH_GOOGLE_CLIENT_ID"`
-	OAuthGoogleClientSecret string `mapstructure:"OAUTH_GOOGLE_CLIENT_SECRET"`
-	OAuthRedirectURI        string `mapstructure:"OAUTH_REDIRECT_URI"`
+	OAuth          OauthConfig          `mapstructure:"oauth"`
 }
 
 // Load reads configuration from environment variables using Viper.
@@ -73,6 +69,7 @@ func Load() (*Config, error) {
 	defaultHasherConfig("pin_hasher", vConfig)
 	defaultSecurityConfig("security", vConfig)
 	defaultEventPublisherConfig("event_publisher", vConfig)
+	defaultOauthConfig("oauth", vConfig)
 
 	// test
 	vConfig.SafeWriteConfig()

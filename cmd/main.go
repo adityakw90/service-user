@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
+	"github.com/adityakw90/service-user/internal/adapter/oauth"
 	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
@@ -25,8 +26,8 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/security"
 	"github.com/adityakw90/service-user/internal/config"
 	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
-	"github.com/adityakw90/service-user/internal/core/port"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
+	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
 	portobserver "github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/service"
 	"github.com/adityakw90/service-user/internal/infra"
@@ -356,12 +357,12 @@ func main() {
 	defer eventPublisher.Close()
 
 	// Initialize OAuth provider
-	var oauthProvider port.OAuthProvider
-	if cfg.OAuthGoogleClientID != "" && cfg.OAuthGoogleClientSecret != "" {
-		oauthProvider = security.NewGoogleOAuthAdapter(security.GoogleOAuthConfig{
-			ClientID:     cfg.OAuthGoogleClientID,
-			ClientSecret: cfg.OAuthGoogleClientSecret,
-			RedirectURI:  cfg.OAuthRedirectURI,
+	var oauthProvider portOAuth.OAuthProvider
+	if cfg.OAuth.Enabled {
+		oauthProvider = oauth.NewGoogleOAuthAdapter(oauth.GoogleOAuthConfig{
+			ClientID:     cfg.OAuth.Google.ClientID,
+			ClientSecret: cfg.OAuth.Google.ClientSecret,
+			RedirectURI:  cfg.OAuth.Google.RedirectURI,
 		})
 	}
 

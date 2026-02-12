@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/adapter/oauth"
 	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
 	"github.com/adityakw90/service-user/internal/config"
+	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
 	coreportsec "github.com/adityakw90/service-user/internal/core/port/security"
 	coreportsvc "github.com/adityakw90/service-user/internal/core/port/service"
 	svc "github.com/adityakw90/service-user/internal/core/service"
@@ -195,6 +197,20 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		eventPublisher,
 	)
 
+	// Initialize OAuth provider if configured
+	var oauthProvider portOAuth.OAuthProvider
+	if cfg.OAuth.Enabled && cfg.OAuth.Google.Enabled {
+		oauthProvider = oauth.NewGoogleOAuthAdapter(oauth.GoogleOAuthConfig{
+			ClientID:     cfg.OAuth.Google.ClientID,
+			ClientSecret: cfg.OAuth.Google.ClientSecret,
+			RedirectURI:  cfg.OAuth.Google.RedirectURI,
+			Scopes:       []string{"openid", "email", "profile"},
+			AuthURL:      cfg.OAuth.Google.AuthURL,
+			TokenURL:     cfg.OAuth.Google.TokenURL,
+			UserInfoURL:  cfg.OAuth.Google.UserInfoURL,
+		})
+	}
+
 	authService := svc.NewAuthService(
 		userRepo,
 		deviceRepo,
@@ -204,7 +220,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		pinHasher,
 		tokenGen,
 		uidGen,
-		nil, // oauthProvider
+		oauthProvider,
 		tokenWhitelist,
 		tokenBlacklist,
 		eventPublisher,

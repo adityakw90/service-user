@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	commongrpc "github.com/adityakw90/service-user-proto/gen/go/common"
@@ -118,15 +117,9 @@ func TestE2E_UserFile_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			ctx := context.Background()
 
-			fmt.Println("------------------------")
-			fmt.Println("Test case:", tt.name)
 			userUID := tt.setup(t, grpcClient)
-
-			fmt.Println("User created with UID:", userUID)
-
 			req := &filegrpc.AddRequest{
 				UserUid:  userUID,
 				Name:     tt.fileName,
@@ -134,11 +127,7 @@ func TestE2E_UserFile_Add(t *testing.T) {
 				Filedata: tt.fileData,
 				Public:   &tt.isPublic,
 			}
-
 			resp, err := grpcClient.UserFileClient.Add(ctx, req)
-
-			fmt.Println("Response:", resp)
-			fmt.Println("Error:", err)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -152,7 +141,6 @@ func TestE2E_UserFile_Add(t *testing.T) {
 					tt.verifyFunc(t, resp.Uid, userUID, grpcClient)
 				}
 			}
-			fmt.Println("------------------------")
 		})
 	}
 }
