@@ -13,6 +13,8 @@ import (
 
 // TestE2E_DeviceService_Lifecycle_LoginScenario tests the device lifecycle through login flow
 func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name     string
 		scenario func(t *testing.T, grpcClient *testutil.TestGRPCClient, uid string)
@@ -250,8 +252,6 @@ func TestE2E_DeviceService_Lifecycle_LoginScenario(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			uid := tt.setup(t, grpcClient)
 			tt.scenario(t, grpcClient, uid)

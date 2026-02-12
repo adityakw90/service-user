@@ -13,6 +13,8 @@ import (
 
 // TestE2E_AuthService_DeviceTracking tests device tracking during authentication
 func TestE2E_AuthService_DeviceTracking(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -117,9 +119,6 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
-
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)
 			authReq := tt.authReq(t, "multidevice@example.com")
@@ -141,6 +140,8 @@ func TestE2E_AuthService_DeviceTracking(t *testing.T) {
 
 // TestE2E_AuthService_RevokeDevice tests device revocation via user service
 func TestE2E_AuthService_RevokeDevice(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string)
@@ -205,9 +206,6 @@ func TestE2E_AuthService_RevokeDevice(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
-
 			ctx := context.Background()
 			uid, deviceUID := tt.setup(t, grpcClient)
 

@@ -18,6 +18,8 @@ import (
 
 // TestE2E_AuthService_Auth tests authentication endpoint
 func TestE2E_AuthService_Auth(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -118,9 +120,6 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
-
 			ctx := context.Background()
 			_ = tt.setup(t, grpcClient)
 			authReq := tt.authReq(t)
@@ -147,6 +146,8 @@ func TestE2E_AuthService_Auth(t *testing.T) {
 
 // TestE2E_AuthService_RefreshToken tests refresh token endpoint
 func TestE2E_AuthService_RefreshToken(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token
@@ -241,9 +242,6 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
-
 			ctx := context.Background()
 			initialToken := tt.setup(t, grpcClient)
 			refreshReq := tt.refreshReq(t, grpcClient, initialToken)
@@ -269,6 +267,8 @@ func TestE2E_AuthService_RefreshToken(t *testing.T) {
 
 // TestE2E_AuthService_ValidateToken tests validate token endpoint
 func TestE2E_AuthService_ValidateToken(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string)
@@ -311,9 +311,6 @@ func TestE2E_AuthService_ValidateToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
-
 			ctx := context.Background()
 			uid, email := tt.setup(t, grpcClient)
 
@@ -352,6 +349,8 @@ func TestE2E_AuthService_ValidateToken(t *testing.T) {
 
 // TestE2E_AuthService_RevokeToken tests revoke token endpoint
 func TestE2E_AuthService_RevokeToken(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) *authgrpc.Token
@@ -394,8 +393,6 @@ func TestE2E_AuthService_RevokeToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			token := tt.setup(t, grpcClient)
@@ -418,6 +415,8 @@ func TestE2E_AuthService_RevokeToken(t *testing.T) {
 
 // TestE2E_AuthService_VerifyPin tests verify PIN endpoint
 func TestE2E_AuthService_VerifyPin(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name      string
 		setup     func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -471,8 +470,6 @@ func TestE2E_AuthService_VerifyPin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)

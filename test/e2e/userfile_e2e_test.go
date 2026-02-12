@@ -15,6 +15,8 @@ import (
 const maxFileSize = 10 * 1024 * 1024
 
 func TestFileAdd(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -114,8 +116,6 @@ func TestFileAdd(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			userUID := tt.setup(t, grpcClient)
@@ -147,6 +147,8 @@ func TestFileAdd(t *testing.T) {
 }
 
 func TestFileGet(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, grpcClient *testutil.TestGRPCClient) (string, string)
@@ -191,8 +193,6 @@ func TestFileGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			fileUID, _ := tt.setup(t, grpcClient)
@@ -338,6 +338,8 @@ func TestFileList(t *testing.T) {
 }
 
 func TestFileUpdate(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -454,8 +456,6 @@ func TestFileUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			fileUID := tt.setup(t, grpcClient)
@@ -483,6 +483,8 @@ func TestFileUpdate(t *testing.T) {
 }
 
 func TestFileDelete(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -530,8 +532,6 @@ func TestFileDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			fileUID := tt.setup(t, grpcClient)
@@ -555,6 +555,8 @@ func TestFileDelete(t *testing.T) {
 }
 
 func TestFileOwnership(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, grpcClient *testutil.TestGRPCClient) (fileUID, user1UID, user2UID string)
@@ -642,8 +644,6 @@ func TestFileOwnership(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			fileUID, user1UID, _ := tt.setup(t, grpcClient)
 			err := tt.action(t, fileUID, user1UID, grpcClient)
@@ -656,10 +656,4 @@ func TestFileOwnership(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper functions
-
-func boolPtr(b bool) *bool {
-	return &b
 }

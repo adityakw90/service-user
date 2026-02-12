@@ -16,6 +16,8 @@ import (
 
 // TestE2E_DeviceService_List tests the List endpoint
 func TestE2E_DeviceService_List(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T) []string
@@ -125,8 +127,6 @@ func TestE2E_DeviceService_List(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			deviceUIDs := tt.setup(t)
@@ -153,6 +153,8 @@ func TestE2E_DeviceService_List(t *testing.T) {
 
 // TestE2E_DeviceService_Get tests the Get endpoint
 func TestE2E_DeviceService_Get(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T) string
@@ -217,8 +219,6 @@ func TestE2E_DeviceService_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			deviceUID := tt.setup(t)
@@ -246,6 +246,8 @@ func TestE2E_DeviceService_Get(t *testing.T) {
 
 // TestE2E_DeviceService_Delete tests the Delete endpoint
 func TestE2E_DeviceService_Delete(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T) string
@@ -309,8 +311,6 @@ func TestE2E_DeviceService_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			deviceUID := tt.setup(t)

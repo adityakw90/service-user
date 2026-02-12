@@ -13,6 +13,8 @@ import (
 )
 
 func TestUserGet(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -48,8 +50,6 @@ func TestUserGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)
@@ -177,13 +177,15 @@ func TestUserList(t *testing.T) {
 }
 
 func TestUserUpdate(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
-		name            string
-		setup           func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
-		update          func(t *testing.T) *usergrpc.UpdateRequest
-		wantErr         bool
-		verifyGetFails  bool
-		verifyFunc      func(t *testing.T, user *usergrpc.User)
+		name           string
+		setup          func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
+		update         func(t *testing.T) *usergrpc.UpdateRequest
+		wantErr        bool
+		verifyGetFails bool
+		verifyFunc     func(t *testing.T, user *usergrpc.User)
 	}{
 		{
 			name: "Update username",
@@ -271,8 +273,6 @@ func TestUserUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)
@@ -309,6 +309,8 @@ func TestUserUpdate(t *testing.T) {
 }
 
 func TestUserDelete(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name    string
 		setup   func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -332,8 +334,6 @@ func TestUserDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)
@@ -357,6 +357,8 @@ func TestUserDelete(t *testing.T) {
 }
 
 func TestChangePassword(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name             string
 		setup            func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -412,8 +414,6 @@ func TestChangePassword(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)
@@ -449,6 +449,8 @@ func TestChangePassword(t *testing.T) {
 }
 
 func TestUpdateProfile(t *testing.T) {
+	_, grpcClient, cleanup := setupE2ETest(t)
+	defer cleanup()
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -513,8 +515,6 @@ func TestUpdateProfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, grpcClient, cleanup := setupE2ETest(t)
-			defer cleanup()
 
 			ctx := context.Background()
 			uid := tt.setup(t, grpcClient)
