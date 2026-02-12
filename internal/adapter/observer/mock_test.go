@@ -71,6 +71,10 @@ func (m *mockLogger) WithSpanContext(sc trace.SpanContext) monitoring.Logger {
 	return m
 }
 
+func (m *mockLogger) AddCallerSkipNum(skipNum int) monitoring.Logger {
+	return m
+}
+
 func (m *mockLogger) Sync() error {
 	return nil
 }

@@ -15,6 +15,7 @@ func (l *NoopLogger) Warn(message string, fields map[string]interface{})  {}
 func (l *NoopLogger) Error(message string, fields map[string]interface{}) {}
 func (l *NoopLogger) Fatal(message string, fields map[string]interface{}) {}
 func (l *NoopLogger) WithSpanContext(span trace.SpanContext) gomon.Logger { return l }
+func (l *NoopLogger) AddCallerSkipNum(skipNum int) gomon.Logger           { return l }
 func (l *NoopLogger) Sync() error                                         { return nil }
 
 func NewNoopLogger() gomon.Logger {

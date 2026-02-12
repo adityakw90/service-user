@@ -3,7 +3,6 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"testing"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -14,48 +13,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TruncateTestTables(t *testing.T, ctx context.Context, db *pgxpool.Pool) {
-	t.Helper()
+// func TruncateTestTables(t *testing.T, ctx context.Context, db *pgxpool.Pool) {
+// 	t.Helper()
 
-	// get all table names
-	var tables []string
-	err := db.QueryRow(ctx, `
-		SELECT array_agg(tablename)
-		FROM pg_tables
-		WHERE schemaname = 'public' AND tablename != 'databasechangelog' AND tablename != 'databasechangeloglock'
-	`).Scan(&tables)
-	if err != nil {
-		t.Fatalf("Failed to get table names: %v", err)
-	}
+// 	// get all table names
+// 	var tables []string
+// 	err := db.QueryRow(ctx, `
+// 		SELECT array_agg(tablename)
+// 		FROM pg_tables
+// 		WHERE schemaname = 'public' AND tablename != 'databasechangelog' AND tablename != 'databasechangeloglock'
+// 	`).Scan(&tables)
+// 	if err != nil {
+// 		t.Fatalf("Failed to get table names: %v", err)
+// 	}
 
-	if len(tables) == 0 {
-		return
-	}
+// 	if len(tables) == 0 {
+// 		return
+// 	}
 
-	tx, err := db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
-	if err != nil {
-		t.Fatalf("Failed to begin transaction: %v", err)
-	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
+// 	tx, err := db.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+// 	if err != nil {
+// 		t.Fatalf("Failed to begin transaction: %v", err)
+// 	}
+// 	defer func() {
+// 		_ = tx.Rollback(ctx)
+// 	}()
 
-	// truncate all tables in a single statement
-	// using CASCADE to handle foreign key constraints automatically
-	query := fmt.Sprintf(`TRUNCATE TABLE "%s"`, tables[0])
-	for i := 1; i < len(tables); i++ {
-		query += fmt.Sprintf(`, "%s"`, tables[i])
-	}
-	query += " CASCADE"
+// 	// truncate all tables in a single statement
+// 	// using CASCADE to handle foreign key constraints automatically
+// 	query := fmt.Sprintf(`TRUNCATE TABLE "%s"`, tables[0])
+// 	for i := 1; i < len(tables); i++ {
+// 		query += fmt.Sprintf(`, "%s"`, tables[i])
+// 	}
+// 	query += " CASCADE"
 
-	if _, err := tx.Exec(ctx, query); err != nil {
-		t.Fatalf("Failed to truncate tables: %v", err)
-	}
+// 	if _, err := tx.Exec(ctx, query); err != nil {
+// 		t.Fatalf("Failed to truncate tables: %v", err)
+// 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		t.Fatalf("Failed to commit transaction: %v", err)
-	}
-}
+// 	if err := tx.Commit(ctx); err != nil {
+// 		t.Fatalf("Failed to commit transaction: %v", err)
+// 	}
+// }
 
 // CreateTestUser inserts a user directly into the database for fixtures.
 // This bypasses the service layer for faster test setup.

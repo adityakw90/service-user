@@ -62,6 +62,9 @@ func (m *mockLogger) Fatal(message string, fields map[string]interface{}) {}
 func (m *mockLogger) WithSpanContext(span trace.SpanContext) monitoring.Logger {
 	return m
 }
+func (m *mockLogger) AddCallerSkipNum(skipNum int) monitoring.Logger {
+	return m
+}
 func (m *mockLogger) Sync() error {
 	return nil
 }

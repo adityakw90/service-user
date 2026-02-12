@@ -7,18 +7,19 @@ import (
 )
 
 type MonitoringConfig struct {
-	ServiceName        string
-	Environment        string
-	InstanceName       string
-	InstanceHost       string
-	LoggerLevel        string
-	TracerProvider     string
-	TracerProviderHost string
-	TracerProviderPort int
-	TracerSampleRatio  float64
-	MetricProvider     string
-	MetricProviderHost string
-	MetricProviderPort int
+	ServiceName         string
+	Environment         string
+	InstanceName        string
+	InstanceHost        string
+	LoggerLevel         string
+	LoggerCallerSkipNum int
+	TracerProvider      string
+	TracerProviderHost  string
+	TracerProviderPort  int
+	TracerSampleRatio   float64
+	MetricProvider      string
+	MetricProviderHost  string
+	MetricProviderPort  int
 }
 
 // ConvertConfigToOptions converts the old config structure to new go-monitoring options
@@ -37,6 +38,10 @@ func ConvertConfigToOptions(cfg *MonitoringConfig) []gomon.Option {
 
 	if cfg.LoggerLevel != "" {
 		opts = append(opts, gomon.WithLoggerLevel(cfg.LoggerLevel))
+	}
+
+	if cfg.LoggerCallerSkipNum > 0 {
+		opts = append(opts, gomon.WithLoggerCallerSkipNum(cfg.LoggerCallerSkipNum))
 	}
 
 	if cfg.TracerProvider != "" {

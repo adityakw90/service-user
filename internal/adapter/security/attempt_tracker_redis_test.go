@@ -4,12 +4,10 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/adityakw90/service-user/test/util/redis"
 )
 
 func TestRedisAttemptTracker_Track(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 3
@@ -19,29 +17,29 @@ func TestRedisAttemptTracker_Track(t *testing.T) {
 	userUID := "user-123"
 
 	tests := []struct {
-		name        string
-		setup       func()
-		attempts    int
-		wantLocked  bool
-		wantErr     bool
+		name       string
+		setup      func()
+		attempts   int
+		wantLocked bool
+		wantErr    bool
 	}{
 		{
-			name:     "First attempt does not lock",
-			attempts: 1,
+			name:       "First attempt does not lock",
+			attempts:   1,
 			wantLocked: false,
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:     "Second attempt does not lock",
-			attempts: 2,
+			name:       "Second attempt does not lock",
+			attempts:   2,
 			wantLocked: false,
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:     "Third attempt locks account",
-			attempts: 3,
+			name:       "Third attempt locks account",
+			attempts:   3,
 			wantLocked: true,
-			wantErr:   true,
+			wantErr:    true,
 		},
 		{
 			name: "Fourth attempt already locked",
@@ -87,7 +85,7 @@ func TestRedisAttemptTracker_Track(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_IsLocked(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 3
@@ -121,7 +119,7 @@ func TestRedisAttemptTracker_IsLocked(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_Reset(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 3
@@ -166,7 +164,7 @@ func TestRedisAttemptTracker_Reset(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_LockoutExpiry(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, mini := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 2
@@ -187,7 +185,7 @@ func TestRedisAttemptTracker_LockoutExpiry(t *testing.T) {
 	}
 
 	// Wait for lockout to expire (need > 1s due to Redis truncation)
-	time.Sleep(1100 * time.Millisecond)
+	mini.FastForward(1100 * time.Millisecond)
 
 	// Should no longer be locked
 	locked, _ = tracker.IsLocked(ctx, userUID)
@@ -197,7 +195,7 @@ func TestRedisAttemptTracker_LockoutExpiry(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_CounterExpiry(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, mini := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 3
@@ -211,7 +209,7 @@ func TestRedisAttemptTracker_CounterExpiry(t *testing.T) {
 	tracker.Track(ctx, userUID)
 
 	// Wait for counter to expire (need > 1s due to Redis truncation)
-	time.Sleep(1100 * time.Millisecond)
+	mini.FastForward(1100 * time.Millisecond)
 
 	// Third attempt should not lock (counter was reset)
 	err := tracker.Track(ctx, userUID)
@@ -226,7 +224,7 @@ func TestRedisAttemptTracker_CounterExpiry(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_MultipleUsers(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 3
@@ -256,7 +254,7 @@ func TestRedisAttemptTracker_MultipleUsers(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_Concurrent(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 100
@@ -287,7 +285,7 @@ func TestRedisAttemptTracker_Concurrent(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_GetFailedAttempts(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 5
@@ -320,7 +318,7 @@ func TestRedisAttemptTracker_GetFailedAttempts(t *testing.T) {
 }
 
 func TestRedisAttemptTracker_GetLockoutRemaining(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	threshold := 2

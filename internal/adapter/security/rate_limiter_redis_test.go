@@ -4,12 +4,10 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/adityakw90/service-user/test/util/redis"
 )
 
 func TestRedisRateLimiter_Acquire(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	limit := 5
@@ -72,7 +70,7 @@ func TestRedisRateLimiter_Acquire(t *testing.T) {
 }
 
 func TestRedisRateLimiter_Reset(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	limit := 5
@@ -108,7 +106,7 @@ func TestRedisRateLimiter_Reset(t *testing.T) {
 }
 
 func TestRedisRateLimiter_SlidingWindow(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, mini := newMockRedis(t)
 	ctx := context.Background()
 
 	limit := 5
@@ -131,7 +129,7 @@ func TestRedisRateLimiter_SlidingWindow(t *testing.T) {
 	}
 
 	// Wait for window to pass
-	time.Sleep(1100 * time.Millisecond)
+	mini.FastForward(1100 * time.Millisecond)
 
 	// Should be allowed again
 	allowed, _ = limiter.Acquire(ctx, deviceIp)
@@ -141,7 +139,7 @@ func TestRedisRateLimiter_SlidingWindow(t *testing.T) {
 }
 
 func TestRedisRateLimiter_MultipleIPs(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	limit := 3
@@ -170,7 +168,7 @@ func TestRedisRateLimiter_MultipleIPs(t *testing.T) {
 }
 
 func TestRedisRateLimiter_ConcurrentRequests(t *testing.T) {
-	client := redis.CreateTestRedisClient(t)
+	client, _ := newMockRedis(t)
 	ctx := context.Background()
 
 	limit := 100

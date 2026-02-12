@@ -3,154 +3,54 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"time"
+	"testing"
 
+	"github.com/adityakw90/service-user/internal/config"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/redis/go-redis/v9"
-	"github.com/stretchr/testify/require"
 )
 
-// SetupTestRedis flushes all test keys from Redis.
-// Use this to clean Redis between tests.
-func SetupTestRedis(ctx context.Context, client *redis.Client) error {
-	// Flush all keys with the test prefix
-	iter := client.Scan(ctx, 0, "test:*", 100).Iterator()
-	keys := make([]string, 0)
+func NewTestRedisConnection(t *testing.T, ctx context.Context, cfg *config.Config) (*redis.Client, error) {
+	t.Helper()
 
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
+	lockFile, err := AcquireLock("redis")
+	if err != nil {
+		return nil, fmt.Errorf("failed to lock redis: %w", err)
+	}
+	t.Cleanup(func() {
+		ReleaseLock(lockFile)
+	})
+
+	client, err := infra.NewRedisConnection(ctx, &infra.RedisConfig{
+		Host:              cfg.Redis.Host,
+		Port:              cfg.Redis.Port,
+		User:              cfg.Redis.User,
+		Password:          cfg.Redis.Password,
+		DB:                cfg.Redis.DB,
+		PoolSize:          cfg.Redis.PoolSize,
+		PoolTimeout:       cfg.Redis.PoolTimeout,
+		ConnectionIdleMin: cfg.Redis.ConnectionIdleMin,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("failed to scan keys: %w", err)
+	t.Cleanup(func() {
+		client.Close()
+	})
+
+	if err := flushTestRedisDB(t, ctx, client); err != nil {
+		return nil, fmt.Errorf("failed to flush redis: %w", err)
 	}
 
-	if len(keys) > 0 {
-		if err := client.Del(ctx, keys...).Err(); err != nil {
-			return fmt.Errorf("failed to delete keys: %w", err)
-		}
-	}
-
-	return nil
+	return client, nil
 }
 
-// FlushTestKeys deletes keys matching a specific pattern.
-func FlushTestKeys(ctx context.Context, client *redis.Client, pattern string) error {
-	iter := client.Scan(ctx, 0, pattern, 100).Iterator()
-	keys := make([]string, 0)
+func flushTestRedisDB(t *testing.T, ctx context.Context, client *redis.Client) error {
+	t.Helper()
 
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
-	}
-
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("failed to scan keys: %w", err)
-	}
-
-	if len(keys) > 0 {
-		if err := client.Del(ctx, keys...).Err(); err != nil {
-			return fmt.Errorf("failed to delete keys: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// AssertKeyExists verifies that a key exists in Redis.
-func AssertKeyExists(t require.TestingT, ctx context.Context, client *redis.Client, key string) {
-	exists, err := client.Exists(ctx, key).Result()
-	require.NoError(t, err)
-	require.True(t, exists > 0, "key %s should exist", key)
-}
-
-// AssertKeyNotExists verifies that a key does not exist in Redis.
-func AssertKeyNotExists(t require.TestingT, ctx context.Context, client *redis.Client, key string) {
-	exists, err := client.Exists(ctx, key).Result()
-	require.NoError(t, err)
-	require.Zero(t, exists, "key %s should not exist", key)
-}
-
-// AssertKeyValue verifies that a key has a specific value.
-func AssertKeyValue(t require.TestingT, ctx context.Context, client *redis.Client, key, expectedValue string) {
-	value, err := client.Get(ctx, key).Result()
-	require.NoError(t, err)
-	require.Equal(t, expectedValue, value)
-}
-
-// GetTokenWhitelistCount counts the number of entries in the token whitelist.
-func GetTokenWhitelistCount(ctx context.Context, client *redis.Client, prefix string) (int, error) {
-	iter := client.Scan(ctx, 0, prefix+"*", 100).Iterator()
-	count := 0
-
-	for iter.Next(ctx) {
-		count++
-	}
-
-	if err := iter.Err(); err != nil {
-		return 0, fmt.Errorf("failed to scan keys: %w", err)
-	}
-
-	return count, nil
-}
-
-// WaitForRedis polls for Redis readiness.
-func WaitForRedis(ctx context.Context, client *redis.Client, maxAttempts int) error {
-	for i := 0; i < maxAttempts; i++ {
-		if err := client.Ping(ctx).Err(); err == nil {
-			return nil
-		}
-
-		// Wait before retrying
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-		}
-	}
-
-	return fmt.Errorf("redis not ready after %d attempts", maxAttempts)
-}
-
-// GetKeysByPattern returns all keys matching a pattern.
-func GetKeysByPattern(ctx context.Context, client *redis.Client, pattern string) ([]string, error) {
-	iter := client.Scan(ctx, 0, pattern, 100).Iterator()
-	keys := make([]string, 0)
-
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
-	}
-
-	if err := iter.Err(); err != nil {
-		return nil, fmt.Errorf("failed to scan keys: %w", err)
-	}
-
-	return keys, nil
-}
-
-// FlushAllTestKeys flushes all keys with test prefix (wildcard).
-// Use with caution - this will delete all keys matching "test:*".
-func FlushAllTestKeys(ctx context.Context, client *redis.Client) error {
-	iter := client.Scan(ctx, 0, "test:*", 1000).Iterator()
-	keys := make([]string, 0)
-
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
-	}
-
-	if err := iter.Err(); err != nil {
-		return fmt.Errorf("failed to scan keys: %w", err)
-	}
-
-	if len(keys) > 0 {
-		// Delete in batches of 100 to avoid command size limits
-		for i := 0; i < len(keys); i += 100 {
-			end := i + 100
-			if end > len(keys) {
-				end = len(keys)
-			}
-			if err := client.Del(ctx, keys[i:end]...).Err(); err != nil {
-				return fmt.Errorf("failed to delete keys: %w", err)
-			}
-		}
+	if err := client.FlushDB(ctx).Err(); err != nil {
+		return fmt.Errorf("failed to flush redis: %w", err)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	commongrpc "github.com/adityakw90/service-user-proto/gen/go/common"
@@ -14,9 +15,10 @@ import (
 // File size limit as per service specification (10MB)
 const maxFileSize = 10 * 1024 * 1024
 
-func TestFileAdd(t *testing.T) {
+func TestE2E_UserFile_Add(t *testing.T) {
 	_, grpcClient, cleanup := setupE2ETest(t)
 	defer cleanup()
+
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
@@ -118,7 +120,12 @@ func TestFileAdd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			ctx := context.Background()
+
+			fmt.Println("------------------------")
+			fmt.Println("Test case:", tt.name)
 			userUID := tt.setup(t, grpcClient)
+
+			fmt.Println("User created with UID:", userUID)
 
 			req := &filegrpc.AddRequest{
 				UserUid:  userUID,
@@ -129,6 +136,9 @@ func TestFileAdd(t *testing.T) {
 			}
 
 			resp, err := grpcClient.UserFileClient.Add(ctx, req)
+
+			fmt.Println("Response:", resp)
+			fmt.Println("Error:", err)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -142,6 +152,7 @@ func TestFileAdd(t *testing.T) {
 					tt.verifyFunc(t, resp.Uid, userUID, grpcClient)
 				}
 			}
+			fmt.Println("------------------------")
 		})
 	}
 }

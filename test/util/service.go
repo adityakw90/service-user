@@ -48,59 +48,70 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 
 	// temporaty initialzie the monitoring here
 	monitoring, err := infra.NewMonitoring(&infra.MonitoringConfig{
-		ServiceName:        "test-service",
-		Environment:        "development",
-		InstanceName:       "test-instance",
-		InstanceHost:       "test-host",
-		LoggerLevel:        "debug",
-		TracerProvider:     "stdout",
-		TracerProviderHost: "localhost",
-		TracerProviderPort: 6831,
-		TracerSampleRatio:  1.0,
-		MetricProvider:     "stdout",
-		MetricProviderHost: "localhost",
-		MetricProviderPort: 9090,
+		ServiceName:         "test-service",
+		Environment:         "development",
+		InstanceName:        "test-instance",
+		InstanceHost:        "test-host",
+		LoggerLevel:         "error",
+		LoggerCallerSkipNum: 1,
+		TracerProvider:      "stdout",
+		TracerProviderHost:  "localhost",
+		TracerProviderPort:  6831,
+		TracerSampleRatio:   1.0,
+		MetricProvider:      "stdout",
+		MetricProviderHost:  "localhost",
+		MetricProviderPort:  9090,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize monitoring: %w", err)
 	}
 
 	// Connect to database
-	dbPool, err := infra.NewPostgreConnection(ctx, &infra.PostgreConfig{
-		Host:                  cfg.Database.Host,
-		Port:                  cfg.Database.Port,
-		User:                  cfg.Database.User,
-		Password:              cfg.Database.Password,
-		Name:                  cfg.Database.Name,
-		SslMode:               cfg.Database.SslMode,
-		Timezone:              cfg.Database.Timezone,
-		MinConns:              cfg.Database.MinConns,
-		MinIdleConns:          cfg.Database.MinIdleConns,
-		MaxConns:              cfg.Database.MaxConns,
-		MaxConnIdleTime:       cfg.Database.MaxConnIdleTime,
-		MaxConnLifetime:       cfg.Database.MaxConnLifetime,
-		MaxConnLifetimeJitter: cfg.Database.MaxConnLifetimeJitter,
-		HealthCheckPeriod:     cfg.Database.HealthCheckPeriod,
-	})
+	dbPool, err := NewTestPostgreConnection(t, ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		t.Fatal(err)
+		return nil, err
 	}
+	// dbPool, err := infra.NewPostgreConnection(ctx, &infra.PostgreConfig{
+	// 	Host:                  cfg.Database.Host,
+	// 	Port:                  cfg.Database.Port,
+	// 	User:                  cfg.Database.User,
+	// 	Password:              cfg.Database.Password,
+	// 	Name:                  cfg.Database.Name,
+	// 	SslMode:               cfg.Database.SslMode,
+	// 	Timezone:              cfg.Database.Timezone,
+	// 	MinConns:              cfg.Database.MinConns,
+	// 	MinIdleConns:          cfg.Database.MinIdleConns,
+	// 	MaxConns:              cfg.Database.MaxConns,
+	// 	MaxConnIdleTime:       cfg.Database.MaxConnIdleTime,
+	// 	MaxConnLifetime:       cfg.Database.MaxConnLifetime,
+	// 	MaxConnLifetimeJitter: cfg.Database.MaxConnLifetimeJitter,
+	// 	HealthCheckPeriod:     cfg.Database.HealthCheckPeriod,
+	// })
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to connect to database: %w", err)
+	// }
 
 	// Connect to Redis
-	redisClient, err := infra.NewRedisConnection(context.Background(), &infra.RedisConfig{
-		Host:              cfg.Redis.Host,
-		Port:              cfg.Redis.Port,
-		User:              cfg.Redis.User,
-		Password:          cfg.Redis.Password,
-		DB:                cfg.Redis.DB,
-		PoolSize:          cfg.Redis.PoolSize,
-		PoolTimeout:       cfg.Redis.PoolTimeout,
-		ConnectionIdleMin: cfg.Redis.ConnectionIdleMin,
-	})
+	redisClient, err := NewTestRedisConnection(t, ctx, cfg)
 	if err != nil {
-		dbPool.Close()
-		return nil, fmt.Errorf("failed to connect to redis: %w", err)
+		t.Fatal(err)
+		return nil, err
 	}
+	// redisClient, err := infra.NewRedisConnection(context.Background(), &infra.RedisConfig{
+	// 	Host:              cfg.Redis.Host,
+	// 	Port:              cfg.Redis.Port,
+	// 	User:              cfg.Redis.User,
+	// 	Password:          cfg.Redis.Password,
+	// 	DB:                cfg.Redis.DB,
+	// 	PoolSize:          cfg.Redis.PoolSize,
+	// 	PoolTimeout:       cfg.Redis.PoolTimeout,
+	// 	ConnectionIdleMin: cfg.Redis.ConnectionIdleMin,
+	// })
+	// if err != nil {
+	// 	dbPool.Close()
+	// 	return nil, fmt.Errorf("failed to connect to redis: %w", err)
+	// }
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
@@ -215,7 +226,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	userFileService := svc.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver, eventPublisher)
 
 	// prepare db and redis
-	TruncateTestTables(t, ctx, dbPool)
+	// TruncateTestTables(t, ctx, dbPool)
 	// TruncateTestRedis(t, ctx, redisClient)
 
 	// cleanup func

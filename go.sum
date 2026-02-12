@@ -1,7 +1,7 @@
 github.com/IBM/sarama v1.46.3 h1:njRsX6jNlnR+ClJ8XmkO+CM4unbrNr/2vB5KK6UA+IE=
 github.com/IBM/sarama v1.46.3/go.mod h1:GTUYiF9DMOZVe3FwyGT+dtSPceGFIgA+sPc5u6CBwko=
-github.com/adityakw90/go-monitoring v0.3.1 h1:iNNubMP46GPH7jvrWc/MAXltnhMPDX1jZqjJA81syy8=
-github.com/adityakw90/go-monitoring v0.3.1/go.mod h1:AF6uPlYP6a4jYyexs58T1gReywUNXXFH9BCQTQOHga0=
+github.com/adityakw90/go-monitoring v0.3.2 h1:/GcTGy6xgL5qdDu6Id87aIzrYfsi7yu5qTAnuSa4W+U=
+github.com/adityakw90/go-monitoring v0.3.2/go.mod h1:AF6uPlYP6a4jYyexs58T1gReywUNXXFH9BCQTQOHga0=
 github.com/adityakw90/service-user-proto v0.1.0 h1:v+osVb1+qijR+/yHunpVUPyNTFl/uCPxABRmSwlbsp0=
 github.com/adityakw90/service-user-proto v0.1.0/go.mod h1:7o5dtjzrU9MC9ebwUk6xjE8QOwCnG4fuW7r29VKzUCQ=
 github.com/alexedwards/argon2id v1.0.0 h1:wJzDx66hqWX7siL/SRUmgz3F8YMrd/nfX/xHHcQQP0w=

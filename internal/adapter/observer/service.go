@@ -24,7 +24,7 @@ func NewServiceObserver[T any](
 	logMap func(T) map[string]any,
 ) *serviceObserver[T] {
 	return &serviceObserver[T]{
-		logger: logger,
+		logger: logger.AddCallerSkipNum(1),
 		tracer: tracer,
 		attrs:  attrs,
 		logMap: logMap,
