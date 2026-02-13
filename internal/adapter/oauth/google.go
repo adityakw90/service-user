@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
+	"github.com/redis/go-redis/v9"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 // Default Google OAuth UserInfo URL.
@@ -38,10 +39,11 @@ type GoogleOAuthAdapter struct {
 	oauth2Config *oauth2.Config
 	userInfoURL  string
 	httpClient   *http.Client
+	redis        redis.Cmdable
 }
 
 // NewGoogleOAuthAdapter creates a new Google OAuth adapter.
-func NewGoogleOAuthAdapter(config GoogleOAuthConfig) portOAuth.OAuthProvider {
+func NewGoogleOAuthAdapter(config GoogleOAuthConfig, redis redis.Cmdable) portOAuth.OAuthProvider {
 	// Default scopes if none provided
 	scopes := config.Scopes
 	if scopes == nil {
@@ -88,6 +90,7 @@ func NewGoogleOAuthAdapter(config GoogleOAuthConfig) portOAuth.OAuthProvider {
 		oauth2Config: cfg,
 		userInfoURL:  userInfoURL,
 		httpClient:   config.HTTPClient,
+		redis:        redis,
 	}
 }
 
@@ -95,9 +98,7 @@ func (g *GoogleOAuthAdapter) getHTTPClient() *http.Client {
 	if g.httpClient != nil {
 		return g.httpClient
 	}
-	if g.httpClient == nil {
-		g.httpClient = &http.Client{Timeout: 10 * time.Second}
-	}
+	g.httpClient = &http.Client{Timeout: 10 * time.Second}
 	return g.httpClient
 }
 
