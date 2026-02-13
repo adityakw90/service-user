@@ -43,4 +43,6 @@ var (
 	ErrOAuthInvalidCode            = &OAuthError{Code: "invalid_code", Description: "Invalid or expired authorization code"}
 	ErrOAuthServerError            = &OAuthError{Code: "server_error", Description: "OAuth server returned an error"}
 	ErrOAuthTemporarilyUnavailable = &OAuthError{Code: "temporarily_unavailable", Description: "OAuth server is temporarily unavailable"}
+	// PKCE-specific errors
+	ErrOAuthCodeVerifierMissing = errors.New("oauth: code verifier not found")
 )
