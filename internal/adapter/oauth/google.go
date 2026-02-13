@@ -174,7 +174,21 @@ func (g *GoogleOAuthAdapter) getVerifier(ctx context.Context, state string) (str
 }
 
 // GetAuthorizationURL returns the OAuth authorization URL with state using oauth2 library.
+// For PKCE, generates code_verifier, computes code_challenge, and stores in Redis.
 func (g *GoogleOAuthAdapter) GetAuthorizationURL(ctx context.Context, redirectURI, state string) (string, error) {
+	// Generate PKCE verifier and challenge
+	verifier, err := g.generateCodeVerifier()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate code verifier: %w", err)
+	}
+
+	challenge := g.computeCodeChallenge(verifier)
+
+	// Store verifier in Redis
+	if err := g.storeVerifier(ctx, state, verifier); err != nil {
+		return "", fmt.Errorf("failed to store code verifier: %w", err)
+	}
+
 	// Create a temporary config with the redirectURI override
 	cfg := *g.oauth2Config // Copy the config
 	cfg.RedirectURL = redirectURI
@@ -184,6 +198,9 @@ func (g *GoogleOAuthAdapter) GetAuthorizationURL(ctx context.Context, redirectUR
 	authURL := cfg.AuthCodeURL(state,
 		oauth2.AccessTypeOffline,
 		oauth2.ApprovalForce,
+		// Add PKCE parameters
+		oauth2.SetAuthURLParam("code_challenge", challenge),
+		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
 	)
 	return authURL, nil
 }
