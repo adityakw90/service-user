@@ -2,10 +2,15 @@ package oauth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -18,6 +23,14 @@ import (
 // Default Google OAuth UserInfo URL.
 const (
 	defaultGoogleUserInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
+
+	// PKCE verifier length: 43-128 characters (RFC 7636)
+	minVerifierLength = 43
+	maxVerifierLength = 128
+	// Redis key prefix for storing PKCE verifiers
+	redisPKCEKeyPrefix = "oauth:pkce:"
+	// Redis TTL for verifiers: 10 minutes
+	verifierTTL = 10 * time.Minute
 )
 
 // GoogleOAuthConfig holds Google OAuth configuration.
@@ -100,6 +113,64 @@ func (g *GoogleOAuthAdapter) getHTTPClient() *http.Client {
 	}
 	g.httpClient = &http.Client{Timeout: 10 * time.Second}
 	return g.httpClient
+}
+
+// generateCodeVerifier generates a cryptographically random code verifier
+// for PKCE (RFC 7636). Returns 43-128 character string.
+func (g *GoogleOAuthAdapter) generateCodeVerifier() (string, error) {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+	b := make([]byte, maxVerifierLength)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate verifier: %w", err)
+	}
+
+	// Trim to desired length and encode using base64url
+	verifier := strings.Builder{}
+	for i := 0; i < maxVerifierLength; i++ {
+		verifier.WriteByte(charset[b[i]%byte(len(charset))])
+	}
+	result := verifier.String()
+
+	// Ensure minimum length
+	if len(result) < minVerifierLength {
+		return "", fmt.Errorf("verifier too short: %d", len(result))
+	}
+	return result, nil
+}
+
+// computeCodeChallenge computes code challenge from a verifier
+// using SHA-256 and BASE64URL encoding (RFC 7636).
+func (g *GoogleOAuthAdapter) computeCodeChallenge(verifier string) string {
+	h := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(h[:])
+}
+
+// storeVerifier stores code verifier in Redis with TTL.
+func (g *GoogleOAuthAdapter) storeVerifier(ctx context.Context, state, verifier string) error {
+	key := redisPKCEKeyPrefix + state
+	return g.redis.Set(ctx, key, verifier, verifierTTL).Err()
+}
+
+// getVerifier retrieves and deletes code verifier from Redis (single-use).
+func (g *GoogleOAuthAdapter) getVerifier(ctx context.Context, state string) (string, error) {
+	key := redisPKCEKeyPrefix + state
+
+	// Get verifier
+	verifier, err := g.redis.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", fmt.Errorf("code verifier not found or expired for state: %s", state)
+		}
+		return "", fmt.Errorf("failed to get verifier: %w", err)
+	}
+
+	// Delete verifier (single-use)
+	if err := g.redis.Del(ctx, key).Err(); err != nil {
+		// Log but don't fail - verifier is already consumed
+		// In production, this should be logged
+	}
+
+	return verifier, nil
 }
 
 // GetAuthorizationURL returns the OAuth authorization URL with state using oauth2 library.
