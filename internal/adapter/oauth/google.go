@@ -207,13 +207,23 @@ func (g *GoogleOAuthAdapter) GetAuthorizationURL(ctx context.Context, redirectUR
 
 // ExchangeCode exchanges authorization code for tokens using oauth2 library.
 func (g *GoogleOAuthAdapter) ExchangeCode(ctx context.Context, code, redirectURI string) (*model.OAuthTokens, error) {
+	// NEW: Retrieve code verifier from Redis
+	verifier, err := g.getVerifier(ctx, state)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get code verifier: %w", err)
+	}
+
 	// Inject HTTP client into context if custom client is set
 	if g.httpClient != nil {
 		ctx = context.WithValue(ctx, oauth2.HTTPClient, g.httpClient)
 	}
 
-	// Use oauth2 library to exchange code
-	token, err := g.oauth2Config.Exchange(ctx, code, oauth2.SetAuthURLParam("redirect_uri", redirectURI))
+	// Use oauth2 library to exchange code with PKCE
+	token, err := g.oauth2Config.Exchange(ctx, code,
+		oauth2.SetAuthURLParam("redirect_uri", redirectURI),
+		// Add code_verifier for PKCE
+		oauth2.SetAuthURLParam("code_verifier", verifier),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange code: %w", err)
 	}
