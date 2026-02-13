@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -543,4 +544,48 @@ func TestGoogleOAuthAdapter_GetAuthorizationURL_oauth2Options(t *testing.T) {
 		"oauth2.AccessTypeOffline should add access_type=offline")
 	assert.Equal(t, "consent", queryParams.Get("prompt"),
 		"oauth2.ApprovalForce should add prompt=consent")
+}
+
+// TestGetAuthorizationURLWithPKCE tests full PKCE flow with verifier storage
+func TestGetAuthorizationURLWithPKCE(t *testing.T) {
+	t.Run("returns URL with code challenge", func(t *testing.T) {
+		s := miniredis.RunT(t)
+		defer s.Close()
+
+		config := oauth.GoogleOAuthConfig{
+			ClientID:     "test-client-id",
+			ClientSecret: "test-client-secret",
+			RedirectURI:  "http://localhost:8080/callback",
+		}
+		adapter := oauth.NewGoogleOAuthAdapter(config, s.Client())
+
+		ctx := context.Background()
+		state := "test-state-abc123"
+		redirectURI := "http://localhost:8080/callback"
+
+		authURL, err := adapter.GetAuthorizationURL(ctx, redirectURI, state)
+		if err != nil {
+			t.Fatalf("GetAuthorizationURL() error = %v", err)
+		}
+
+		// Verify URL contains PKCE parameters
+		if !strings.Contains(authURL, "code_challenge=") {
+			t.Error("GetAuthorizationURL() missing code_challenge parameter")
+		}
+		if !strings.Contains(authURL, "code_challenge_method=S256") {
+			t.Error("GetAuthorizationURL() missing code_challenge_method parameter")
+		}
+		if !strings.Contains(authURL, "state="+state) {
+			t.Error("GetAuthorizationURL() missing state parameter")
+		}
+
+		// Verify verifier was stored in Redis
+		verifier, err := adapter.GetVerifier(ctx, state)
+		if err != nil {
+			t.Errorf("verifier not stored in Redis: %v", err)
+		}
+		if verifier == "" {
+			t.Error("stored verifier is empty")
+		}
+	})
 }
