@@ -334,7 +334,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *params.AuthPara
 	}, nil
 }
 
-func (s *authService) GoogleOAuth(ctx context.Context, redirectURI string) (string, error) {
+func (s *authService) GoogleOAuth(ctx context.Context, redirectURI string) (string, string, error) {
 	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
 		IdentifierType: "oauth",
 		Extra:          &map[string]any{"provider": "google", "redirect_uri": redirectURI},
@@ -348,8 +348,8 @@ func (s *authService) GoogleOAuth(ctx context.Context, redirectURI string) (stri
 	if err != nil {
 		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 			IdentifierType: "oauth",
-		}, domainerrors.ErrOAuthExchangeFailed)
-		return "", domainerrors.ErrOAuthExchangeFailed
+		}, err)
+		return "", "", err
 	}
 
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
@@ -357,7 +357,7 @@ func (s *authService) GoogleOAuth(ctx context.Context, redirectURI string) (stri
 		Extra:          &map[string]any{"provider": "google", "state": state},
 	}, nil)
 
-	return authURL, nil
+	return authURL, state, nil
 }
 
 func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI string) (*model.Token, error) {
