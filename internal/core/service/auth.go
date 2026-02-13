@@ -367,12 +367,12 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, redirectURI s
 	}, nil)
 
 	// Exchange code for tokens
-	tokens, err := s.oauthProvider.ExchangeCode(ctx, code, redirectURI)
+	tokens, err := s.oauthProvider.ExchangeCode(ctx, code, state, redirectURI)
 	if err != nil {
 		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 			IdentifierType: "oauth",
-		}, domainerrors.ErrOAuthExchangeFailed)
-		return nil, domainerrors.ErrOAuthExchangeFailed
+		}, err)
+		return nil, err
 	}
 
 	// Get user info from OAuth provider
