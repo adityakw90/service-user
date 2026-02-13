@@ -206,7 +206,7 @@ func (g *GoogleOAuthAdapter) GetAuthorizationURL(ctx context.Context, redirectUR
 }
 
 // ExchangeCode exchanges authorization code for tokens using oauth2 library.
-func (g *GoogleOAuthAdapter) ExchangeCode(ctx context.Context, code, redirectURI string) (*model.OAuthTokens, error) {
+func (g *GoogleOAuthAdapter) ExchangeCode(ctx context.Context, code, state, redirectURI string) (*model.OAuthTokens, error) {
 	// NEW: Retrieve code verifier from Redis
 	verifier, err := g.getVerifier(ctx, state)
 	if err != nil {
