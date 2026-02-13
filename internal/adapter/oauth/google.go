@@ -302,3 +302,28 @@ func (g *GoogleOAuthAdapter) GetUserInfo(ctx context.Context, accessToken string
 		Locale:        userResp.Locale,
 	}, nil
 }
+
+// Exported functions for testing PKCE helpers
+
+// GenerateCodeVerifier generates a cryptographically random code verifier
+// for PKCE (RFC 7636). Returns 43-128 character string.
+func (g *GoogleOAuthAdapter) GenerateCodeVerifier() (string, error) {
+	return g.generateCodeVerifier()
+}
+
+// ComputeCodeChallenge computes code challenge from a verifier
+// using SHA-256 and BASE64URL encoding (RFC 7636).
+func (g *GoogleOAuthAdapter) ComputeCodeChallenge(verifier string) string {
+	return g.computeCodeChallenge(verifier)
+}
+
+// StoreVerifier stores code verifier in Redis with TTL.
+func (g *GoogleOAuthAdapter) StoreVerifier(ctx context.Context, state, verifier string) error {
+	return g.storeVerifier(ctx, state, verifier)
+}
+
+// GetVerifier retrieves and deletes code verifier from Redis (single-use).
+func (g *GoogleOAuthAdapter) GetVerifier(ctx context.Context, state string) (string, error) {
+	return g.getVerifier(ctx, state)
+}
+
