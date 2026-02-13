@@ -12,7 +12,7 @@ type OAuthProvider interface {
 	GetAuthorizationURL(ctx context.Context, redirectURI, state string) (string, error)
 
 	// ExchangeCode exchanges the authorization code for tokens.
-	ExchangeCode(ctx context.Context, code, redirectURI string) (*model.OAuthTokens, error)
+	ExchangeCode(ctx context.Context, code, state, redirectURI string) (*model.OAuthTokens, error)
 
 	// GetUserInfo retrieves user information using the access token.
 	GetUserInfo(ctx context.Context, accessToken string) (*model.OAuthUserInfo, error)
