@@ -30,6 +30,10 @@ jobs:
           --health-retries 5
       postgres:
         image: postgres:18-alpine
+        env:
+          POSTGRES_DB: service_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
@@ -39,6 +43,9 @@ jobs:
           --health-retries 5
       rabbitmq:
         image: rabbitmq:4.2.3-management-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: rabbit
+          RABBITMQ_DEFAULT_PASS: password
         ports:
           - 5672:5672
         options: >-
@@ -48,8 +55,29 @@ jobs:
           --health-retries 5
       kafka:
         image: confluentinc/cp-kafka:8.0.3
+        env:
+          # KRaft mode settings (no Zookeeper needed)
+          KAFKA_NODE_ID: "1"
+          KAFKA_PROCESS_ROLES: "controller,broker"
+          KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+          # Listener configuration
+          KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+          KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+          KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+          KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+          # Other settings
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+          KAFKA_LOG_RETENTION_HOURS: "1"
+          KAFKA_LOG_SEGMENT_BYTES: "1073741824"
+          KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: "300000"
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+          CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
         ports:
           - 9092:9092
+          - 9094:9094
         options: >-
           --health-cmd "kafka-topics --bootstrap-server localhost:9092 --list"
           --health-interval 10s
@@ -74,9 +102,30 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      - name: Checkout service-user-db
+        uses: actions/checkout@v6
+        with:
+          repository: adityakw90/service-user-db
+          path: service-user-db
+
+      - name: Run Migrations
+        working-directory: service-user-db
+        run: |
+          echo "DATABASE_URL=jdbc:postgresql://localhost:5432/service_db" > .env
+          echo "DATABASE_USER=postgres" >> .env
+          echo "DATABASE_PASSWORD=postgres" >> .env
+          # Patch Makefile to use host network for CI
+          sed -i 's/docker run --rm/docker run --rm --network host/g' Makefile
+          make build
+          make update
+
       - name: Run tests
         env:
-          TEST_REDIS_ADDR: localhost:6379
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_NAME: service_db
         run: make test-cover
 
       - name: Determine version

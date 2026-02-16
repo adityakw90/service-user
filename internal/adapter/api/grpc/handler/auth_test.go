@@ -18,8 +18,8 @@ import (
 // MockAuthService is a mock implementation of service.AuthService for testing.
 type MockAuthService struct {
 	AuthenticateFunc       func(ctx context.Context, payload *params.AuthParams) (*model.Token, error)
-	GoogleOAuthFunc        func(ctx context.Context, redirectURI string) (string, error)
-	HandleGoogleOAuthFunc   func(ctx context.Context, code, redirectURI string) (*model.Token, error)
+	GoogleOAuthFunc        func(ctx context.Context, redirectURI string) (string, string, error)
+	HandleGoogleOAuthFunc   func(ctx context.Context, code, state, redirectURI string) (*model.Token, error)
 	RefreshTokenFunc       func(ctx context.Context, refreshToken string) (*model.Token, error)
 	ValidateTokenFunc      func(ctx context.Context, accessToken string) (*model.TokenClaims, error)
 	RevokeTokenFunc        func(ctx context.Context, token string, tokenType string) error
@@ -46,18 +46,18 @@ func (m *MockAuthService) Authenticate(ctx context.Context, payload *params.Auth
 	return &model.Token{Access: "test-access", Refresh: "test-refresh"}, nil
 }
 
-func (m *MockAuthService) GoogleOAuth(ctx context.Context, redirectURI string) (string, error) {
+func (m *MockAuthService) GoogleOAuth(ctx context.Context, redirectURI string) (string, string, error) {
 	m.googleOAuthCalls++
 	if m.GoogleOAuthFunc != nil {
 		return m.GoogleOAuthFunc(ctx, redirectURI)
 	}
-	return "https://accounts.google.com/o/oauth2/v2/auth?state=test", nil
+	return "https://accounts.google.com/o/oauth2/v2/auth?state=test", "test-state", nil
 }
 
-func (m *MockAuthService) HandleGoogleOAuth(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+func (m *MockAuthService) HandleGoogleOAuth(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 	m.handleGoogleOAuthCalls++
 	if m.HandleGoogleOAuthFunc != nil {
-		return m.HandleGoogleOAuthFunc(ctx, code, redirectURI)
+		return m.HandleGoogleOAuthFunc(ctx, code, state, redirectURI)
 	}
 	return &model.Token{Access: "oauth-access", Refresh: "oauth-refresh"}, nil
 }
@@ -114,8 +114,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 		{
 			name: "Happy Path - service returns URL",
 			setupMocks: func(m *MockAuthService) {
-				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
-					return "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=http://localhost:8080/callback&response_type=code&scope=openid+email+profile&state=abc123&access_type=offline&prompt=consent", nil
+				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
+					return "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=http://localhost:8080/callback&response_type=code&scope=openid+email+profile&state=abc123&access_type=offline&prompt=consent", "abc123", nil
 				}
 			},
 			input: &authpb.GoogleOAuthRequest{
@@ -129,8 +129,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 		{
 			name: "Happy Path - minimal URL",
 			setupMocks: func(m *MockAuthService) {
-				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
-					return "https://accounts.google.com/o/oauth2/v2/auth?state=xyz", nil
+				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
+					return "https://accounts.google.com/o/oauth2/v2/auth?state=xyz", "xyz", nil
 				}
 			},
 			input: &authpb.GoogleOAuthRequest{
@@ -144,8 +144,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 		{
 			name: "Service Error - internal error from service",
 			setupMocks: func(m *MockAuthService) {
-				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
-					return "", errors.New("service unavailable")
+				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
+					return "", "", errors.New("service unavailable")
 				}
 			},
 			input: &authpb.GoogleOAuthRequest{
@@ -168,8 +168,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 		{
 			name: "Invalid Input - invalid URI format",
 			setupMocks: func(m *MockAuthService) {
-				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
-					return "https://accounts.google.com/o/oauth2/v2/auth", nil
+				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
+					return "https://accounts.google.com/o/oauth2/v2/auth", "test", nil
 				}
 			},
 			input: &authpb.GoogleOAuthRequest{
@@ -182,8 +182,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 		{
 			name: "Service returns context canceled error",
 			setupMocks: func(m *MockAuthService) {
-				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
-					return "", context.Canceled
+				m.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
+					return "", "", context.Canceled
 				}
 			},
 			input: &authpb.GoogleOAuthRequest{
@@ -242,7 +242,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 		{
 			name: "Happy Path - service returns tokens",
 			setupMocks: func(m *MockAuthService) {
-				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 					return &model.Token{
 						Access:  "new-access-token-123",
 						Refresh: "new-refresh-token-456",
@@ -251,6 +251,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-auth-code-abc",
+				State:        "test-state-abc",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			want: &authpb.Token{
@@ -262,7 +263,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 		{
 			name: "Happy Path - token exchange with different redirect URI",
 			setupMocks: func(m *MockAuthService) {
-				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 					return &model.Token{
 						Access:  "access-from-custom-redirect",
 						Refresh: "refresh-from-custom-redirect",
@@ -271,6 +272,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "code-for-custom-redirect",
+				State:        "test-state-custom",
 				RedirectUri: "https://example.com/oauth/callback",
 			},
 			want: &authpb.Token{
@@ -282,12 +284,13 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 		{
 			name: "Service Error - OAuth exchange failed",
 			setupMocks: func(m *MockAuthService) {
-				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 					return nil, errors.New("invalid authorization code")
 				}
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "invalid-code",
+				State:        "test-state-error",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
@@ -299,6 +302,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "",
+				State:        "",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
@@ -310,6 +314,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-code",
+				State:        "test-state",
 				RedirectUri: "",
 			},
 			wantErr:     true,
@@ -321,6 +326,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "",
+				State:        "",
 				RedirectUri: "",
 			},
 			wantErr:     true,
@@ -331,6 +337,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-code",
+				State:        "test-state",
 				RedirectUri: "not-a-valid-uri",
 			},
 			wantErr:     true,
@@ -340,12 +347,13 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 		{
 			name: "Service returns context canceled error",
 			setupMocks: func(m *MockAuthService) {
-				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+				m.HandleGoogleOAuthFunc = func(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 					return nil, context.Canceled
 				}
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-code",
+				State:        "test-state",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
@@ -440,9 +448,9 @@ func TestAuthHandler_GoogleOAuth_ValidURIVariations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := NewMockAuthService()
-			mockService.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
+			mockService.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
 				assert.Equal(t, tt.redirectURI, redirectURI)
-				return "https://accounts.google.com/o/oauth2/v2/auth?state=test", nil
+				return "https://accounts.google.com/o/oauth2/v2/auth?state=test", "test", nil
 			}
 
 			handler := NewAuthHandler(mockService)
@@ -465,33 +473,38 @@ func TestAuthHandler_HandleGoogleOAuth_ValidURIVariations(t *testing.T) {
 		name        string
 		redirectURI string
 		code        string
+		state       string
 	}{
 		{
 			name:        "HTTP localhost",
 			redirectURI: "http://localhost:8080/callback",
 			code:        "auth-code-localhost",
+			state:       "state-localhost",
 		},
 		{
 			name:        "HTTPS URL",
 			redirectURI: "https://example.com/oauth/callback",
 			code:        "auth-code-https",
+			state:       "state-https",
 		},
 		{
 			name:        "URL with query parameters",
 			redirectURI: "https://example.com/callback?param1=value1",
 			code:        "auth-code-with-params",
+			state:       "state-with-params",
 		},
 		{
 			name:        "URL with port",
 			redirectURI: "https://example.com:8443/callback",
 			code:        "auth-code-with-port",
+			state:       "state-with-port",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := NewMockAuthService()
-			mockService.HandleGoogleOAuthFunc = func(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+			mockService.HandleGoogleOAuthFunc = func(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 				assert.Equal(t, tt.code, code)
 				assert.Equal(t, tt.redirectURI, redirectURI)
 				return &model.Token{
@@ -504,6 +517,7 @@ func TestAuthHandler_HandleGoogleOAuth_ValidURIVariations(t *testing.T) {
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
+				State:        tt.state,
 				RedirectUri: tt.redirectURI,
 			}
 
@@ -570,36 +584,42 @@ func TestAuthHandler_HandleGoogleOAuth_InvalidInputVariations(t *testing.T) {
 	tests := []struct {
 		name        string
 		code        string
+		state        string
 		redirectURI string
 		errField    string
 	}{
 		{
 			name:        "Empty code",
 			code:        "",
+			state:        "",
 			redirectURI: "http://localhost:8080/callback",
 			errField:    "Code",
 		},
 		{
 			name:        "Whitespace code",
 			code:        "   ",
+			state:        "test-state",
 			redirectURI: "http://localhost:8080/callback",
 			errField:    "Code",
 		},
 		{
 			name:        "Empty redirect URI",
 			code:        "valid-code",
+			state:        "test-state",
 			redirectURI: "",
 			errField:    "RedirectUri",
 		},
 		{
 			name:        "Both empty",
 			code:        "",
+			state:        "",
 			redirectURI: "",
 			errField:    "",
 		},
 		{
 			name:        "Invalid redirect URI",
 			code:        "valid-code",
+			state:        "test-state",
 			redirectURI: "not-a-uri",
 			errField:    "RedirectUri",
 		},
@@ -612,6 +632,7 @@ func TestAuthHandler_HandleGoogleOAuth_InvalidInputVariations(t *testing.T) {
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
+				State:        tt.state,
 				RedirectUri: tt.redirectURI,
 			}
 
@@ -653,9 +674,9 @@ func TestAuthHandler_GoogleOAuth_WhitespaceHandling(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := NewMockAuthService()
 			var receivedURI string
-			mockService.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, error) {
+			mockService.GoogleOAuthFunc = func(ctx context.Context, redirectURI string) (string, string, error) {
 				receivedURI = redirectURI
-				return "https://accounts.google.com/o/oauth2/v2/auth", nil
+				return "https://accounts.google.com/o/oauth2/v2/auth", "test", nil
 			}
 
 			handler := NewAuthHandler(mockService)
@@ -678,6 +699,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 	tests := []struct {
 		name        string
 		code        string
+		state        string
 		redirectURI string
 		expectedCode string
 		expectedURI string
@@ -685,6 +707,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 		{
 			name:        "Code with leading whitespace - validator accepts it",
 			code:        "  auth-code-123",
+			state:        "test-state",
 			redirectURI: "http://localhost:8080/callback",
 			expectedCode: "  auth-code-123",
 			expectedURI:  "http://localhost:8080/callback",
@@ -692,6 +715,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 		{
 			name:        "Code with trailing whitespace - validator accepts it",
 			code:        "auth-code-456  ",
+			state:        "test-state",
 			redirectURI: "http://localhost:8080/callback",
 			expectedCode: "auth-code-456  ",
 			expectedURI:  "http://localhost:8080/callback",
@@ -699,6 +723,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 		{
 			name:        "Redirect URI with leading whitespace - validator accepts it",
 			code:        "auth-code-789",
+			state:        "test-state",
 			redirectURI: "  http://localhost:8080/callback",
 			expectedCode: "auth-code-789",
 			expectedURI:  "  http://localhost:8080/callback",
@@ -706,6 +731,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 		{
 			name:        "Valid code and redirect URI - passes",
 			code:        "valid-code",
+			state:        "test-state",
 			redirectURI: "http://localhost:8080/callback",
 			expectedCode: "valid-code",
 			expectedURI:  "http://localhost:8080/callback",
@@ -716,7 +742,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := NewMockAuthService()
 			var receivedCode, receivedURI string
-			mockService.HandleGoogleOAuthFunc = func(ctx context.Context, code, redirectURI string) (*model.Token, error) {
+			mockService.HandleGoogleOAuthFunc = func(ctx context.Context, code, state, redirectURI string) (*model.Token, error) {
 				receivedCode = code
 				receivedURI = redirectURI
 				return &model.Token{
@@ -729,6 +755,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
+				State:        tt.state,
 				RedirectUri: tt.redirectURI,
 			}
 

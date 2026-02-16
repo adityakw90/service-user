@@ -363,7 +363,7 @@ func main() {
 			ClientID:     cfg.OAuth.Google.ClientID,
 			ClientSecret: cfg.OAuth.Google.ClientSecret,
 			RedirectURI:  cfg.OAuth.Google.RedirectURI,
-		})
+		}, redisClient)
 	}
 
 	// Create observers based on config
