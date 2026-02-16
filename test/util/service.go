@@ -20,7 +20,6 @@ import (
 	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	golangOauth2 "golang.org/x/oauth2"
 )
 
 // TestServices holds all the services and dependencies for e2e testing.
@@ -205,22 +204,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 			ClientID:     cfg.OAuth.Google.ClientID,
 			ClientSecret: cfg.OAuth.Google.ClientSecret,
 			Scopes:       []string{"openid", "email", "profile"},
-		}
-		// Set custom endpoint if TokenURL is provided (for testing with mock servers)
-		if cfg.OAuth.Google.TokenURL != "" {
-			authURL := cfg.OAuth.Google.AuthURL
-			if authURL == "" {
-				// Use default Google Auth URL if not specified
-				authURL = "https://accounts.google.com/o/oauth2/auth"
-			}
-			oauthConfig.Endpoint = &golangOauth2.Endpoint{
-				AuthURL:  authURL,
-				TokenURL: cfg.OAuth.Google.TokenURL,
-			}
-		}
-		// Set UserInfoURL if provided (for testing with mock servers)
-		if cfg.OAuth.Google.UserInfoURL != "" {
-			oauthConfig.UserInfoURL = cfg.OAuth.Google.UserInfoURL
 		}
 		oauthProvider, err = oauth.NewGoogleOAuth(oauthConfig, redisClient)
 		if err != nil {

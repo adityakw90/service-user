@@ -142,10 +142,6 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 				Enabled:      true,
 				ClientID:     getEnv("OAUTH_GOOGLE_CLIENT_ID", "test-client-id"),
 				ClientSecret: getEnv("OAUTH_GOOGLE_CLIENT_SECRET", "test-client-secret"),
-				RedirectURI:  getEnv("OAUTH_GOOGLE_REDIRECT_URI", "http://localhost:8080/oauth/google/callback"),
-				AuthURL:      getEnv("OAUTH_GOOGLE_AUTH_URL", ""),
-				TokenURL:     getEnv("OAUTH_GOOGLE_TOKEN_URL", ""),
-				UserInfoURL:  getEnv("OAUTH_GOOGLE_USER_INFO_URL", ""),
 			},
 		},
 	}, nil
