@@ -3,6 +3,7 @@ package testutil
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/oauth2"
 )
 
 // TestServices holds all the services and dependencies for e2e testing.
@@ -74,25 +76,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		t.Fatal(err)
 		return nil, err
 	}
-	// dbPool, err := infra.NewPostgreConnection(ctx, &infra.PostgreConfig{
-	// 	Host:                  cfg.Database.Host,
-	// 	Port:                  cfg.Database.Port,
-	// 	User:                  cfg.Database.User,
-	// 	Password:              cfg.Database.Password,
-	// 	Name:                  cfg.Database.Name,
-	// 	SslMode:               cfg.Database.SslMode,
-	// 	Timezone:              cfg.Database.Timezone,
-	// 	MinConns:              cfg.Database.MinConns,
-	// 	MinIdleConns:          cfg.Database.MinIdleConns,
-	// 	MaxConns:              cfg.Database.MaxConns,
-	// 	MaxConnIdleTime:       cfg.Database.MaxConnIdleTime,
-	// 	MaxConnLifetime:       cfg.Database.MaxConnLifetime,
-	// 	MaxConnLifetimeJitter: cfg.Database.MaxConnLifetimeJitter,
-	// 	HealthCheckPeriod:     cfg.Database.HealthCheckPeriod,
-	// })
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to connect to database: %w", err)
-	// }
 
 	// Connect to Redis
 	redisClient, err := NewTestRedisConnection(t, ctx, cfg)
@@ -100,20 +83,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		t.Fatal(err)
 		return nil, err
 	}
-	// redisClient, err := infra.NewRedisConnection(context.Background(), &infra.RedisConfig{
-	// 	Host:              cfg.Redis.Host,
-	// 	Port:              cfg.Redis.Port,
-	// 	User:              cfg.Redis.User,
-	// 	Password:          cfg.Redis.Password,
-	// 	DB:                cfg.Redis.DB,
-	// 	PoolSize:          cfg.Redis.PoolSize,
-	// 	PoolTimeout:       cfg.Redis.PoolTimeout,
-	// 	ConnectionIdleMin: cfg.Redis.ConnectionIdleMin,
-	// })
-	// if err != nil {
-	// 	dbPool.Close()
-	// 	return nil, fmt.Errorf("failed to connect to redis: %w", err)
-	// }
 
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(dbPool)
@@ -205,6 +174,26 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 			ClientSecret: cfg.OAuth.Google.ClientSecret,
 			Scopes:       []string{"openid", "email", "profile"},
 		}
+
+		// Check for custom OAuth endpoints (for testing with mock servers)
+		tokenURL := os.Getenv("OAUTH_GOOGLE_TOKEN_URL")
+		userInfoURL := os.Getenv("OAUTH_GOOGLE_USER_INFO_URL")
+		authURL := os.Getenv("OAUTH_GOOGLE_AUTH_URL")
+
+		if userInfoURL != "" {
+			oauthConfig.UserInfoURL = userInfoURL
+		}
+		if tokenURL != "" {
+			if authURL == "" {
+				// Default to Google's auth URL if only token URL is provided
+				authURL = "https://accounts.google.com/o/oauth2/auth"
+			}
+			oauthConfig.Endpoint = &oauth2.Endpoint{
+				AuthURL:  authURL,
+				TokenURL: tokenURL,
+			}
+		}
+
 		oauthProvider, err = oauth.NewGoogleOAuth(oauthConfig, redisClient)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize OAuth provider: %w", err)

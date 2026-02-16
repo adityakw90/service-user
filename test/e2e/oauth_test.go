@@ -65,7 +65,7 @@ func TestE2E_AuthService_GoogleOAuth(t *testing.T) {
 					RedirectUri: "",
 				}
 			},
-			wantErr: true,
+			wantErr:    true,
 			verifyFunc: nil,
 		},
 		{
@@ -142,6 +142,7 @@ func TestE2E_AuthService_HandleGoogleOAuth(t *testing.T) {
 	defer closeMockServer()
 
 	// Set environment variables to configure OAuth adapter with mock endpoints
+	t.Setenv("OAUTH_GOOGLE_AUTH_URL", mockEndpoints.AuthURL)
 	t.Setenv("OAUTH_GOOGLE_TOKEN_URL", mockEndpoints.TokenURL)
 	t.Setenv("OAUTH_GOOGLE_USER_INFO_URL", mockEndpoints.UserInfoURL)
 
@@ -154,13 +155,13 @@ func TestE2E_AuthService_HandleGoogleOAuth(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
+		name              string
 		mockUserInfo      *mockOAuthUserInfo
 		mockTokenResponse map[string]any
-		mockStatusCode   int
-		setup            func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
-		handleReq        func(t *testing.T) *authgrpc.HandleGoogleOAuthRequest
-		wantErr          bool
+		mockStatusCode    int
+		setup             func(t *testing.T, grpcClient *testutil.TestGRPCClient) string
+		handleReq         func(t *testing.T) *authgrpc.HandleGoogleOAuthRequest
+		wantErr           bool
 	}{
 		{
 			name: "New user login creates new user and returns JWT tokens",
@@ -340,21 +341,6 @@ func setupMockOAuthServer(t *testing.T) (*mockOAuthServerEndpoints, func(), *moc
 	}
 
 	return endpoints, closeFunc, testUserInfo
-}
-
-// skipIfNoOAuthConfig skips the test if OAuth is not configured.
-func skipIfNoOAuthConfig(t *testing.T) {
-	t.Helper()
-
-	// Check if OAuth is configured with test credentials
-	// If not, skip the test with a message
-	if testing.Short() {
-		t.Skip("Skipping OAuth test in short mode")
-	}
-
-	// Tests will fail gracefully if OAuth provider is not initialized
-	// The service setup in test/util/service.go creates OAuth provider
-	// only if OAUTH_GOOGLE_CLIENT_ID is set
 }
 
 // createOAuthTestUser creates a user via regular auth for testing existing user OAuth flow.
