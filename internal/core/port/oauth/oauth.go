@@ -15,5 +15,5 @@ type OAuthProvider interface {
 	ExchangeCode(ctx context.Context, code, state, redirectURI string) (*model.OAuthTokens, error)
 
 	// GetUserInfo retrieves user information using the access token.
-	GetUserInfo(ctx context.Context, accessToken string) (*model.OAuthUserInfo, error)
+	GetUserInfo(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error)
 }

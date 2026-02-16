@@ -13,10 +13,10 @@ type AuthService interface {
 	Authenticate(ctx context.Context, payload *params.AuthParams) (*model.Token, error)
 
 	// Google OAuth
-	GoogleOAuth(ctx context.Context, redirectURI string) (string, error)
+	GoogleOAuth(ctx context.Context, redirectURI string) (string, string, error)
 
 	// Handle Google Oauth redirection
-	HandleGoogleOAuth(ctx context.Context, code, redirectURI string) (*model.Token, error)
+	HandleGoogleOAuth(ctx context.Context, code, state, redirectURI string) (*model.Token, error)
 
 	// RefreshToken refreshes access token using a refresh token.
 	RefreshToken(ctx context.Context, refreshToken string) (*model.Token, error)

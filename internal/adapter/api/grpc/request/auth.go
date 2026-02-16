@@ -119,14 +119,16 @@ func GoogleOAuthRequestFromPb(req *auth.GoogleOAuthRequest) *GoogleOAuthRequest 
 // HandleGoogleOAuthRequest represents validated OAuth callback request.
 type HandleGoogleOAuthRequest struct {
 	Code        string `validate:"required"`
+	State       string `validate:"required"`
 	RedirectUri string `validate:"required,uri"`
 }
 
 // HandleGoogleOAuthRequestFromPb creates a HandleGoogleOAuthRequest from protobuf.
 func HandleGoogleOAuthRequestFromPb(req *auth.HandleGoogleOAuthRequest) *HandleGoogleOAuthRequest {
 	return &HandleGoogleOAuthRequest{
-		Code:        strings.TrimSpace(req.Code),
-		RedirectUri: strings.TrimSpace(req.RedirectUri),
+		Code:        strings.TrimSpace(req.GetCode()),
+		State:       strings.TrimSpace(req.GetState()),
+		RedirectUri: strings.TrimSpace(req.GetRedirectUri()),
 	}
 }
 

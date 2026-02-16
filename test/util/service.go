@@ -200,15 +200,15 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	// Initialize OAuth provider if configured
 	var oauthProvider portOAuth.OAuthProvider
 	if cfg.OAuth.Enabled && cfg.OAuth.Google.Enabled {
-		oauthProvider = oauth.NewGoogleOAuthAdapter(oauth.GoogleOAuthConfig{
+		oauthConfig := &oauth.GoogleOAuthConfig{
 			ClientID:     cfg.OAuth.Google.ClientID,
 			ClientSecret: cfg.OAuth.Google.ClientSecret,
-			RedirectURI:  cfg.OAuth.Google.RedirectURI,
 			Scopes:       []string{"openid", "email", "profile"},
-			AuthURL:      cfg.OAuth.Google.AuthURL,
-			TokenURL:     cfg.OAuth.Google.TokenURL,
-			UserInfoURL:  cfg.OAuth.Google.UserInfoURL,
-		})
+		}
+		oauthProvider, err = oauth.NewGoogleOAuth(oauthConfig, redisClient)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize OAuth provider: %w", err)
+		}
 	}
 
 	authService := svc.NewAuthService(

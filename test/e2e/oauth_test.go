@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	authgrpc "github.com/adityakw90/service-user-proto/gen/go/auth"
 	usergrpc "github.com/adityakw90/service-user-proto/gen/go/user"
@@ -187,6 +188,7 @@ func TestE2E_AuthService_HandleGoogleOAuth(t *testing.T) {
 			handleReq: func(t *testing.T) *authgrpc.HandleGoogleOAuthRequest {
 				return &authgrpc.HandleGoogleOAuthRequest{
 					Code:        "valid-auth-code",
+					State:       "test-state-new-user",
 					RedirectUri: "http://localhost:8080/callback",
 				}
 			},
@@ -227,6 +229,7 @@ func TestE2E_AuthService_HandleGoogleOAuth(t *testing.T) {
 			handleReq: func(t *testing.T) *authgrpc.HandleGoogleOAuthRequest {
 				return &authgrpc.HandleGoogleOAuthRequest{
 					Code:        "valid-auth-code-2",
+					State:       "test-state-existing-user",
 					RedirectUri: "http://localhost:8080/callback",
 				}
 			},
@@ -239,6 +242,12 @@ func TestE2E_AuthService_HandleGoogleOAuth(t *testing.T) {
 			ctx := context.Background()
 			_ = tt.setup(t, grpcClient)
 			handleReq := tt.handleReq(t)
+
+			// Pre-store PKCE verifier in Redis for the test state
+			// Key format: oauth:pkce:{state} (from internal/adapter/oauth/google.go)
+			mockVerifier := "mock-verifier-" + handleReq.State
+			err := testServices.Redis.Set(ctx, "oauth:pkce:"+handleReq.State, mockVerifier, 10*time.Minute).Err()
+			require.NoError(t, err, "Failed to store PKCE verifier in Redis")
 
 			resp, err := grpcClient.AuthClient.HandleGoogleOAuth(ctx, handleReq)
 

@@ -359,11 +359,15 @@ func main() {
 	// Initialize OAuth provider
 	var oauthProvider portOAuth.OAuthProvider
 	if cfg.OAuth.Enabled {
-		oauthProvider = oauth.NewGoogleOAuthAdapter(oauth.GoogleOAuthConfig{
+		oauthProvider, err = oauth.NewGoogleOAuth(&oauth.GoogleOAuthConfig{
 			ClientID:     cfg.OAuth.Google.ClientID,
 			ClientSecret: cfg.OAuth.Google.ClientSecret,
-			RedirectURI:  cfg.OAuth.Google.RedirectURI,
 		}, redisClient)
+		if err != nil {
+			logger.Fatal("failed to initialize OAuth provider", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
 	}
 
 	// Create observers based on config

@@ -36,13 +36,18 @@ var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded")
 
 	// oauth errors
-	ErrOAuthInvalidState           = &OAuthError{Code: "invalid_state", Description: "Invalid or expired state parameter"}
-	ErrOAuthExchangeFailed         = errors.New("oauth: token exchange failed")
-	ErrOAuthUserInfoFailed         = errors.New("oauth: failed to get user info")
-	ErrOAuthAccessDenied           = &OAuthError{Code: "access_denied", Description: "User denied the authorization request"}
-	ErrOAuthInvalidCode            = &OAuthError{Code: "invalid_code", Description: "Invalid or expired authorization code"}
-	ErrOAuthServerError            = &OAuthError{Code: "server_error", Description: "OAuth server returned an error"}
-	ErrOAuthTemporarilyUnavailable = &OAuthError{Code: "temporarily_unavailable", Description: "OAuth server is temporarily unavailable"}
+	ErrOAuthClientIDRequired           = errors.New("oauth: client id is required")
+	ErrOAuthClientSecretRequired       = errors.New("oauth: client secret is required")
+	ErrOAuthFailedGenerateCodeVerifier = errors.New("oauth: failed to generate code verifier")
+	ErrOAuthInvalidMinVerifierLength   = errors.New("oauth: invalid minimum verifier length")
+	ErrOAuthInvalidMaxVerifierLength   = errors.New("oauth: invalid maximum verifier length")
+	ErrOAuthInvalidState               = &OAuthError{Code: "invalid_state", Description: "Invalid or expired state parameter"}
+	ErrOAuthExchangeFailed             = errors.New("oauth: token exchange failed")
+	ErrOAuthUserInfoFailed             = errors.New("oauth: failed to get user info")
+	ErrOAuthAccessDenied               = &OAuthError{Code: "access_denied", Description: "User denied the authorization request"}
+	ErrOAuthInvalidCode                = &OAuthError{Code: "invalid_code", Description: "Invalid or expired authorization code"}
+	ErrOAuthServerError                = &OAuthError{Code: "server_error", Description: "OAuth server returned an error"}
+	ErrOAuthTemporarilyUnavailable     = &OAuthError{Code: "temporarily_unavailable", Description: "OAuth server is temporarily unavailable"}
 	// PKCE-specific errors
 	ErrOAuthCodeVerifierMissing = errors.New("oauth: code verifier not found")
 )

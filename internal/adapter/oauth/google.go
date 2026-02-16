@@ -8,224 +8,139 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"strings"
 	"time"
 
+	domainErrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
 
-// Default Google OAuth UserInfo URL.
 const (
-	defaultGoogleUserInfoURL = "https://www.googleapis.com/oauth2/v2/userinfo"
-
-	// PKCE verifier length: 43-128 characters (RFC 7636)
-	minVerifierLength = 43
-	maxVerifierLength = 128
-	// Redis key prefix for storing PKCE verifiers
-	redisPKCEKeyPrefix = "oauth:pkce:"
-	// Redis TTL for verifiers: 10 minutes
-	verifierTTL = 10 * time.Minute
+	GoogleChallengeMethod  = "S256"
+	GoogleChallengeCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+	GoogleUserInfoURL      = "https://www.googleapis.com/oauth2/v2/userinfo"
 )
 
-// GoogleOAuthConfig holds Google OAuth configuration.
+type googleUserResp struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	GivenName     string `json:"given_name"`
+	FamilyName    string `json:"family_name"`
+	Name          string `json:"name"`
+	Picture       string `json:"picture"`
+	Locale        string `json:"locale"`
+}
+
 type GoogleOAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURI  string
-	Scopes       []string
-	// Optional URL overrides for testing/custom endpoints
-	AuthURL     string // If empty, defaults to Google's auth URL
-	TokenURL    string // If empty, defaults to Google's token URL
-	UserInfoURL string // If empty, defaults to Google's userinfo URL
-	// Optional HTTP client injection for testing
-	HTTPClient *http.Client // If nil, creates default client
+	ClientID          string
+	ClientSecret      string
+	Scopes            []string
+	Endpoint          *oauth2.Endpoint
+	RedisPKCEPrefix   string
+	RedisPKCETTL      time.Duration
+	MinVerifierLength int
+	MaxVerifierLength int
+	HttpTimeout       time.Duration
 }
 
-// GoogleOAuthAdapter implements OAuthProvider for Google using golang.org/x/oauth2.
-type GoogleOAuthAdapter struct {
-	oauth2Config *oauth2.Config
-	userInfoURL  string
-	httpClient   *http.Client
-	redis        redis.Cmdable
+type GoogleOAuth struct {
+	config      *GoogleOAuthConfig
+	oauthConfig *oauth2.Config
+	redisClient *redis.Client
+	httpClient  *http.Client
 }
 
-// NewGoogleOAuthAdapter creates a new Google OAuth adapter.
-func NewGoogleOAuthAdapter(config GoogleOAuthConfig, redis redis.Cmdable) portOAuth.OAuthProvider {
-	// Default scopes if none provided
-	scopes := config.Scopes
-	if scopes == nil {
-		scopes = []string{
-			"openid",
-			"email",
-			"profile",
-		}
+func NewGoogleOAuth(config *GoogleOAuthConfig, redis *redis.Client) (*GoogleOAuth, error) {
+	if config == nil {
+		config = &GoogleOAuthConfig{}
 	}
-
-	// Build oauth2 config with Google endpoints
-	cfg := &oauth2.Config{
-		ClientID:     config.ClientID,
-		ClientSecret: config.ClientSecret,
-		RedirectURL:  config.RedirectURI,
-		Scopes:       scopes,
-		Endpoint:     google.Endpoint,
+	if config.ClientID == "" {
+		return nil, domainErrors.ErrOAuthClientIDRequired
 	}
-
-	// Allow custom endpoint override for testing
-	if config.AuthURL != "" || config.TokenURL != "" {
-		authURL := google.Endpoint.AuthURL
-		tokenURL := google.Endpoint.TokenURL
-
-		if config.AuthURL != "" {
-			authURL = config.AuthURL
-		}
-		if config.TokenURL != "" {
-			tokenURL = config.TokenURL
-		}
-
-		cfg.Endpoint = oauth2.Endpoint{
-			AuthURL:  authURL,
-			TokenURL: tokenURL,
-		}
+	if config.ClientSecret == "" {
+		return nil, domainErrors.ErrOAuthClientSecretRequired
 	}
-
-	userInfoURL := config.UserInfoURL
-	if userInfoURL == "" {
-		userInfoURL = defaultGoogleUserInfoURL
+	if config.Scopes == nil {
+		config.Scopes = []string{"openid", "email", "profile"}
 	}
-
-	return &GoogleOAuthAdapter{
-		oauth2Config: cfg,
-		userInfoURL:  userInfoURL,
-		httpClient:   config.HTTPClient,
-		redis:        redis,
+	if config.Endpoint == nil {
+		googleEndpoint := google.Endpoint
+		config.Endpoint = &googleEndpoint
 	}
-}
-
-func (g *GoogleOAuthAdapter) getHTTPClient() *http.Client {
-	if g.httpClient != nil {
-		return g.httpClient
+	if config.RedisPKCEPrefix == "" {
+		config.RedisPKCEPrefix = "oauth:pkce:"
 	}
-	g.httpClient = &http.Client{Timeout: 10 * time.Second}
-	return g.httpClient
-}
-
-// generateCodeVerifier generates a cryptographically random code verifier
-// for PKCE (RFC 7636). Returns 43-128 character string.
-func (g *GoogleOAuthAdapter) generateCodeVerifier() (string, error) {
-	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
-	b := make([]byte, maxVerifierLength)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("failed to generate verifier: %w", err)
+	if config.RedisPKCETTL == 0 {
+		config.RedisPKCETTL = 10 * time.Minute
 	}
-
-	// Trim to desired length and encode using base64url
-	verifier := strings.Builder{}
-	for i := 0; i < maxVerifierLength; i++ {
-		verifier.WriteByte(charset[b[i]%byte(len(charset))])
+	if config.MinVerifierLength == 0 {
+		config.MinVerifierLength = 43
 	}
-	result := verifier.String()
-
-	// Ensure minimum length
-	if len(result) < minVerifierLength {
-		return "", fmt.Errorf("verifier too short: %d", len(result))
+	if config.MaxVerifierLength == 0 {
+		config.MaxVerifierLength = 128
 	}
-	return result, nil
-}
-
-// computeCodeChallenge computes code challenge from a verifier
-// using SHA-256 and BASE64URL encoding (RFC 7636).
-func (g *GoogleOAuthAdapter) computeCodeChallenge(verifier string) string {
-	h := sha256.Sum256([]byte(verifier))
-	return base64.RawURLEncoding.EncodeToString(h[:])
-}
-
-// storeVerifier stores code verifier in Redis with TTL.
-func (g *GoogleOAuthAdapter) storeVerifier(ctx context.Context, state, verifier string) error {
-	key := redisPKCEKeyPrefix + state
-	return g.redis.Set(ctx, key, verifier, verifierTTL).Err()
-}
-
-// getVerifier retrieves and deletes code verifier from Redis (single-use).
-func (g *GoogleOAuthAdapter) getVerifier(ctx context.Context, state string) (string, error) {
-	key := redisPKCEKeyPrefix + state
-
-	// Get verifier
-	verifier, err := g.redis.Get(ctx, key).Result()
-	if err != nil {
-		if err == redis.Nil {
-			return "", fmt.Errorf("code verifier not found or expired for state: %s", state)
-		}
-		return "", fmt.Errorf("failed to get verifier: %w", err)
+	if config.HttpTimeout == 0 {
+		config.HttpTimeout = 10 * time.Second
 	}
-
-	// Delete verifier (single-use)
-	if err := g.redis.Del(ctx, key).Err(); err != nil {
-		// Log but don't fail - verifier is already consumed
-		// In production, this should be logged
+	oauth := &GoogleOAuth{
+		config: config,
+		oauthConfig: &oauth2.Config{
+			ClientID:     config.ClientID,
+			ClientSecret: config.ClientSecret,
+			Endpoint:     *config.Endpoint,
+			Scopes:       config.Scopes,
+		},
+		redisClient: redis,
+		httpClient:  &http.Client{Timeout: config.HttpTimeout},
 	}
-
-	return verifier, nil
+	return oauth, nil
 }
 
 // GetAuthorizationURL returns the OAuth authorization URL with state using oauth2 library.
 // For PKCE, generates code_verifier, computes code_challenge, and stores in Redis.
-func (g *GoogleOAuthAdapter) GetAuthorizationURL(ctx context.Context, redirectURI, state string) (string, error) {
-	// Generate PKCE verifier and challenge
-	verifier, err := g.generateCodeVerifier()
+func (g *GoogleOAuth) GetAuthorizationURL(ctx context.Context, state string, redirectURI string) (string, error) {
+	// Generate PKCE challenge
+	challenge, err := g.createCodeChallenge()
 	if err != nil {
-		return "", fmt.Errorf("failed to generate code verifier: %w", err)
+		return "", fmt.Errorf("failed to create code challenge: %w", err)
 	}
 
-	challenge := g.computeCodeChallenge(verifier)
-
-	// Store verifier in Redis
-	if err := g.storeVerifier(ctx, state, verifier); err != nil {
-		return "", fmt.Errorf("failed to store code verifier: %w", err)
+	// Store challenge in Redis
+	if err := g.storeChallenge(ctx, state, challenge); err != nil {
+		return "", fmt.Errorf("failed to store code challenge: %w", err)
 	}
-
-	// Create a temporary config with the redirectURI override
-	cfg := *g.oauth2Config // Copy the config
-	cfg.RedirectURL = redirectURI
 
 	// Use oauth2 library to generate auth URL with access_type=offline and prompt=consent
 	// This ensures we get a refresh_token
-	authURL := cfg.AuthCodeURL(state,
+	authURL := g.oauthConfig.AuthCodeURL(state,
 		oauth2.AccessTypeOffline,
 		oauth2.ApprovalForce,
-		// Add PKCE parameters
-		oauth2.SetAuthURLParam("code_challenge", challenge),
-		oauth2.SetAuthURLParam("code_challenge_method", "S256"),
+		oauth2.S256ChallengeOption(challenge), // PKCE option
+		oauth2.SetAuthURLParam("redirect_uri", redirectURI),
 	)
 	return authURL, nil
 }
 
 // ExchangeCode exchanges authorization code for tokens using oauth2 library.
-func (g *GoogleOAuthAdapter) ExchangeCode(ctx context.Context, code, state, redirectURI string) (*model.OAuthTokens, error) {
-	// NEW: Retrieve code verifier from Redis
-	verifier, err := g.getVerifier(ctx, state)
+func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI string) (*model.OAuthTokens, error) {
+	// Get code challenge from Redis
+	challenge, err := g.getChallenge(ctx, state)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get code verifier: %w", err)
+		return nil, fmt.Errorf("failed to get code challenge: %w", err)
 	}
 
-	// Inject HTTP client into context if custom client is set
-	if g.httpClient != nil {
-		ctx = context.WithValue(ctx, oauth2.HTTPClient, g.httpClient)
-	}
-
-	// Use oauth2 library to exchange code with PKCE
-	token, err := g.oauth2Config.Exchange(ctx, code,
+	// Exchange code for tokens using oauth2 library
+	token, err := g.oauthConfig.Exchange(ctx, code,
 		oauth2.SetAuthURLParam("redirect_uri", redirectURI),
-		// Add code_verifier for PKCE
-		oauth2.SetAuthURLParam("code_verifier", verifier),
+		oauth2.SetAuthURLParam("code_verifier", challenge),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code: %w", err)
+		return nil, fmt.Errorf("failed to exchange code for tokens: %w", err)
 	}
 
 	// Calculate expires_in
@@ -251,17 +166,15 @@ func (g *GoogleOAuthAdapter) ExchangeCode(ctx context.Context, code, state, redi
 	}, nil
 }
 
-// GetUserInfo retrieves user information from Google.
-// Note: The UserInfo endpoint is not part of the oauth2 library, so we keep the custom implementation.
-func (g *GoogleOAuthAdapter) GetUserInfo(ctx context.Context, accessToken string) (*model.OAuthUserInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", g.userInfoURL, nil)
+// GetUserInfo retrieves user information using the access token.
+func (g *GoogleOAuth) GetUserInfo(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", GoogleUserInfoURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
-	client := g.getHTTPClient()
-	resp, err := client.Do(req)
+	resp, err := g.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user info: %w", err)
 	}
@@ -276,17 +189,7 @@ func (g *GoogleOAuthAdapter) GetUserInfo(ctx context.Context, accessToken string
 		return nil, fmt.Errorf("userinfo error: %s", string(body))
 	}
 
-	var userResp struct {
-		ID            string `json:"id"`
-		Email         string `json:"email"`
-		VerifiedEmail bool   `json:"verified_email"`
-		GivenName     string `json:"given_name"`
-		FamilyName    string `json:"family_name"`
-		Name          string `json:"name"`
-		Picture       string `json:"picture"`
-		Locale        string `json:"locale"`
-	}
-
+	var userResp googleUserResp
 	if err := json.Unmarshal(body, &userResp); err != nil {
 		return nil, fmt.Errorf("failed to parse user info: %w", err)
 	}
@@ -303,27 +206,51 @@ func (g *GoogleOAuthAdapter) GetUserInfo(ctx context.Context, accessToken string
 	}, nil
 }
 
-// Exported functions for testing PKCE helpers
+func (g *GoogleOAuth) createCodeChallenge() (string, error) {
+	b := make([]byte, g.config.MaxVerifierLength)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to generate verifier: %w", err)
+	}
 
-// GenerateCodeVerifier generates a cryptographically random code verifier
-// for PKCE (RFC 7636). Returns 43-128 character string.
-func (g *GoogleOAuthAdapter) GenerateCodeVerifier() (string, error) {
-	return g.generateCodeVerifier()
+	// Trim to desired length and encode using base64url
+	verifier := strings.Builder{}
+	for i := range g.config.MaxVerifierLength {
+		verifier.WriteByte(GoogleChallengeCharset[b[i]%byte(len(GoogleChallengeCharset))])
+	}
+	result := verifier.String()
+
+	// Ensure minimum length
+	if len(result) < g.config.MinVerifierLength {
+		return "", fmt.Errorf("verifier too short: %d", len(result))
+	}
+
+	// Compute SHA-256 hash of verifier
+	h := sha256.Sum256([]byte(result))
+	return base64.RawURLEncoding.EncodeToString(h[:]), nil
 }
 
-// ComputeCodeChallenge computes code challenge from a verifier
-// using SHA-256 and BASE64URL encoding (RFC 7636).
-func (g *GoogleOAuthAdapter) ComputeCodeChallenge(verifier string) string {
-	return g.computeCodeChallenge(verifier)
+// storeChallenge stores code challenge in Redis with TTL.
+func (g *GoogleOAuth) storeChallenge(ctx context.Context, state, challenge string) error {
+	key := g.config.RedisPKCEPrefix + state
+	return g.redisClient.Set(ctx, key, challenge, g.config.RedisPKCETTL).Err()
 }
 
-// StoreVerifier stores code verifier in Redis with TTL.
-func (g *GoogleOAuthAdapter) StoreVerifier(ctx context.Context, state, verifier string) error {
-	return g.storeVerifier(ctx, state, verifier)
-}
+// getChallenge retrieves code challenge from Redis.
+func (g *GoogleOAuth) getChallenge(ctx context.Context, state string) (string, error) {
+	key := g.config.RedisPKCEPrefix + state
+	code, err := g.redisClient.Get(ctx, key).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return "", fmt.Errorf("code challenge not found or expired for state: %s", state)
+		}
+		return "", fmt.Errorf("failed to get code challenge: %w", err)
+	}
 
-// GetVerifier retrieves and deletes code verifier from Redis (single-use).
-func (g *GoogleOAuthAdapter) GetVerifier(ctx context.Context, state string) (string, error) {
-	return g.getVerifier(ctx, state)
+	// delete for one time use
+	// Delete verifier (single-use)
+	if err := g.redisClient.Del(ctx, key).Err(); err != nil {
+		// Log but don't fail - verifier is already consumed
+		// In production, this should be logged
+	}
+	return code, nil
 }
-

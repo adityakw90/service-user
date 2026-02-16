@@ -10,8 +10,8 @@ import (
 // MockOAuthProvider is a mock implementation of port.OAuthProvider.
 type MockOAuthProvider struct {
 	GetAuthorizationURLFunc func(ctx context.Context, redirectURI string, state string) (string, error)
-	ExchangeCodeFunc        func(ctx context.Context, code string, redirectURI string) (*model.OAuthTokens, error)
-	GetUserInfoFunc         func(ctx context.Context, accessToken string) (*model.OAuthUserInfo, error)
+	ExchangeCodeFunc        func(ctx context.Context, code string, state string, redirectURI string) (*model.OAuthTokens, error)
+	GetUserInfoFunc         func(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error)
 
 	getAuthorizationURLCalls int
 	exchangeCodeCalls        int
@@ -30,10 +30,10 @@ func (m *MockOAuthProvider) GetAuthorizationURL(ctx context.Context, redirectURI
 	return "https://oauth.example.com/auth?state=" + state, nil
 }
 
-func (m *MockOAuthProvider) ExchangeCode(ctx context.Context, code string, redirectURI string) (*model.OAuthTokens, error) {
+func (m *MockOAuthProvider) ExchangeCode(ctx context.Context, code string, state string, redirectURI string) (*model.OAuthTokens, error) {
 	m.exchangeCodeCalls++
 	if m.ExchangeCodeFunc != nil {
-		return m.ExchangeCodeFunc(ctx, code, redirectURI)
+		return m.ExchangeCodeFunc(ctx, code, state, redirectURI)
 	}
 	return &model.OAuthTokens{
 		AccessToken:  "mock_access_token",
@@ -42,10 +42,10 @@ func (m *MockOAuthProvider) ExchangeCode(ctx context.Context, code string, redir
 	}, nil
 }
 
-func (m *MockOAuthProvider) GetUserInfo(ctx context.Context, accessToken string) (*model.OAuthUserInfo, error) {
+func (m *MockOAuthProvider) GetUserInfo(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error) {
 	m.getUserInfoCalls++
 	if m.GetUserInfoFunc != nil {
-		return m.GetUserInfoFunc(ctx, accessToken)
+		return m.GetUserInfoFunc(ctx, token)
 	}
 	return &model.OAuthUserInfo{
 		Email:     "test@example.com",
