@@ -123,6 +123,7 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			},
 			want: &authpb.GoogleOAuthResponse{
 				AuthorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?client_id=test&redirect_uri=http://localhost:8080/callback&response_type=code&scope=openid+email+profile&state=abc123&access_type=offline&prompt=consent",
+				State:            "abc123",
 			},
 			wantErr: false,
 		},
@@ -138,6 +139,7 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			},
 			want: &authpb.GoogleOAuthResponse{
 				AuthorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=xyz",
+				State:            "xyz",
 			},
 			wantErr: false,
 		},
@@ -463,6 +465,7 @@ func TestAuthHandler_GoogleOAuth_ValidURIVariations(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotEmpty(t, got.AuthorizationUrl)
+			assert.Equal(t, "test", got.State)
 		})
 	}
 }
@@ -685,10 +688,11 @@ func TestAuthHandler_GoogleOAuth_WhitespaceHandling(t *testing.T) {
 				RedirectUri: tt.redirectURI,
 			}
 
-			_, err := handler.GoogleOAuth(context.Background(), req)
+			got, err := handler.GoogleOAuth(context.Background(), req)
 
 			// The URI validator accepts leading/trailing whitespace
 			require.NoError(t, err)
+			assert.Equal(t, "test", got.State, "state should be returned")
 			assert.Equal(t, tt.expectedURI, receivedURI, "whitespace is passed through as-is")
 		})
 	}

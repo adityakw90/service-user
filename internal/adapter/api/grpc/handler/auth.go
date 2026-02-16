@@ -115,13 +115,12 @@ func (h *AuthHandler) GoogleOAuth(ctx context.Context, req *auth.GoogleOAuthRequ
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	url, _, err := h.service.GoogleOAuth(ctx, req.GetRedirectUri())
+	url, state, err := h.service.GoogleOAuth(ctx, req.GetRedirectUri())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to initiate OAuth: %v", err)
 	}
 
-	// TODO: Include state in response once v0.1.1 is released
-	return &auth.GoogleOAuthResponse{AuthorizationUrl: url}, nil
+	return &auth.GoogleOAuthResponse{AuthorizationUrl: url, State: state}, nil
 }
 
 // HandleGoogleOAuth handles the OAuth callback.
