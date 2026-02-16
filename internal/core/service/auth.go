@@ -344,7 +344,7 @@ func (s *authService) GoogleOAuth(ctx context.Context, redirectURI string) (stri
 	state := s.uidGen.New()
 
 	// Get authorization URL from OAuth provider
-	authURL, err := s.oauthProvider.GetAuthorizationURL(ctx, redirectURI, state)
+	authURL, err := s.oauthProvider.GetAuthorizationURL(ctx, state, redirectURI)
 	if err != nil {
 		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 			IdentifierType: "oauth",

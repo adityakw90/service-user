@@ -24,7 +24,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				uidGen.NewFunc = func() string {
 					return "state-123"
 				}
-				mockOAuth.GetAuthorizationURLFunc = func(ctx context.Context, redirectURI, state string) (string, error) {
+				mockOAuth.GetAuthorizationURLFunc = func(ctx context.Context, state, redirectURI string) (string, error) {
 					return "https://accounts.google.com/o/oauth2/v2/auth?state=" + state, nil
 				}
 			},
@@ -39,7 +39,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				uidGen.NewFunc = func() string {
 					return "custom-state-456"
 				}
-				mockOAuth.GetAuthorizationURLFunc = func(ctx context.Context, redirectURI, state string) (string, error) {
+				mockOAuth.GetAuthorizationURLFunc = func(ctx context.Context, state, redirectURI string) (string, error) {
 					return "https://accounts.google.com/o/oauth2/v2/auth?state=" + state, nil
 				}
 			},
@@ -54,7 +54,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				uidGen.NewFunc = func() string {
 					return "state-error"
 				}
-				mockOAuth.GetAuthorizationURLFunc = func(ctx context.Context, redirectURI, state string) (string, error) {
+				mockOAuth.GetAuthorizationURLFunc = func(ctx context.Context, state, redirectURI string) (string, error) {
 					return "", context.Canceled
 				}
 			},

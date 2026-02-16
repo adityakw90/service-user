@@ -41,6 +41,7 @@ type GoogleOAuthConfig struct {
 	ClientSecret      string
 	Scopes            []string
 	Endpoint          *oauth2.Endpoint
+	UserInfoURL       string
 	RedisPKCEPrefix   string
 	RedisPKCETTL      time.Duration
 	MinVerifierLength int
@@ -71,6 +72,9 @@ func NewGoogleOAuth(config *GoogleOAuthConfig, redis *redis.Client) (*GoogleOAut
 	if config.Endpoint == nil {
 		googleEndpoint := google.Endpoint
 		config.Endpoint = &googleEndpoint
+	}
+	if config.UserInfoURL == "" {
+		config.UserInfoURL = GoogleUserInfoURL
 	}
 	if config.RedisPKCEPrefix == "" {
 		config.RedisPKCEPrefix = "oauth:pkce:"
@@ -168,7 +172,7 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 
 // GetUserInfo retrieves user information using the access token.
 func (g *GoogleOAuth) GetUserInfo(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", GoogleUserInfoURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", g.config.UserInfoURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
