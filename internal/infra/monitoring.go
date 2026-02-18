@@ -17,9 +17,11 @@ type MonitoringConfig struct {
 	TracerProviderHost  string
 	TracerProviderPort  int
 	TracerSampleRatio   float64
+	TracerInsecure      bool
 	MetricProvider      string
 	MetricProviderHost  string
 	MetricProviderPort  int
+	MetricInsecure      bool
 }
 
 // ConvertConfigToOptions converts the old config structure to new go-monitoring options
@@ -53,6 +55,9 @@ func ConvertConfigToOptions(cfg *MonitoringConfig) []gomon.Option {
 		if cfg.TracerSampleRatio > 0 {
 			opts = append(opts, gomon.WithTracerSampleRatio(cfg.TracerSampleRatio))
 		}
+		if cfg.TracerInsecure {
+			opts = append(opts, gomon.WithTracerInsecure(cfg.TracerInsecure))
+		}
 	}
 
 	if cfg.MetricProvider != "" {
@@ -61,6 +66,9 @@ func ConvertConfigToOptions(cfg *MonitoringConfig) []gomon.Option {
 			cfg.MetricProviderHost,
 			cfg.MetricProviderPort,
 		))
+		if cfg.MetricInsecure {
+			opts = append(opts, gomon.WithMetricInsecure(cfg.MetricInsecure))
+		}
 		// Default metric interval if not specified
 		opts = append(opts, gomon.WithMetricInterval(60*time.Second))
 	}

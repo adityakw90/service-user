@@ -54,9 +54,11 @@ func main() {
 		TracerProviderHost: cfg.Monitoring.Tracer.ProviderHost,
 		TracerProviderPort: cfg.Monitoring.Tracer.ProviderPort,
 		TracerSampleRatio:  cfg.Monitoring.Tracer.SampleRatio,
+		TracerInsecure:     cfg.Monitoring.Tracer.Insecure,
 		MetricProvider:     cfg.Monitoring.Metric.Provider,
 		MetricProviderHost: cfg.Monitoring.Metric.ProviderHost,
 		MetricProviderPort: cfg.Monitoring.Metric.ProviderPort,
+		MetricInsecure:     cfg.Monitoring.Metric.Insecure,
 	})
 	if err != nil {
 		logger.Fatal("failed to initialize monitoring", map[string]interface{}{
