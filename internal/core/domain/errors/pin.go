@@ -1,9 +1,7 @@
 package errors
 
-import "errors"
-
 var (
-	ErrPinNotSet          = errors.New("pin: PIN not set for user")
-	ErrPinInvalid         = errors.New("pin: invalid PIN")
-	ErrPINTooManyAttempts = errors.New("pin: too many failed attempts")
+	ErrPinNotSet          = NewCustomError(60001, "PIN not set for user", nil)
+	ErrPinInvalid         = NewCustomError(60002, "invalid PIN", nil)
+	ErrPINTooManyAttempts = NewCustomError(60003, "too many failed attempts", nil)
 )

@@ -209,13 +209,13 @@ func ValidationErrors(err error) string {
 
 	// Return first error for simplicity
 	for _, e := range validationErrors {
-		return formatFieldError(e)
+		return FormatFieldError(e)
 	}
 	return "validation failed"
 }
 
-// formatFieldError formats a single validation error.
-func formatFieldError(e validator.FieldError) string {
+// FormatFieldError formats a single validation error.
+func FormatFieldError(e validator.FieldError) string {
 	field := e.Field()
 	tag := e.Tag()
 

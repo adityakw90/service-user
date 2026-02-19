@@ -1,7 +1,5 @@
 package errors
 
-import "errors"
-
 var (
-	ErrProfileNotFound = errors.New("profile: profile not found")
+	ErrProfileNotFound = NewCustomError(50001, "profile not found", nil)
 )

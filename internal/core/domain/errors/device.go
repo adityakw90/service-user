@@ -1,9 +1,7 @@
 package errors
 
-import "errors"
-
 var (
-	ErrDeviceNotFound     = errors.New("device: device not found")
-	ErrDeviceRevoked      = errors.New("device: device access has been revoked")
-	ErrUserDeviceNotFound = errors.New("device: user-device relationship not found")
+	ErrDeviceNotFound     = NewCustomError(80001, "device not found", nil)
+	ErrDeviceRevoked      = NewCustomError(80002, "device access has been revoked", nil)
+	ErrUserDeviceNotFound = NewCustomError(80003, "user-device relationship not found", nil)
 )

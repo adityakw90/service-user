@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
+	grpcMiddleware "github.com/adityakw90/service-user/internal/adapter/api/grpc/middleware"
 	"github.com/adityakw90/service-user/internal/adapter/oauth"
 	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
@@ -441,7 +442,18 @@ func main() {
 		})
 	}
 
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			grpcMiddleware.ChainUnaryInterceptors(
+				grpcMiddleware.UnaryRequestInterceptor(iMon),
+			),
+		),
+		grpc.StreamInterceptor(
+			grpcMiddleware.ChainStreamInterceptors(
+				grpcMiddleware.StreamRequestInterceptor(iMon),
+			),
+		),
+	)
 	user.RegisterUserServiceServer(srv, userHandler)
 	auth.RegisterAuthServiceServer(srv, authHandler)
 	device.RegisterDeviceServiceServer(srv, deviceHandler)

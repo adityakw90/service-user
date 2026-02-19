@@ -1,7 +1,5 @@
 package errors
 
-import "errors"
-
 var (
-	ErrFileNotFound = errors.New("file: file not found")
+	ErrFileNotFound = NewCustomError(70001, "file not found", nil)
 )
