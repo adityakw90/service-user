@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 /*
@@ -28,7 +30,7 @@ func TestInfra_PostgreConnection(t *testing.T) {
 				Port:                  5432,
 				User:                  getEnv("DATABASE_USER", "postgres"),
 				Password:              getEnv("DATABASE_PASSWORD", "postgres"),
-				Name:                  getEnv("DATABASE_NAME", "test_service_user"),
+				Name:                  getEnv("DATABASE_NAME", "service_db"),
 				SslMode:               "disable",
 				Timezone:              "UTC",
 				MinConns:              1,
@@ -67,7 +69,7 @@ func TestInfra_PostgreConnection(t *testing.T) {
 				Port:                  5432,
 				User:                  "invalid_user",
 				Password:              "invalid_password",
-				Name:                  getEnv("DATABASE_NAME", "test_service_user"),
+				Name:                  getEnv("DATABASE_NAME", "service_db"),
 				SslMode:               "disable",
 				MinConns:              1,
 				MinIdleConns:          1,
@@ -125,7 +127,7 @@ func TestInfra_PostgreConnection_PoolConfiguration(t *testing.T) {
 				Port:                  5432,
 				User:                  getEnv("DATABASE_USER", "postgres"),
 				Password:              getEnv("DATABASE_PASSWORD", "postgres"),
-				Name:                  getEnv("DATABASE_NAME", "test_service_user"),
+				Name:                  getEnv("DATABASE_NAME", "service_db"),
 				SslMode:               "disable",
 				Timezone:              "UTC",
 				MinConns:              2,
@@ -147,7 +149,7 @@ func TestInfra_PostgreConnection_PoolConfiguration(t *testing.T) {
 				Port:                  5432,
 				User:                  getEnv("DATABASE_USER", "postgres"),
 				Password:              getEnv("DATABASE_PASSWORD", "postgres"),
-				Name:                  getEnv("DATABASE_NAME", "test_service_user"),
+				Name:                  getEnv("DATABASE_NAME", "service_db"),
 				SslMode:               "disable",
 				Timezone:              "UTC",
 				MinConns:              1,
@@ -217,7 +219,7 @@ func TestInfra_PostgreConnection_ConcurrentQueries(t *testing.T) {
 				Port:                  5432,
 				User:                  getEnv("DATABASE_USER", "postgres"),
 				Password:              getEnv("DATABASE_PASSWORD", "postgres"),
-				Name:                  getEnv("DATABASE_NAME", "test_service_user"),
+				Name:                  getEnv("DATABASE_NAME", "service_db"),
 				SslMode:               "disable",
 				Timezone:              "UTC",
 				MinConns:              1,
@@ -260,6 +262,54 @@ func TestInfra_PostgreConnection_ConcurrentQueries(t *testing.T) {
 				case <-time.After(5 * time.Second):
 					t.Error("Timeout waiting for concurrent queries")
 				}
+			}
+		})
+	}
+}
+
+func TestInfra_getPostgreQueryExecMode(t *testing.T) {
+	tests := []struct {
+		name string
+		mode string
+		want pgx.QueryExecMode
+	}{
+		{
+			name: "cache_statement mode",
+			mode: "cache_statement",
+			want: pgx.QueryExecModeCacheStatement,
+		},
+		{
+			name: "cache_describe mode",
+			mode: "cache_describe",
+			want: pgx.QueryExecModeCacheDescribe,
+		},
+		{
+			name: "simple_protocol mode",
+			mode: "simple_protocol",
+			want: pgx.QueryExecModeSimpleProtocol,
+		},
+		{
+			name: "empty string defaults to cache_describe",
+			mode: "",
+			want: pgx.QueryExecModeCacheDescribe,
+		},
+		{
+			name: "invalid mode defaults to cache_describe",
+			mode: "invalid_mode",
+			want: pgx.QueryExecModeCacheDescribe,
+		},
+		{
+			name: "unknown mode defaults to cache_describe",
+			mode: "unknown",
+			want: pgx.QueryExecModeCacheDescribe,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getPostgreQueryExecMode(tt.mode)
+			if got != tt.want {
+				t.Errorf("getPostgreQueryExecMode() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,6 +24,7 @@ type PostgreConfig struct {
 	MaxConnLifetime       time.Duration
 	MaxConnLifetimeJitter time.Duration
 	HealthCheckPeriod     time.Duration
+	QueryExecMode         string
 }
 
 func NewPostgreConnection(ctx context.Context, cfg *PostgreConfig) (*pgxpool.Pool, error) {
@@ -46,6 +48,7 @@ func NewPostgreConnection(ctx context.Context, cfg *PostgreConfig) (*pgxpool.Poo
 	connConfig.MaxConnLifetimeJitter = cfg.MaxConnLifetimeJitter
 	connConfig.MaxConnIdleTime = cfg.MaxConnIdleTime
 	connConfig.HealthCheckPeriod = cfg.HealthCheckPeriod
+	connConfig.ConnConfig.DefaultQueryExecMode = getPostgreQueryExecMode(cfg.QueryExecMode)
 
 	// Create pool with config
 	pgxPool, err := pgxpool.NewWithConfig(ctx, connConfig)
@@ -59,4 +62,28 @@ func NewPostgreConnection(ctx context.Context, cfg *PostgreConfig) (*pgxpool.Poo
 	}
 
 	return pgxPool, nil
+}
+
+func getPostgreQueryExecMode(mode string) pgx.QueryExecMode {
+	// QueryExecMode controls how queries are executed. Options:
+	// - "cache_statement": Best performance, direct PostgreSQL only (may cause "prepared statement name already in use" errors)
+	// - "cache_describe": Excellent performance, works with pgbouncer and direct PostgreSQL (recommended)
+	// - "simple_protocol": Compatible with all proxies, slower performance
+	// Default: "cache_describe"
+	switch mode {
+	case "cache_statement":
+		// Best performance for direct PostgreSQL only
+		// WARNING: May cause "prepared statement name already in use" errors with pgbouncer
+		return pgx.QueryExecModeCacheStatement
+	case "cache_describe":
+		// Excellent performance, works with pgbouncer and direct PostgreSQL (recommended)
+		return pgx.QueryExecModeCacheDescribe
+	case "simple_protocol":
+		// Compatible with all proxies, slower performance
+		return pgx.QueryExecModeSimpleProtocol
+	default:
+		// Invalid value, fall back to recommended default
+		// Default to "cache_describe" for best compatibility with pgbouncer and direct PostgreSQL
+		return pgx.QueryExecModeCacheDescribe
+	}
 }

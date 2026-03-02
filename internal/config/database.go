@@ -21,6 +21,7 @@ type DatabaseConfig struct {
 	MaxConnLifetime       time.Duration `mapstructure:"max_conn_lifetime"`
 	MaxConnLifetimeJitter time.Duration `mapstructure:"max_conn_lifetime_jitter"`
 	HealthCheckPeriod     time.Duration `mapstructure:"health_check_period"`
+	QueryExecMode         string        `mapstructure:"query_exec_mode"`
 }
 
 func defaultDatabaseConfig(key string, vConfig *viper.Viper) {
@@ -38,4 +39,5 @@ func defaultDatabaseConfig(key string, vConfig *viper.Viper) {
 	vConfig.SetDefault(key+".max_conn_lifetime", "1h")
 	vConfig.SetDefault(key+".max_conn_lifetime_jitter", "1m")
 	vConfig.SetDefault(key+".health_check_period", "1m")
+	vConfig.SetDefault(key+".query_exec_mode", "cache_describe")
 }

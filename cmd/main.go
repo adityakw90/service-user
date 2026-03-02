@@ -86,6 +86,7 @@ func main() {
 		MaxConnLifetime:       cfg.Database.MaxConnLifetime,
 		MaxConnLifetimeJitter: cfg.Database.MaxConnLifetimeJitter,
 		HealthCheckPeriod:     cfg.Database.HealthCheckPeriod,
+		QueryExecMode:         cfg.Database.QueryExecMode,
 	})
 	if err != nil {
 		logger.Fatal("failed to connect to database", map[string]interface{}{
