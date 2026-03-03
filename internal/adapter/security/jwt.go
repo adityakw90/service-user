@@ -14,7 +14,7 @@ import (
 // JWTClaims represents the claims in a JWT token.
 type JWTClaims struct {
 	Uid            string         `json:"uid"`
-	Sid            string         `json:"sid"` // session id
+	Sid            string         `json:"sid"`  // session id
 	Type           string         `json:"type"` // token type (access, refresh)
 	Identifier     string         `json:"identifier"`
 	IdentifierType string         `json:"identifier_type"`
@@ -87,7 +87,7 @@ func (g *JWTGenerator) ValidateToken(tokenString string) (*model.TokenClaims, er
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, domainerrors.ErrTokenExpired
 		}
-		return nil, domainerrors.ErrTokenInvalid
+		return nil, fmt.Errorf("%w: %v", domainerrors.ErrTokenInvalid, err)
 	}
 
 	claims, ok := token.Claims.(*JWTClaims)

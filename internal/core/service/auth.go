@@ -17,6 +17,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
 	portSvc "github.com/adityakw90/service-user/internal/core/port/service"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 type authService struct {
@@ -402,9 +403,11 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
 			// Create new user from OAuth info
+			randPass, _ := util.GenerateRandomPassword(8)
 			user = &model.User{
 				UID:      s.uidGen.New(),
 				Username: userInfo.DisplayName(),
+				Password: randPass,
 				Email:    userInfo.Email,
 				Status:   model.UserStatusActive,
 			}
@@ -665,6 +668,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 
 func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*model.TokenClaims, error) {
 	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
+		Identifier:     accessToken,
 		IdentifierType: "validate",
 	}, nil)
 
@@ -678,8 +682,9 @@ func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*m
 			return nil, domainerrors.ErrTokenExpired
 		}
 		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
+			Identifier:     accessToken,
 			IdentifierType: "validate",
-		}, domainerrors.ErrTokenInvalid)
+		}, err)
 		return nil, domainerrors.ErrTokenInvalid
 	}
 

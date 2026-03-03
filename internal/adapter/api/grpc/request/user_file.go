@@ -5,6 +5,7 @@ import (
 
 	userFile "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/pkg/util"
 )
 
 // UserFileGetRequest represents validated user file get request.
@@ -63,9 +64,31 @@ type UserFileListRequest struct {
 }
 
 func (r *UserFileListRequest) ToUserFileListParams() *params.UserFileListParam {
+	var pagination *params.PaginationParam
+	if r.Pagination != nil {
+		pagination = r.Pagination.ToPaginationParams()
+	} else {
+		// Default pagination
+		page := 1
+		limit := 10
+		pagination = &params.PaginationParam{
+			Page:    &page,
+			Limit:   &limit,
+			Sort:    util.Ptr("created_at"),
+			OrderBy: util.Ptr("desc"),
+		}
+	}
+
+	var filter *params.UserFileListFilterParam
+	if r.Filter != nil {
+		filter = r.Filter.ToUserFileFilterParams()
+	} else {
+		filter = &params.UserFileListFilterParam{}
+	}
+
 	return &params.UserFileListParam{
-		Pagination: r.Pagination.ToPaginationParams(),
-		Filter:     r.Filter.ToUserFileFilterParams(),
+		Pagination: pagination,
+		Filter:     filter,
 	}
 }
 
