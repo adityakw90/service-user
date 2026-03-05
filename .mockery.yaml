@@ -1,0 +1,141 @@
+# Mockery configuration for generating test mocks
+# This file configures mockery to generate all port mocks into test/mocks/ directory
+# with a mirrored subdirectory structure matching the port organization.
+
+# Use the packages configuration format (required for mockery v3+)
+# Note: mockery preserves module path structure in packages mode
+# We use config section at interface level to customize output directory per interface
+
+packages:
+  # Repository ports - test/mocks/repository/
+  github.com/adityakw90/service-user/internal/core/port/repository:
+    config:
+      with-expecter: true    # Enable expecter pattern for fluent API
+      outpkg: mocks          # All mocks use package name "mocks"
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      UserRepository:
+        config:
+          dir: test/mocks/repository
+      UserProfileRepository:
+        config:
+          dir: test/mocks/repository
+      UserPinRepository:
+        config:
+          dir: test/mocks/repository
+      DeviceRepository:
+        config:
+          dir: test/mocks/repository
+      UserFileRepository:
+        config:
+          dir: test/mocks/repository
+      UserDeviceRepository:
+        config:
+          dir: test/mocks/repository
+
+  # Service ports - test/mocks/service/
+  github.com/adityakw90/service-user/internal/core/port/service:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      UserService:
+        config:
+          dir: test/mocks/service
+      AuthService:
+        config:
+          dir: test/mocks/service
+      DeviceService:
+        config:
+          dir: test/mocks/service
+      UserFileService:
+        config:
+          dir: test/mocks/service
+
+  # Resolver ports - test/mocks/resolver/
+  github.com/adityakw90/service-user/internal/core/port/resolver:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      UserResolver:
+        config:
+          dir: test/mocks/resolver
+      DeviceResolver:
+        config:
+          dir: test/mocks/resolver
+      UserFileResolver:
+        config:
+          dir: test/mocks/resolver
+
+  # Security ports - test/mocks/security/
+  github.com/adityakw90/service-user/internal/core/port/security:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      Hasher:
+        config:
+          dir: test/mocks/security
+      UIDGenerator:
+        config:
+          dir: test/mocks/security
+      TokenGenerator:
+        config:
+          dir: test/mocks/security
+      TokenStore:
+        config:
+          dir: test/mocks/security
+      RateLimiter:
+        config:
+          dir: test/mocks/security
+      AttemptTracker:
+        config:
+          dir: test/mocks/security
+
+  # Event ports - test/mocks/event/
+  github.com/adityakw90/service-user/internal/core/port/event:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      EventPublisher:
+        config:
+          dir: test/mocks/event
+
+  # Cache ports - test/mocks/cache/
+  github.com/adityakw90/service-user/internal/core/port/cache:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      UserCache:
+        config:
+          dir: test/mocks/cache
+
+  # OAuth ports - test/mocks/oauth/
+  github.com/adityakw90/service-user/internal/core/port/oauth:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      OAuthProvider:
+        config:
+          dir: test/mocks/oauth
+
+  # Observer ports - test/mocks/observer/
+  github.com/adityakw90/service-user/internal/core/port/observer:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      ServiceObserver:
+        config:
+          dir: test/mocks/observer

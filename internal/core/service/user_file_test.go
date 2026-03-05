@@ -4,31 +4,42 @@ import (
 	"context"
 	"testing"
 
+	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/params"
+	repomocks "github.com/adityakw90/service-user/test/mocks/repository"
+	resolvermocks "github.com/adityakw90/service-user/test/mocks/resolver"
+	securitymocks "github.com/adityakw90/service-user/test/mocks/security"
+	eventmocks "github.com/adityakw90/service-user/test/mocks/event"
+	observermocks "github.com/adityakw90/service-user/test/mocks/observer"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
+
+// setupObserverAny allows any OnSignal calls on the observer (useful when not testing signal behavior)
+func setupUserFileObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[signal.UserFileSignal]) {
+	// Allow any OnSignal call without checking parameters
+	// Use Maybe() to make the expectation optional (can be called 0 or more times)
+	// Note: Using EXPECT().OnSignal() pattern for better type safety
+	observer.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.AnythingOfType("signal.UserFileSignal"), mock.Anything).Maybe()
+}
 
 func TestUserFileService_Get(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserFileRepository, *MockUserResolver)
+		setupMocks func(*repomocks.MockUserFileRepository, *resolvermocks.MockUserResolver)
 		uid        string
 		want       *model.UserFile
 		wantErr    error
 	}{
 		{
 			name: "Happy Path",
-			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return createUserFile(1, "file-uid", "user-uid", "image"), nil
-				}
-				ur.UIDsByIDsFunc = func(ctx context.Context, userIDs []int64) (map[int64]string, error) {
-					return map[int64]string{1: "user-uid"}, nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				ur.EXPECT().UIDsByIDs(mock.Anything, []int64{1}).Return(map[int64]string{1: "user-uid"}, nil).Once()
 			},
 			uid:  "file-uid",
 			want: createUserFile(1, "file-uid", "user-uid", "image"),
@@ -40,10 +51,8 @@ func TestUserFileService_Get(t *testing.T) {
 		},
 		{
 			name: "Error - file not found",
-			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return nil, domainerrors.ErrFileNotFound
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
+				fr.EXPECT().GetByUID(mock.Anything, "nonexistent-file").Return(nil, domainerrors.ErrFileNotFound).Once()
 			},
 			uid:     "nonexistent-file",
 			wantErr: domainerrors.ErrFileNotFound,
@@ -52,11 +61,11 @@ func TestUserFileService_Get(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
-			mockUserFileRepo := NewMockUserFileRepository()
-			mockUserRepo := NewMockUserRepository()
-			mockUserResolver := NewMockUserResolver()
-			mockUIDGen := NewMockUIDGenerator()
+			// Setup mocks using generated mocks
+			mockUserFileRepo := repomocks.NewMockUserFileRepository(t)
+			mockUserRepo := repomocks.NewMockUserRepository(t)
+			mockUserResolver := resolvermocks.NewMockUserResolver(t)
+			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -69,8 +78,12 @@ func TestUserFileService_Get(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
-				NewMockUserFileObserver(),
-				NewMockEventPublisher(),
+				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
+				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+				setupUserFileObserverAny(t, obs)
+				return obs
+			}(),
+				eventmocks.NewMockEventPublisher(t),
 			)
 
 			// Execute
@@ -94,7 +107,7 @@ func TestUserFileService_Get(t *testing.T) {
 func TestUserFileService_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserFileRepository, *MockUserResolver)
+		setupMocks func(*repomocks.MockUserFileRepository, *resolvermocks.MockUserResolver)
 		pagination *params.PaginationParam
 		filter     *params.UserFileListFilterParam
 		wantErr    error
@@ -102,18 +115,17 @@ func TestUserFileService_List(t *testing.T) {
 	}{
 		{
 			name: "Happy Path - default pagination",
-			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
-				fr.ListFunc = func(ctx context.Context, p *params.PaginationParam, f *params.UserFileListFilterParam) (*model.UserFiles, error) {
-					return &model.UserFiles{
-						Items: []model.UserFile{
-							*createUserFile(1, "file1", "user-uid", "image"),
-							*createUserFile(2, "file2", "user-uid", "document"),
-						},
-					}, nil
-				}
-				ur.UIDsByIDsFunc = func(ctx context.Context, userIDs []int64) (map[int64]string, error) {
-					return map[int64]string{1: "user-uid"}, nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
+				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserFileListFilterParam")).Return(&model.UserFiles{
+					Items: []model.UserFile{
+						*createUserFile(1, "file1", "user-uid", "image"),
+						*createUserFile(2, "file2", "user-uid", "document"),
+					},
+				}, nil).Once()
+				// Both files have UserID 1, so UIDsByIDs will be called with [1, 1]
+				ur.EXPECT().UIDsByIDs(mock.Anything, mock.MatchedBy(func(ids []int64) bool {
+					return len(ids) == 2 && ids[0] == 1 && ids[1] == 1
+				})).Return(map[int64]string{1: "user-uid"}, nil).Once()
 			},
 			pagination: nil,
 			filter:     nil,
@@ -128,12 +140,10 @@ func TestUserFileService_List(t *testing.T) {
 		},
 		{
 			name: "Happy Path - custom pagination",
-			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
-				fr.ListFunc = func(ctx context.Context, p *params.PaginationParam, f *params.UserFileListFilterParam) (*model.UserFiles, error) {
-					return &model.UserFiles{
-						Items: []model.UserFile{},
-					}, nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
+				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserFileListFilterParam")).Return(&model.UserFiles{
+					Items: []model.UserFile{},
+				}, nil).Once()
 			},
 			pagination: &params.PaginationParam{
 				Page:    util.Ptr(2),
@@ -149,10 +159,8 @@ func TestUserFileService_List(t *testing.T) {
 		},
 		{
 			name: "Happy Path - with filters",
-			setupMocks: func(fr *MockUserFileRepository, ur *MockUserResolver) {
-				fr.ListFunc = func(ctx context.Context, p *params.PaginationParam, f *params.UserFileListFilterParam) (*model.UserFiles, error) {
-					return &model.UserFiles{Items: []model.UserFile{}}, nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
+				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserFileListFilterParam")).Return(&model.UserFiles{Items: []model.UserFile{}}, nil).Once()
 			},
 			pagination: &params.PaginationParam{
 				Page:    util.Ptr(1),
@@ -172,11 +180,11 @@ func TestUserFileService_List(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
-			mockUserFileRepo := NewMockUserFileRepository()
-			mockUserRepo := NewMockUserRepository()
-			mockUserResolver := NewMockUserResolver()
-			mockUIDGen := NewMockUIDGenerator()
+			// Setup mocks using generated mocks
+			mockUserFileRepo := repomocks.NewMockUserFileRepository(t)
+			mockUserRepo := repomocks.NewMockUserRepository(t)
+			mockUserResolver := resolvermocks.NewMockUserResolver(t)
+			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -189,8 +197,12 @@ func TestUserFileService_List(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
-				NewMockUserFileObserver(),
-				NewMockEventPublisher(),
+				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
+				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+				setupUserFileObserverAny(t, obs)
+				return obs
+			}(),
+				eventmocks.NewMockEventPublisher(t),
 			)
 
 			// Execute
@@ -215,22 +227,23 @@ func TestUserFileService_List(t *testing.T) {
 func TestUserFileService_Add(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserRepository, *MockUserFileRepository, *MockUIDGenerator)
+		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockUserFileRepository, *securitymocks.MockUIDGenerator, *eventmocks.MockEventPublisher)
 		param      params.UserFileCreateParam
 		want       *model.UserFile
 		wantErr    error
 	}{
 		{
 			name: "Happy Path",
-			setupMocks: func(ur *MockUserRepository, fr *MockUserFileRepository, ug *MockUIDGenerator) {
-				ur.GetByUIDFunc = func(ctx context.Context, uid string) (*model.User, error) {
-					return createTestUser(1, "user-uid", "testuser", "test@example.com", "pass", model.UserStatusActive), nil
-				}
-				ug.NewFunc = func() string { return "file-uid" }
-				fr.CreateFunc = func(ctx context.Context, file *model.UserFile) (*model.UserFile, error) {
+			setupMocks: func(ur *repomocks.MockUserRepository, fr *repomocks.MockUserFileRepository, ug *securitymocks.MockUIDGenerator, ep *eventmocks.MockEventPublisher) {
+				ur.EXPECT().GetByUID(mock.Anything, "user-uid").Return(createTestUser(1, "user-uid", "testuser", "test@example.com", "pass", model.UserStatusActive), nil).Once()
+				ug.EXPECT().New().Return("file-uid").Once()
+				fr.EXPECT().Create(mock.Anything, mock.MatchedBy(func(f *model.UserFile) bool {
+					return f.UserUID == "user-uid" && f.FileName == "photo.jpg"
+				})).RunAndReturn(func(ctx context.Context, file *model.UserFile) (*model.UserFile, error) {
 					file.ID = 1
 					return file, nil
-				}
+				}).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			param: params.UserFileCreateParam{
 				UserUID:    "user-uid",
@@ -269,10 +282,8 @@ func TestUserFileService_Add(t *testing.T) {
 		},
 		{
 			name: "Error - user not found",
-			setupMocks: func(ur *MockUserRepository, fr *MockUserFileRepository, ug *MockUIDGenerator) {
-				ur.GetByUIDFunc = func(ctx context.Context, uid string) (*model.User, error) {
-					return nil, domainerrors.ErrUserNotFound
-				}
+			setupMocks: func(ur *repomocks.MockUserRepository, fr *repomocks.MockUserFileRepository, ug *securitymocks.MockUIDGenerator, ep *eventmocks.MockEventPublisher) {
+				ur.EXPECT().GetByUID(mock.Anything, "nonexistent-uid").Return(nil, domainerrors.ErrUserNotFound).Once()
 			},
 			param: params.UserFileCreateParam{
 				UserUID:    "nonexistent-uid",
@@ -289,15 +300,16 @@ func TestUserFileService_Add(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
-			mockUserFileRepo := NewMockUserFileRepository()
-			mockUserRepo := NewMockUserRepository()
-			mockUserResolver := NewMockUserResolver()
-			mockUIDGen := NewMockUIDGenerator()
+			// Setup mocks using generated mocks
+			mockUserFileRepo := repomocks.NewMockUserFileRepository(t)
+			mockUserRepo := repomocks.NewMockUserRepository(t)
+			mockUserResolver := resolvermocks.NewMockUserResolver(t)
+			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
+			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserRepo, mockUserFileRepo, mockUIDGen)
+				tt.setupMocks(mockUserRepo, mockUserFileRepo, mockUIDGen, mockEventPublisher)
 			}
 
 			// Create service
@@ -306,8 +318,12 @@ func TestUserFileService_Add(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
-				NewMockUserFileObserver(),
-				NewMockEventPublisher(),
+				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
+				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+				setupUserFileObserverAny(t, obs)
+				return obs
+			}(),
+				mockEventPublisher,
 			)
 
 			// Execute
@@ -329,20 +345,17 @@ func TestUserFileService_Add(t *testing.T) {
 func TestUserFileService_Update(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserFileRepository)
+		setupMocks func(*repomocks.MockUserFileRepository, *eventmocks.MockEventPublisher)
 		uid        string
 		param      params.UserFileUpdateParam
 		wantErr    error
 	}{
 		{
 			name: "Happy Path - update all fields",
-			setupMocks: func(fr *MockUserFileRepository) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return createUserFile(1, "file-uid", "user-uid", "image"), nil
-				}
-				fr.UpdateFunc = func(ctx context.Context, file *model.UserFile) error {
-					return nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
 			param: params.UserFileUpdateParam{
@@ -355,13 +368,10 @@ func TestUserFileService_Update(t *testing.T) {
 		},
 		{
 			name: "Happy Path - partial update",
-			setupMocks: func(fr *MockUserFileRepository) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return createUserFile(1, "file-uid", "user-uid", "image"), nil
-				}
-				fr.UpdateFunc = func(ctx context.Context, file *model.UserFile) error {
-					return nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
 			param: params.UserFileUpdateParam{
@@ -370,10 +380,8 @@ func TestUserFileService_Update(t *testing.T) {
 		},
 		{
 			name: "Error - file not found",
-			setupMocks: func(fr *MockUserFileRepository) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return nil, domainerrors.ErrFileNotFound
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "nonexistent-file").Return(nil, domainerrors.ErrFileNotFound).Once()
 			},
 			uid: "nonexistent-file",
 			param: params.UserFileUpdateParam{
@@ -385,15 +393,16 @@ func TestUserFileService_Update(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
-			mockUserFileRepo := NewMockUserFileRepository()
-			mockUserRepo := NewMockUserRepository()
-			mockUserResolver := NewMockUserResolver()
-			mockUIDGen := NewMockUIDGenerator()
+			// Setup mocks using generated mocks
+			mockUserFileRepo := repomocks.NewMockUserFileRepository(t)
+			mockUserRepo := repomocks.NewMockUserRepository(t)
+			mockUserResolver := resolvermocks.NewMockUserResolver(t)
+			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
+			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserFileRepo)
+				tt.setupMocks(mockUserFileRepo, mockEventPublisher)
 			}
 
 			// Create service
@@ -402,8 +411,12 @@ func TestUserFileService_Update(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
-				NewMockUserFileObserver(),
-				NewMockEventPublisher(),
+				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
+				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+				setupUserFileObserverAny(t, obs)
+				return obs
+			}(),
+				mockEventPublisher,
 			)
 
 			// Execute
@@ -424,28 +437,23 @@ func TestUserFileService_Update(t *testing.T) {
 func TestUserFileService_Delete(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*MockUserFileRepository)
+		setupMocks func(*repomocks.MockUserFileRepository, *eventmocks.MockEventPublisher)
 		uid        string
 		wantErr    error
 	}{
 		{
 			name: "Happy Path",
-			setupMocks: func(fr *MockUserFileRepository) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return createUserFile(1, "file-uid", "user-uid", "image"), nil
-				}
-				fr.DeleteFunc = func(ctx context.Context, file *model.UserFile) error {
-					return nil
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Delete(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
 		},
 		{
 			name: "Error - file not found",
-			setupMocks: func(fr *MockUserFileRepository) {
-				fr.GetByUIDFunc = func(ctx context.Context, uid string) (*model.UserFile, error) {
-					return nil, domainerrors.ErrFileNotFound
-				}
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "nonexistent-file").Return(nil, domainerrors.ErrFileNotFound).Once()
 			},
 			uid:     "nonexistent-file",
 			wantErr: domainerrors.ErrFileNotFound,
@@ -454,15 +462,16 @@ func TestUserFileService_Delete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mocks
-			mockUserFileRepo := NewMockUserFileRepository()
-			mockUserRepo := NewMockUserRepository()
-			mockUserResolver := NewMockUserResolver()
-			mockUIDGen := NewMockUIDGenerator()
+			// Setup mocks using generated mocks
+			mockUserFileRepo := repomocks.NewMockUserFileRepository(t)
+			mockUserRepo := repomocks.NewMockUserRepository(t)
+			mockUserResolver := resolvermocks.NewMockUserResolver(t)
+			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
+			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserFileRepo)
+				tt.setupMocks(mockUserFileRepo, mockEventPublisher)
 			}
 
 			// Create service
@@ -471,8 +480,12 @@ func TestUserFileService_Delete(t *testing.T) {
 				mockUserRepo,
 				mockUserResolver,
 				mockUIDGen,
-				NewMockUserFileObserver(),
-				NewMockEventPublisher(),
+				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
+				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+				setupUserFileObserverAny(t, obs)
+				return obs
+			}(),
+				mockEventPublisher,
 			)
 
 			// Execute

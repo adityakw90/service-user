@@ -1,4 +1,4 @@
-.PHONY: test test-cover test-clean build run help verbose
+.PHONY: test test-cover test-clean mocks build run help verbose
 
 # Default target
 .DEFAULT_GOAL := help
@@ -33,6 +33,11 @@ test-clean:
 	@rm -f coverage.txt
 	@echo "Clean complete"
 
+# Generate mocks using mockery
+mocks:
+	@echo "Generating mocks..."
+	@mockery --config .mockery.yaml
+
 build:
 	@echo "Building the application..."
 	@GOOS=linux GOARCH=amd64 go build -o bin/app cmd/main.go
@@ -51,6 +56,7 @@ help:
 	@echo "  test [verbose]       - Run all tests (add verbose for verbose output)"
 	@echo "  test-cover [verbose] - Run tests with coverage (add verbose for verbose output)"
 	@echo "  test-clean           - Clean test cache and coverage files"
+	@echo "  mocks                - Generate mocks using mockery"
 	@echo "  bench [verbose]      - Run all benchmarks (add verbose for verbose output)"
 	@echo "  build                - Build the application"
 	@echo "  run                  - Run the application"

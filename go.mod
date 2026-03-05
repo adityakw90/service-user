@@ -7,7 +7,7 @@ toolchain go1.25.7
 require (
 	github.com/IBM/sarama v1.46.3
 	github.com/adityakw90/go-monitoring v0.3.2
-	github.com/adityakw90/service-user-proto v0.1.1
+	github.com/adityakw90/service-user-proto v0.1.2
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/alicebob/miniredis/v2 v2.36.1
 	github.com/go-playground/validator/v10 v10.30.1
@@ -26,6 +26,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0
 	golang.org/x/crypto v0.46.0
 	golang.org/x/oauth2 v0.35.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 )
@@ -66,6 +67,7 @@ require (
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -86,6 +88,11 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/adityakw90/service-user-proto => /media/adit/SSD/project/MTAmedia/repo/service-user/service-user-proto
+
+// replace github.com/adityakw90/go-cache => /media/adit/SSD/project/MTAmedia/repo/go-lib/go-cache
+
+// replace github.com/adityakw90/go-monitoring => /media/adit/SSD/project/MTAmedia/repo/go-lib/go-monitoring
