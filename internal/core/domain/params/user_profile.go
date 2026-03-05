@@ -16,3 +16,12 @@ type UserProfileListParam struct {
 	Pagination *PaginationParam
 	Filter     *UserProfileListFilterParam
 }
+
+// UserProfileOrderBy represents allowed OrderBy column values for UserProfile.
+type UserProfileOrderBy string
+
+const (
+	OrderByUserProfileID         UserProfileOrderBy = "user_id"
+	OrderByUserProfileCreatedAt UserProfileOrderBy = "created_at"
+	OrderByUserProfileUpdatedAt UserProfileOrderBy = "updated_at"
+)
