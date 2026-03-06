@@ -14,4 +14,7 @@ var (
 	ErrUserInactive           = NewCustomError(40011, "user account is inactive", nil)
 	ErrInvalidCurrentPassword = NewCustomError(40012, "current password is incorrect", nil)
 	ErrPasswordMismatch       = NewCustomError(40013, "new password and confirm password do not match", nil)
+	ErrUserGetFailed          = NewCustomError(40014, "failed to get user", nil)
+	ErrUserUpdateFailed       = NewCustomError(40015, "failed to update user", nil)
+	ErrUserDeleteFailed       = NewCustomError(40016, "failed to delete user", nil)
 )
