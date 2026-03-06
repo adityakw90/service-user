@@ -108,6 +108,27 @@ func (r *UserRepository) Delete(ctx context.Context, user *model.User) error {
 	return err
 }
 
+// allowedOrderByUser maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUser = map[string]params.UserOrderBy{
+	"id":         params.OrderByUserID,
+	"uid":        params.OrderByUserUID,
+	"username":   params.OrderByUserUsername,
+	"email":      params.OrderByUserEmail,
+	"status":     params.OrderByUserStatus,
+	"created_at": params.OrderByUserCreatedAt,
+	"updated_at": params.OrderByUserUpdatedAt,
+}
+
+// validateOrderBy validates the OrderBy value against allowed User columns using O(1) map lookup.
+func (r *UserRepository) validateOrderBy(pagination *params.PaginationParam, defaultOrderBy string) string {
+	if pagination != nil && pagination.OrderBy != nil {
+		if _, ok := allowedOrderByUser[*pagination.OrderBy]; ok {
+			return *pagination.OrderBy
+		}
+	}
+	return defaultOrderBy
+}
+
 // List retrieves users with pagination and filtering.
 func (r *UserRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserListFilterParam) (*model.Users, error) {
 	limit := 10
