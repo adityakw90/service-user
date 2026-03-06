@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	common "github.com/adityakw90/service-user-proto/gen/go/common"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 type PaginationRequest struct {

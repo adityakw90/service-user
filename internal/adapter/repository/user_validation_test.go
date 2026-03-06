@@ -3,7 +3,7 @@ package repository
 import (
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 func TestUserRepository_validateOrderBy(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 
 	user "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
 )
 

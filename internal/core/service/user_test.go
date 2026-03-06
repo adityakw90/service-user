@@ -7,7 +7,7 @@ import (
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	repomocks "github.com/adityakw90/service-user/test/mocks/repository"

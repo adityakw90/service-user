@@ -5,7 +5,7 @@ package resolver
 import (
 	context "context"
 
-	params "github.com/adityakw90/service-user/internal/core/domain/params"
+	params "github.com/adityakw90/service-user/internal/core/domain/param"
 	mock "github.com/stretchr/testify/mock"
 )
 

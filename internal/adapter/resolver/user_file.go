@@ -8,7 +8,7 @@ import (
 
 	"github.com/adityakw90/go-monitoring"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"

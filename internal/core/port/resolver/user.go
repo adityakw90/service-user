@@ -3,7 +3,7 @@ package resolver
 import (
 	"context"
 
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 // UserResolver handles UID <-> ID resolution with caching.

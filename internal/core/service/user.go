@@ -7,7 +7,7 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	"github.com/adityakw90/service-user/internal/core/port/observer"

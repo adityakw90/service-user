@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 type UserFileRepository interface {

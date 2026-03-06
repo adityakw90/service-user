@@ -7,7 +7,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )

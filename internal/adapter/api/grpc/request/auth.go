@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	auth "github.com/adityakw90/service-user-proto/gen/go/auth"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 // AuthRequest represents validated auth request data.

@@ -13,7 +13,7 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portsvc "github.com/adityakw90/service-user/internal/core/port/service"
 )
 

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
