@@ -8,6 +8,7 @@ import (
 
 	"github.com/adityakw90/go-monitoring"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/params"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
@@ -21,11 +22,6 @@ type userFileResolver struct {
 	redisCacheDuration time.Duration
 	logger             monitoring.Logger
 	tracer             monitoring.Tracer
-}
-
-type userFileIdentity struct {
-	id  int64
-	uid string
 }
 
 func NewUserFileResolver(
@@ -46,8 +42,8 @@ func NewUserFileResolver(
 	}
 }
 
-func (r *userFileResolver) fetchIDFromDB(ctx context.Context, uid string) (*userFileIdentity, error) {
-	var iden userFileIdentity
+func (r *userFileResolver) fetchIDFromDB(ctx context.Context, uid string) (*identity, error) {
+	var iden identity
 
 	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM user_file WHERE uid=$1`, uid,
@@ -71,8 +67,8 @@ func (r *userFileResolver) fetchIDFromDB(ctx context.Context, uid string) (*user
 	return &iden, nil
 }
 
-func (r *userFileResolver) fetchUIDFromDB(ctx context.Context, id int64) (*userFileIdentity, error) {
-	var iden userFileIdentity
+func (r *userFileResolver) fetchUIDFromDB(ctx context.Context, id int64) (*identity, error) {
+	var iden identity
 
 	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM user_file WHERE id=$1`, id,
@@ -112,10 +108,8 @@ func (r *userFileResolver) IDsByUIDs(ctx context.Context, userFileUIDs []string)
 		func(uid string) string {
 			return r.redisPrefix + ":" + uid + ":id"
 		},
-		func(uid string) (*userFileIdentity, error) {
-			return r.fetchIDFromDB(newCtx, uid)
-		},
-		func(userFile *userFileIdentity) int64 {
+		r.fetchIDFromDB,
+		func(userFile *identity) int64 {
 			return userFile.id
 		},
 		r.redisCacheDuration,
@@ -156,10 +150,8 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 		func(id int64) string {
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
-		func(id int64) (*userFileIdentity, error) {
-			return r.fetchUIDFromDB(newCtx, id)
-		},
-		func(userFile *userFileIdentity) string {
+		r.fetchUIDFromDB,
+		func(userFile *identity) string {
 			return userFile.uid
 		},
 		r.redisCacheDuration,
@@ -185,4 +177,10 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 	))
 
 	return result, nil
+}
+
+// Invalidate clears cached entries for the specified UIDs/IDs.
+func (r *userFileResolver) Invalidate(ctx context.Context, opts ...params.InvalidateOpt) error {
+	// TODO: Implement cache invalidation
+	return nil
 }
