@@ -84,6 +84,25 @@ func (r *DeviceRepository) Delete(ctx context.Context, device *model.Device) err
 	return err
 }
 
+// allowedOrderByDevice maps OrderBy string values to their typed enum for validation.
+var allowedOrderByDevice = map[string]params.DeviceOrderBy{
+	"id":                 params.OrderByDeviceID,
+	"uid":                params.OrderByDeviceUID,
+	"device_fingerprint": params.OrderByDeviceFingerprint,
+	"device_name":        params.OrderByDeviceName,
+	"created_at":         params.OrderByDeviceCreatedAt,
+}
+
+// validateOrderBy validates the OrderBy value against allowed Device columns using O(1) map lookup.
+func (r *DeviceRepository) validateOrderBy(pagination *params.PaginationParam, defaultOrderBy string) string {
+	if pagination != nil && pagination.OrderBy != nil {
+		if _, ok := allowedOrderByDevice[*pagination.OrderBy]; ok {
+			return *pagination.OrderBy
+		}
+	}
+	return defaultOrderBy
+}
+
 // List retrieves all devices with pagination and filtering.
 func (r *DeviceRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error) {
 	limit := 10
@@ -128,13 +147,21 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *params.Paginati
 	}
 
 	// Get paginated results
+	// Apply sorting
+	orderByValue := r.validateOrderBy(pagination, "created_at")
+	if pagination != nil && pagination.Sort != nil {
+		orderByValue += " " + *pagination.Sort
+	} else {
+		orderByValue += " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT id, uid, device_fingerprint, device_name, created_at
 		FROM device
 		%s
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByValue, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
@@ -226,14 +253,23 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	}
 
 	// Get paginated results - select only device columns
+	// Apply sorting
+	orderByValue := r.validateOrderBy(pagination, "created_at")
+	if pagination != nil && pagination.Sort != nil {
+		orderByValue = "d." + orderByValue
+		orderByValue += " " + *pagination.Sort
+	} else {
+		orderByValue = "d." + orderByValue + " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT d.id, d.uid, d.device_fingerprint, d.device_name, d.created_at
 		FROM device d
 		JOIN user_device ud ON d.id = ud.device_id
 		%s
-		ORDER BY d.created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByValue, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
