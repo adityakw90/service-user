@@ -95,9 +95,12 @@ var allowedOrderByDevice = map[string]param.DeviceOrderBy{
 
 // validateOrderBy validates the OrderBy value against allowed Device columns using O(1) map lookup.
 func (r *DeviceRepository) validateOrderBy(pagination *param.PaginationParam, defaultOrderBy string) string {
-	if pagination != nil && pagination.OrderBy != nil {
-		if _, ok := allowedOrderByDevice[*pagination.OrderBy]; ok {
-			return *pagination.OrderBy
+	if pagination != nil && pagination.OrderBy != nil && *pagination.OrderBy != "" {
+		orderBy := strings.TrimSpace(*pagination.OrderBy)
+		if orderBy != "" {
+			if _, ok := allowedOrderByDevice[orderBy]; ok {
+				return orderBy
+			}
 		}
 	}
 	return defaultOrderBy
@@ -149,10 +152,18 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 	// Get paginated results
 	// Apply sorting
 	orderByValue := r.validateOrderBy(pagination, "created_at")
-	if pagination != nil && pagination.Sort != nil {
-		orderByValue += " " + *pagination.Sort
+
+	// Ensure orderByValue is never empty
+	if orderByValue == "" {
+		orderByValue = "created_at"
+	}
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
 	} else {
-		orderByValue += " DESC"
+		orderByClause += " DESC"
 	}
 
 	query := fmt.Sprintf(`
@@ -161,7 +172,7 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 		%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderByValue, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
@@ -255,11 +266,20 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	// Get paginated results - select only device columns
 	// Apply sorting
 	orderByValue := r.validateOrderBy(pagination, "created_at")
-	if pagination != nil && pagination.Sort != nil {
-		orderByValue = "d." + orderByValue
-		orderByValue += " " + *pagination.Sort
+
+	// Ensure orderByValue is never empty
+	if orderByValue == "" {
+		orderByValue = "created_at"
+	}
+
+	// Build ORDER BY clause with table alias
+	orderByClause := fmt.Sprintf("d.%s", orderByValue)
+
+	// Add sort direction if provided and not empty
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
 	} else {
-		orderByValue = "d." + orderByValue + " DESC"
+		orderByClause += " DESC"
 	}
 
 	query := fmt.Sprintf(`
@@ -269,7 +289,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 		%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderByValue, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)

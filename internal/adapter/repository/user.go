@@ -121,9 +121,12 @@ var allowedOrderByUser = map[string]param.UserOrderBy{
 
 // validateOrderBy validates the OrderBy value against allowed User columns using O(1) map lookup.
 func (r *UserRepository) validateOrderBy(pagination *param.PaginationParam, defaultOrderBy string) string {
-	if pagination != nil && pagination.OrderBy != nil {
-		if _, ok := allowedOrderByUser[*pagination.OrderBy]; ok {
-			return *pagination.OrderBy
+	if pagination != nil && pagination.OrderBy != nil && *pagination.OrderBy != "" {
+		orderBy := strings.TrimSpace(*pagination.OrderBy)
+		if orderBy != "" {
+			if _, ok := allowedOrderByUser[orderBy]; ok {
+				return orderBy
+			}
 		}
 	}
 	return defaultOrderBy
@@ -185,10 +188,18 @@ func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationP
 	// Get paginated results
 	// Apply sorting
 	orderByValue := r.validateOrderBy(pagination, "created_at")
-	if pagination != nil && pagination.Sort != nil {
-		orderByValue += " " + *pagination.Sort
+
+	// Ensure orderByValue is never empty
+	if orderByValue == "" {
+		orderByValue = "created_at"
+	}
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
 	} else {
-		orderByValue += " DESC"
+		orderByClause += " DESC"
 	}
 
 	query := fmt.Sprintf(`
@@ -197,7 +208,7 @@ func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationP
 		%s
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, orderByValue, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)

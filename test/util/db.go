@@ -205,8 +205,8 @@ type pgxExecutor interface {
 }
 
 // UserToCreateParam converts a model.User to UserCreateParam for service calls.
-func UserToCreateParam(user *model.User, password string) *params.UserCreateParam {
-	return &params.UserCreateParam{
+func UserToCreateParam(user *model.User, password string) *param.UserCreateParam {
+	return &param.UserCreateParam{
 		Username: user.Username,
 		Email:    user.Email,
 		Password: password,

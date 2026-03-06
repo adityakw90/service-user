@@ -299,8 +299,8 @@ func (r *UserListDevicesRequest) ToUserDeviceListParam() *param.UserDeviceListPa
 		pagination = &param.PaginationParam{
 			Page:    &page,
 			Limit:   &limit,
-			Sort:    util.Ptr("created_at"),
-			OrderBy: util.Ptr("desc"),
+			OrderBy: util.Ptr("created_at"),
+			Sort:    util.Ptr("desc"),
 		}
 	}
 

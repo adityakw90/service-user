@@ -24,6 +24,13 @@ func (pr *PaginationRequest) ToPaginationParams() *param.PaginationParam {
 }
 
 func PaginationRequestFromPb(req *common.Pagination) *PaginationRequest {
+	if req == nil {
+		return nil
+	}
+	// If Page and Limit are both 0 (default values), treat as no pagination provided
+	if req.Page == 0 && req.Limit == 0 {
+		return nil
+	}
 	return &PaginationRequest{
 		Page:    int(req.Page),
 		Limit:   int(req.Limit),
