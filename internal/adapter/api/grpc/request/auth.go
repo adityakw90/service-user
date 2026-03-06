@@ -18,8 +18,8 @@ type AuthRequest struct {
 	Extra             *map[string]any `validate:"omitempty"`
 }
 
-func (r *AuthRequest) ToAuthParams() *params.AuthParams {
-	return &params.AuthParams{
+func (r *AuthRequest) ToAuthParams() *param.AuthParams {
+	return &param.AuthParams{
 		Identifier:        r.Identifier,
 		IdentifierType:    r.IdentifierType,
 		Password:          r.Password,

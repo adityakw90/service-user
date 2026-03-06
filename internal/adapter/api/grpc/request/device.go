@@ -26,8 +26,8 @@ type DeviceFilterRequest struct {
 	DeviceFingerprint *string  `validate:"omitempty"`
 }
 
-func (r *DeviceFilterRequest) ToDeviceFilterParams() *params.DeviceListFilterParam {
-	return &params.DeviceListFilterParam{
+func (r *DeviceFilterRequest) ToDeviceFilterParams() *param.DeviceListFilterParam {
+	return &param.DeviceListFilterParam{
 		Uids:              r.Uids,
 		DeviceName:        r.DeviceName,
 		DeviceFingerprint: r.DeviceFingerprint,
@@ -62,15 +62,15 @@ type DeviceListRequest struct {
 	Filter     *DeviceFilterRequest
 }
 
-func (r *DeviceListRequest) ToDeviceListParams() *params.DeviceListParam {
-	var pagination *params.PaginationParam
+func (r *DeviceListRequest) ToDeviceListParams() *param.DeviceListParam {
+	var pagination *param.PaginationParam
 	if r.Pagination != nil {
 		pagination = r.Pagination.ToPaginationParams()
 	} else {
 		// Default pagination
 		page := 1
 		limit := 10
-		pagination = &params.PaginationParam{
+		pagination = &param.PaginationParam{
 			Page:    &page,
 			Limit:   &limit,
 			Sort:    util.Ptr("created_at"),
@@ -78,14 +78,14 @@ func (r *DeviceListRequest) ToDeviceListParams() *params.DeviceListParam {
 		}
 	}
 
-	var filter *params.DeviceListFilterParam
+	var filter *param.DeviceListFilterParam
 	if r.Filter != nil {
 		filter = r.Filter.ToDeviceFilterParams()
 	} else {
-		filter = &params.DeviceListFilterParam{}
+		filter = &param.DeviceListFilterParam{}
 	}
 
-	return &params.DeviceListParam{
+	return &param.DeviceListParam{
 		Pagination: pagination,
 		Filter:     filter,
 	}

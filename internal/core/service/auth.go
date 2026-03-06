@@ -74,7 +74,7 @@ func NewAuthService(
 	}
 }
 
-func (s *authService) Authenticate(ctx context.Context, payload *params.AuthParams) (*model.Token, error) {
+func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParams) (*model.Token, error) {
 	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
 		Identifier:        payload.Identifier,
 		IdentifierType:    payload.IdentifierType,

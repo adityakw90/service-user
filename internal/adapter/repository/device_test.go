@@ -340,17 +340,17 @@ func TestDeviceRepository_Delete(t *testing.T) {
 func TestDeviceRepository_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
-		filter     *params.DeviceListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.DeviceListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.DeviceListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List all devices with pagination",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) {
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
 					WillReturnRows(countRows)
@@ -367,9 +367,9 @@ func TestDeviceRepository_List(t *testing.T) {
 		},
 		{
 			name:       "List devices with filter by device name",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
-			filter:     &params.DeviceListFilterParam{DeviceName: util.Ptr("iPhone 14")},
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) {
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			filter:     &param.DeviceListFilterParam{DeviceName: util.Ptr("iPhone 14")},
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device WHERE device_name = \$1`).
 					WithArgs("iPhone 14").
@@ -386,9 +386,9 @@ func TestDeviceRepository_List(t *testing.T) {
 		},
 		{
 			name:       "List devices with filter by UIDs",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
-			filter:     &params.DeviceListFilterParam{Uids: []string{"uid1", "uid2"}},
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) {
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			filter:     &param.DeviceListFilterParam{Uids: []string{"uid1", "uid2"}},
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device WHERE uid = ANY\(\$1\)`).
 					WithArgs(filter.Uids).
@@ -438,18 +438,18 @@ func TestDeviceRepository_ListByUserID(t *testing.T) {
 	tests := []struct {
 		name       string
 		userID     int64
-		pagination *params.PaginationParam
-		filter     *params.DeviceListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, userID int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.DeviceListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, userID int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List devices by user ID",
 			userID:     1,
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, userID int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) {
+			setupMock: func(mock pgxmock.PgxPoolIface, userID int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1 AND ud\.revoked_at IS NULL`).
 					WithArgs(userID).

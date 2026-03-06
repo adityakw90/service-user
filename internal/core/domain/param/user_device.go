@@ -1,4 +1,4 @@
-package params
+package param
 
 type UserDeviceListFilterParam struct {
 	UserUids   []string // user uids

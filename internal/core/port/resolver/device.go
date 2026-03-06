@@ -10,5 +10,5 @@ import (
 type DeviceResolver interface {
 	IDsByUIDs(ctx context.Context, uids []string) (map[string]int64, error)
 	UIDsByIDs(ctx context.Context, ids []int64) (map[int64]string, error)
-	Invalidate(ctx context.Context, opts ...params.InvalidateOpt) error
+	Invalidate(ctx context.Context, opts ...param.InvalidateOpt) error
 }

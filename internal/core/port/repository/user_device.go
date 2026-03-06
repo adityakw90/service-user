@@ -13,6 +13,6 @@ type UserDeviceRepository interface {
 	UpdateSessionID(ctx context.Context, userID, deviceID int64, sessionID string) error
 	Delete(ctx context.Context, device *model.UserDevice) error
 	GetByUserIDAndDeviceID(ctx context.Context, userID int64, deviceID int64) (*model.UserDevice, error)
-	List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) (*model.UserDevices, error)
+	List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserDeviceListFilterParam) (*model.UserDevices, error)
 	Revoke(ctx context.Context, userID, deviceID int64) error
 }

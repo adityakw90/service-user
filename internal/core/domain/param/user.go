@@ -1,4 +1,4 @@
-package params
+package param
 
 import "github.com/adityakw90/service-user/internal/core/domain/model"
 

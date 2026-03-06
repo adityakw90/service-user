@@ -180,7 +180,7 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 }
 
 // Invalidate clears cached entries for the specified UIDs/IDs.
-func (r *userFileResolver) Invalidate(ctx context.Context, opts ...params.InvalidateOpt) error {
+func (r *userFileResolver) Invalidate(ctx context.Context, opts ...param.InvalidateOpt) error {
 	// TODO: Implement cache invalidation
 	return nil
 }

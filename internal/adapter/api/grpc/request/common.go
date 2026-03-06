@@ -14,8 +14,8 @@ type PaginationRequest struct {
 	OrderBy string `validate:"omitempty"`
 }
 
-func (pr *PaginationRequest) ToPaginationParams() *params.PaginationParam {
-	return &params.PaginationParam{
+func (pr *PaginationRequest) ToPaginationParams() *param.PaginationParam {
+	return &param.PaginationParam{
 		Page:    &pr.Page,
 		Limit:   &pr.Limit,
 		Sort:    &pr.Sort,

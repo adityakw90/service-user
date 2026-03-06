@@ -1,4 +1,4 @@
-package params
+package param
 
 type PaginationParam struct {
 	Page    *int

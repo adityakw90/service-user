@@ -27,8 +27,8 @@ type UserFileFilterRequest struct {
 	Visibility *string  `validate:"omitempty"`
 }
 
-func (r *UserFileFilterRequest) ToUserFileFilterParams() *params.UserFileListFilterParam {
-	return &params.UserFileListFilterParam{
+func (r *UserFileFilterRequest) ToUserFileFilterParams() *param.UserFileListFilterParam {
+	return &param.UserFileListFilterParam{
 		Uids:       r.Uids,
 		UserUid:    r.UserUid,
 		FileType:   r.FileType,
@@ -63,15 +63,15 @@ type UserFileListRequest struct {
 	Filter     *UserFileFilterRequest
 }
 
-func (r *UserFileListRequest) ToUserFileListParams() *params.UserFileListParam {
-	var pagination *params.PaginationParam
+func (r *UserFileListRequest) ToUserFileListParams() *param.UserFileListParam {
+	var pagination *param.PaginationParam
 	if r.Pagination != nil {
 		pagination = r.Pagination.ToPaginationParams()
 	} else {
 		// Default pagination
 		page := 1
 		limit := 10
-		pagination = &params.PaginationParam{
+		pagination = &param.PaginationParam{
 			Page:    &page,
 			Limit:   &limit,
 			Sort:    util.Ptr("created_at"),
@@ -79,14 +79,14 @@ func (r *UserFileListRequest) ToUserFileListParams() *params.UserFileListParam {
 		}
 	}
 
-	var filter *params.UserFileListFilterParam
+	var filter *param.UserFileListFilterParam
 	if r.Filter != nil {
 		filter = r.Filter.ToUserFileFilterParams()
 	} else {
-		filter = &params.UserFileListFilterParam{}
+		filter = &param.UserFileListFilterParam{}
 	}
 
-	return &params.UserFileListParam{
+	return &param.UserFileListParam{
 		Pagination: pagination,
 		Filter:     filter,
 	}

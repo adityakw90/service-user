@@ -11,6 +11,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	repomocks "github.com/adityakw90/service-user/test/mocks/repository"
+	resolvermocks "github.com/adityakw90/service-user/test/mocks/resolver"
 	securitymocks "github.com/adityakw90/service-user/test/mocks/security"
 	observermocks "github.com/adityakw90/service-user/test/mocks/observer"
 	"github.com/adityakw90/service-user/pkg/util"
@@ -24,6 +25,14 @@ func userStatusPtr(s model.UserStatus) *model.UserStatus {
 	return &s
 }
 
+// Helper function to setup resolver mocks
+func setupResolverMocks(t *testing.T) (*resolvermocks.MockResolverProvider, *resolvermocks.MockUserResolver) {
+	mockResolverProvider := resolvermocks.NewMockResolverProvider(t)
+	mockUserResolver := resolvermocks.NewMockUserResolver(t)
+	mockResolverProvider.EXPECT().User().Return(mockUserResolver).Maybe()
+	return mockResolverProvider, mockUserResolver
+}
+
 // setupObserverAny allows any OnSignal calls on the observer (useful when not testing signal behavior)
 func setupObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[signal.UserSignal]) {
 	// Allow any OnSignal call without checking parameters
@@ -35,16 +44,20 @@ func setupObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[
 func TestUserService_Get(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*repomocks.MockUserRepository)
+		setupMocks func(*repomocks.MockUserRepository, *resolvermocks.MockUserResolver)
 		uid        string
 		want       *model.User
 		wantErr    error
 	}{
 		{
 			name: "Happy Path",
-			setupMocks: func(ur *repomocks.MockUserRepository) {
+			setupMocks: func(ur *repomocks.MockUserRepository, userResolver *resolvermocks.MockUserResolver) {
+				userResolver.EXPECT().
+					IDsByUIDs(mock.Anything, []string{"test-uid"}).
+					Return(map[string]int64{"test-uid": 1}, nil).
+					Once()
 				ur.EXPECT().
-					GetByUID(mock.Anything, "test-uid").
+					GetByID(mock.Anything, int64(1)).
 					Return(createTestUser(1, "test-uid", "testuser", "test@example.com", "hashed_password", model.UserStatusActive), nil).
 					Once()
 			},
@@ -58,10 +71,10 @@ func TestUserService_Get(t *testing.T) {
 		},
 		{
 			name: "Error - user not found",
-			setupMocks: func(ur *repomocks.MockUserRepository) {
-				ur.EXPECT().
-					GetByUID(mock.Anything, "nonexistent-uid").
-					Return(nil, domainerrors.ErrUserNotFound).
+			setupMocks: func(ur *repomocks.MockUserRepository, userResolver *resolvermocks.MockUserResolver) {
+				userResolver.EXPECT().
+					IDsByUIDs(mock.Anything, []string{"nonexistent-uid"}).
+					Return(map[string]int64{}, nil).
 					Once()
 			},
 			uid:     "nonexistent-uid",
@@ -69,9 +82,13 @@ func TestUserService_Get(t *testing.T) {
 		},
 		{
 			name: "Error - deleted user",
-			setupMocks: func(ur *repomocks.MockUserRepository) {
+			setupMocks: func(ur *repomocks.MockUserRepository, userResolver *resolvermocks.MockUserResolver) {
+				userResolver.EXPECT().
+					IDsByUIDs(mock.Anything, []string{"deleted-uid"}).
+					Return(map[string]int64{"deleted-uid": 1}, nil).
+					Once()
 				ur.EXPECT().
-					GetByUID(mock.Anything, "deleted-uid").
+					GetByID(mock.Anything, int64(1)).
 					Return(createDeletedUser(1, "test-uid", "testuser", "test@example.com"), nil).
 					Once()
 			},
@@ -94,10 +111,11 @@ func TestUserService_Get(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserRepo)
+				tt.setupMocks(mockUserRepo, mockUserResolver)
 			}
 
 			// Create service
@@ -113,6 +131,7 @@ func TestUserService_Get(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -137,8 +156,8 @@ func TestUserService_List(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMocks func(*repomocks.MockUserRepository)
-		pagination *params.PaginationParam
-		filter     *params.UserListFilterParam
+		pagination *param.PaginationParam
+		filter     *param.UserListFilterParam
 		want       *model.Users
 		wantErr    error
 	}{
@@ -146,7 +165,7 @@ func TestUserService_List(t *testing.T) {
 			name: "Happy Path - default pagination",
 			setupMocks: func(ur *repomocks.MockUserRepository) {
 				ur.EXPECT().
-					List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserListFilterParam")).
+					List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserListFilterParam")).
 					Return(&model.Users{
 						Items: []model.User{
 							*createTestUser(1, "uid1", "user1", "user1@example.com", "pass", model.UserStatusActive),
@@ -174,14 +193,14 @@ func TestUserService_List(t *testing.T) {
 			name: "Happy Path - custom pagination",
 			setupMocks: func(ur *repomocks.MockUserRepository) {
 				ur.EXPECT().
-					List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserListFilterParam")).
+					List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserListFilterParam")).
 					Return(&model.Users{
 						Items: []model.User{},
 						Meta:  model.Meta{Page: 2, Limit: 20},
 					}, nil).
 					Once()
 			},
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				Page:    util.Ptr(2),
 				Limit:   util.Ptr(20),
 				OrderBy: util.Ptr("created_at"),
@@ -196,17 +215,17 @@ func TestUserService_List(t *testing.T) {
 			name: "Happy Path - with filters",
 			setupMocks: func(ur *repomocks.MockUserRepository) {
 				ur.EXPECT().
-					List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserListFilterParam")).
+					List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserListFilterParam")).
 					Return(&model.Users{Items: []model.User{}}, nil).
 					Once()
 			},
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				Page:    util.Ptr(1),
 				Limit:   util.Ptr(10),
 				OrderBy: util.Ptr("created_at"),
 				Sort:    util.Ptr("desc"),
 			},
-			filter: &params.UserListFilterParam{
+			filter: &param.UserListFilterParam{
 				Status: userStatusPtr(model.UserStatusActive),
 			},
 			want: &model.Users{
@@ -229,6 +248,7 @@ func TestUserService_List(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -248,6 +268,7 @@ func TestUserService_List(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -270,7 +291,7 @@ func TestUserService_Create(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockUserProfileRepository, *securitymocks.MockHasher, *securitymocks.MockUIDGenerator)
-		input      *params.UserCreateParam
+		input      *param.UserCreateParam
 		want       *model.User
 		wantErr    error
 	}{
@@ -343,6 +364,7 @@ func TestUserService_Create(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -362,6 +384,7 @@ func TestUserService_Create(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -386,7 +409,7 @@ func TestUserService_Update(t *testing.T) {
 		name       string
 		setupMocks func(*repomocks.MockUserRepository, *securitymocks.MockHasher)
 		uid        string
-		param      *params.UserUpdateParam
+		param      *param.UserUpdateParam
 		wantErr    error
 	}{
 		{
@@ -473,6 +496,7 @@ func TestUserService_Update(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -492,6 +516,7 @@ func TestUserService_Update(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -548,6 +573,7 @@ func TestUserService_Delete(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -567,6 +593,7 @@ func TestUserService_Delete(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -634,6 +661,7 @@ func TestUserService_GetProfile(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -653,6 +681,7 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -677,7 +706,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 		name       string
 		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockUserProfileRepository)
 		userUID    string
-		opts       params.UserProfileUpdateParam
+		opts       param.UserProfileUpdateParam
 		wantErr    error
 	}{
 		{
@@ -688,7 +717,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				pr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserProfile")).Return(nil).Once()
 			},
 			userUID: "test-uid",
-			opts: params.UserProfileUpdateParam{
+			opts: param.UserProfileUpdateParam{
 				FirstName: util.Ptr("John"),
 				LastName:  util.Ptr("Doe"),
 				Bio:       util.Ptr("New bio"),
@@ -702,7 +731,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				pr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserProfile")).Return(nil).Once()
 			},
 			userUID: "test-uid",
-			opts: params.UserProfileUpdateParam{
+			opts: param.UserProfileUpdateParam{
 				Bio: util.Ptr("Updated bio only"),
 			},
 		},
@@ -712,7 +741,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				ur.EXPECT().GetByUID(mock.Anything, "nonexistent-uid").Return(nil, domainerrors.ErrUserNotFound).Once()
 			},
 			userUID: "nonexistent-uid",
-			opts: params.UserProfileUpdateParam{
+			opts: param.UserProfileUpdateParam{
 				FirstName: util.Ptr("John"),
 			},
 			wantErr: domainerrors.ErrUserNotFound,
@@ -724,7 +753,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				pr.EXPECT().GetByUserID(mock.Anything, int64(1)).Return(nil, errors.New("not found")).Once()
 			},
 			userUID: "test-uid",
-			opts: params.UserProfileUpdateParam{
+			opts: param.UserProfileUpdateParam{
 				FirstName: util.Ptr("John"),
 			},
 			wantErr: domainerrors.ErrProfileNotFound,
@@ -745,6 +774,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -764,6 +794,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -844,6 +875,7 @@ func TestUserService_SetPin(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -863,6 +895,7 @@ func TestUserService_SetPin(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -885,7 +918,7 @@ func TestUserService_ListDevice(t *testing.T) {
 		name       string
 		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockDeviceRepository)
 		userUID    string
-		opts       params.UserDeviceListFilterParam
+		opts       param.UserDeviceListFilterParam
 		want       *model.Devices
 		wantErr    error
 	}{
@@ -893,14 +926,14 @@ func TestUserService_ListDevice(t *testing.T) {
 			name: "Happy Path with defaults",
 			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository) {
 				ur.EXPECT().GetByUID(mock.Anything, "test-uid").Return(createTestUser(1, "test-uid", "testuser", "test@example.com", "pass", model.UserStatusActive), nil).Once()
-				dr.EXPECT().ListByUserID(mock.Anything, int64(1), mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.DeviceListFilterParam")).Return(&model.Devices{
+				dr.EXPECT().ListByUserID(mock.Anything, int64(1), mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.DeviceListFilterParam")).Return(&model.Devices{
 					Items: []model.Device{
 						*createTestDevice(1, "device1", "iPhone", "fp1"),
 					},
 				}, nil).Once()
 			},
 			userUID: "test-uid",
-			opts:    params.UserDeviceListFilterParam{},
+			opts:    param.UserDeviceListFilterParam{},
 			want: &model.Devices{
 				Items: []model.Device{
 					*createTestDevice(1, "device1", "iPhone", "fp1"),
@@ -931,6 +964,7 @@ func TestUserService_ListDevice(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -950,6 +984,7 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute
@@ -1027,6 +1062,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
 			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
@@ -1046,6 +1082,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockTokenWhitelist,
 				mockObserver,
 				publisher.NewNoOpPublisher(),
+				mockResolverProvider,
 			)
 
 			// Execute

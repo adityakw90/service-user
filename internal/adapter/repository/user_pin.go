@@ -88,7 +88,7 @@ func (r *PinRepository) Delete(ctx context.Context, pin *model.UserPin) error {
 }
 
 // List retrieves all PINs with pagination and filtering.
-func (r *PinRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserPinListFilterParam) (*model.UserPins, error) {
+func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) (*model.UserPins, error) {
 	limit := 10
 	offset := 0
 	page := 1

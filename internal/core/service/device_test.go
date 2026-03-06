@@ -95,15 +95,15 @@ func TestDeviceService_List(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMocks func(*repomocks.MockDeviceRepository)
-		pagination *params.PaginationParam
-		filter     *params.DeviceListFilterParam
+		pagination *param.PaginationParam
+		filter     *param.DeviceListFilterParam
 		want       *model.Devices
 		wantErr    error
 	}{
 		{
 			name: "Happy Path - default pagination",
 			setupMocks: func(dr *repomocks.MockDeviceRepository) {
-				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.DeviceListFilterParam")).Return(&model.Devices{
+				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.DeviceListFilterParam")).Return(&model.Devices{
 					Items: []model.Device{
 						*createTestDevice(1, "device1", "iPhone", "fp1"),
 						*createTestDevice(2, "device2", "Android", "fp2"),
@@ -128,12 +128,12 @@ func TestDeviceService_List(t *testing.T) {
 		{
 			name: "Happy Path - custom pagination",
 			setupMocks: func(dr *repomocks.MockDeviceRepository) {
-				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.DeviceListFilterParam")).Return(&model.Devices{
+				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.DeviceListFilterParam")).Return(&model.Devices{
 					Items: []model.Device{},
 					Meta:  model.Meta{Page: 2, Limit: 20},
 				}, nil).Once()
 			},
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				Page:    util.Ptr(2),
 				Limit:   util.Ptr(20),
 				Sort:    util.Ptr("desc"),
@@ -147,15 +147,15 @@ func TestDeviceService_List(t *testing.T) {
 		{
 			name: "Happy Path - with filters",
 			setupMocks: func(dr *repomocks.MockDeviceRepository) {
-				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.DeviceListFilterParam")).Return(&model.Devices{Items: []model.Device{}}, nil).Once()
+				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.DeviceListFilterParam")).Return(&model.Devices{Items: []model.Device{}}, nil).Once()
 			},
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				Page:    util.Ptr(1),
 				Limit:   util.Ptr(10),
 				Sort:    util.Ptr("asc"),
 				OrderBy: util.Ptr("created_at"),
 			},
-			filter: &params.DeviceListFilterParam{},
+			filter: &param.DeviceListFilterParam{},
 			want: &model.Devices{
 				Items: []model.Device{},
 			},
@@ -213,9 +213,9 @@ func TestDeviceService_Delete(t *testing.T) {
 			setupMocks: func(dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository) {
 				dr.EXPECT().GetByUID(mock.Anything, "device-uid").Return(createTestDevice(1, "device-uid", "iPhone", "fp123"), nil).Once()
 				// Check for active user devices - return empty list
-				udr.EXPECT().List(mock.Anything, mock.MatchedBy(func(p *params.PaginationParam) bool {
+				udr.EXPECT().List(mock.Anything, mock.MatchedBy(func(p *param.PaginationParam) bool {
 					return p != nil && *p.Page == 1 && *p.Limit == 1
-				}), mock.MatchedBy(func(f *params.UserDeviceListFilterParam) bool {
+				}), mock.MatchedBy(func(f *param.UserDeviceListFilterParam) bool {
 					return f != nil && len(f.DeviceUids) == 1 && f.DeviceUids[0] == "device-uid" && f.Revoked != nil && *f.Revoked == false
 				})).Return(&model.UserDevices{Items: []model.UserDevice{}}, nil).Once()
 				dr.EXPECT().Delete(mock.Anything, mock.AnythingOfType("*model.Device")).Return(nil).Once()

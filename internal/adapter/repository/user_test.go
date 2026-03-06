@@ -415,17 +415,17 @@ func TestUserRepository_Delete(t *testing.T) {
 func TestUserRepository_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
-		filter     *params.UserListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.UserListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List all users with pagination",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserListFilterParam) {
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
 					WillReturnRows(countRows)
@@ -442,9 +442,9 @@ func TestUserRepository_List(t *testing.T) {
 		},
 		{
 			name:       "List users with filter by username",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
-			filter:     &params.UserListFilterParam{Username: util.Ptr("testuser")},
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserListFilterParam) {
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			filter:     &param.UserListFilterParam{Username: util.Ptr("testuser")},
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
 					WithArgs("testuser").

@@ -109,18 +109,18 @@ func (r *UserRepository) Delete(ctx context.Context, user *model.User) error {
 }
 
 // allowedOrderByUser maps OrderBy string values to their typed enum for validation.
-var allowedOrderByUser = map[string]params.UserOrderBy{
-	"id":         params.OrderByUserID,
-	"uid":        params.OrderByUserUID,
-	"username":   params.OrderByUserUsername,
-	"email":      params.OrderByUserEmail,
-	"status":     params.OrderByUserStatus,
-	"created_at": params.OrderByUserCreatedAt,
-	"updated_at": params.OrderByUserUpdatedAt,
+var allowedOrderByUser = map[string]param.UserOrderBy{
+	"id":         param.OrderByUserID,
+	"uid":        param.OrderByUserUID,
+	"username":   param.OrderByUserUsername,
+	"email":      param.OrderByUserEmail,
+	"status":     param.OrderByUserStatus,
+	"created_at": param.OrderByUserCreatedAt,
+	"updated_at": param.OrderByUserUpdatedAt,
 }
 
 // validateOrderBy validates the OrderBy value against allowed User columns using O(1) map lookup.
-func (r *UserRepository) validateOrderBy(pagination *params.PaginationParam, defaultOrderBy string) string {
+func (r *UserRepository) validateOrderBy(pagination *param.PaginationParam, defaultOrderBy string) string {
 	if pagination != nil && pagination.OrderBy != nil {
 		if _, ok := allowedOrderByUser[*pagination.OrderBy]; ok {
 			return *pagination.OrderBy
@@ -130,7 +130,7 @@ func (r *UserRepository) validateOrderBy(pagination *params.PaginationParam, def
 }
 
 // List retrieves users with pagination and filtering.
-func (r *UserRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserListFilterParam) (*model.Users, error) {
+func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserListFilterParam) (*model.Users, error) {
 	limit := 10
 	offset := 0
 	page := 1

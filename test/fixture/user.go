@@ -10,8 +10,8 @@ import (
 
 // ValidTestUser returns a valid UserCreateParam for testing.
 // The user has valid username, email, and password that meet all validation requirements.
-func ValidTestUser() *params.UserCreateParam {
-	return &params.UserCreateParam{
+func ValidTestUser() *param.UserCreateParam {
+	return &param.UserCreateParam{
 		Username: "testuser",
 		Email:    "testuser@example.com",
 		Password: "SecurePassword123!",
@@ -20,8 +20,8 @@ func ValidTestUser() *params.UserCreateParam {
 
 // RandomTestUser generates a user with random data for testing.
 // Use this when you need to create multiple users in tests without conflicts.
-func RandomTestUser(suffix int) *params.UserCreateParam {
-	return &params.UserCreateParam{
+func RandomTestUser(suffix int) *param.UserCreateParam {
+	return &param.UserCreateParam{
 		Username: fmt.Sprintf("randomuser_%d", suffix),
 		Email:    fmt.Sprintf("randomuser_%d@example.com", suffix),
 		Password: "RandomPassword123!",
@@ -71,8 +71,8 @@ func ValidUserProfile() *model.UserProfile {
 }
 
 // ValidAuthParams returns valid authentication parameters.
-func ValidAuthParams() *params.AuthParams {
-	return &params.AuthParams{
+func ValidAuthParams() *param.AuthParams {
+	return &param.AuthParams{
 		Identifier:        "testuser@example.com",
 		IdentifierType:    "email",
 		Password:          "SecurePassword123!",
@@ -83,20 +83,20 @@ func ValidAuthParams() *params.AuthParams {
 }
 
 // ValidPasswordChangeParam returns valid password change parameters.
-func ValidPasswordChangeParam() *params.UserChangePasswordParam {
-	return &params.UserChangePasswordParam{
+func ValidPasswordChangeParam() *param.UserChangePasswordParam {
+	return &param.UserChangePasswordParam{
 		CurrentPassword: "SecurePassword123!",
 		NewPassword:     "NewSecurePassword456!",
 	}
 }
 
 // ValidUserProfileUpdateParam returns valid profile update parameters.
-func ValidUserProfileUpdateParam() *params.UserProfileUpdateParam {
+func ValidUserProfileUpdateParam() *param.UserProfileUpdateParam {
 	firstName := "Updated"
 	lastName := "Name"
 	bio := "Updated bio"
 
-	return &params.UserProfileUpdateParam{
+	return &param.UserProfileUpdateParam{
 		FirstName: &firstName,
 		LastName:  &lastName,
 		Bio:       &bio,

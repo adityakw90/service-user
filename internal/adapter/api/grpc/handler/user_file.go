@@ -101,7 +101,7 @@ func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*u
 		filePath = "data:" + getMimeType(req.Filename) + ";base64," + base64.StdEncoding.EncodeToString(req.Filedata)
 	}
 
-	createParam := params.UserFileCreateParam{
+	createParam := param.UserFileCreateParam{
 		UserUID:    req.UserUid,
 		FileType:   FileType,
 		FileName:   req.Name,
@@ -126,7 +126,7 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	updateParam := params.UserFileUpdateParam{}
+	updateParam := param.UserFileUpdateParam{}
 	if req.Name != nil {
 		updateParam.FileName = req.Name
 	}

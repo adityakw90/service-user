@@ -1,4 +1,4 @@
-package params
+package param
 
 type DeviceListFilterParam struct {
 	Ids               []int64

@@ -108,15 +108,15 @@ func TestUserFileService_List(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMocks func(*repomocks.MockUserFileRepository, *resolvermocks.MockUserResolver)
-		pagination *params.PaginationParam
-		filter     *params.UserFileListFilterParam
+		pagination *param.PaginationParam
+		filter     *param.UserFileListFilterParam
 		wantErr    error
 		verifyFunc func(*testing.T, *model.UserFiles)
 	}{
 		{
 			name: "Happy Path - default pagination",
 			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
-				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserFileListFilterParam")).Return(&model.UserFiles{
+				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserFileListFilterParam")).Return(&model.UserFiles{
 					Items: []model.UserFile{
 						*createUserFile(1, "file1", "user-uid", "image"),
 						*createUserFile(2, "file2", "user-uid", "document"),
@@ -141,11 +141,11 @@ func TestUserFileService_List(t *testing.T) {
 		{
 			name: "Happy Path - custom pagination",
 			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
-				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserFileListFilterParam")).Return(&model.UserFiles{
+				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserFileListFilterParam")).Return(&model.UserFiles{
 					Items: []model.UserFile{},
 				}, nil).Once()
 			},
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				Page:    util.Ptr(2),
 				Limit:   util.Ptr(20),
 				Sort:    util.Ptr("desc"),
@@ -160,15 +160,15 @@ func TestUserFileService_List(t *testing.T) {
 		{
 			name: "Happy Path - with filters",
 			setupMocks: func(fr *repomocks.MockUserFileRepository, ur *resolvermocks.MockUserResolver) {
-				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*params.PaginationParam"), mock.AnythingOfType("*params.UserFileListFilterParam")).Return(&model.UserFiles{Items: []model.UserFile{}}, nil).Once()
+				fr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserFileListFilterParam")).Return(&model.UserFiles{Items: []model.UserFile{}}, nil).Once()
 			},
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				Page:    util.Ptr(1),
 				Limit:   util.Ptr(10),
 				Sort:    util.Ptr("asc"),
 				OrderBy: util.Ptr("created_at"),
 			},
-			filter: &params.UserFileListFilterParam{
+			filter: &param.UserFileListFilterParam{
 				UserUid: []string{"user-123"},
 			},
 			wantErr: nil,
@@ -228,7 +228,7 @@ func TestUserFileService_Add(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockUserFileRepository, *securitymocks.MockUIDGenerator, *eventmocks.MockEventPublisher)
-		param      params.UserFileCreateParam
+		param      param.UserFileCreateParam
 		want       *model.UserFile
 		wantErr    error
 	}{
@@ -245,7 +245,7 @@ func TestUserFileService_Add(t *testing.T) {
 				}).Once()
 				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
-			param: params.UserFileCreateParam{
+			param: param.UserFileCreateParam{
 				UserUID:    "user-uid",
 				FileType:   "image",
 				FileName:   "photo.jpg",
@@ -269,7 +269,7 @@ func TestUserFileService_Add(t *testing.T) {
 		},
 		{
 			name: "Error - empty user UID",
-			param: params.UserFileCreateParam{
+			param: param.UserFileCreateParam{
 				UserUID:    "",
 				FileType:   "image",
 				FileName:   "photo.jpg",
@@ -285,7 +285,7 @@ func TestUserFileService_Add(t *testing.T) {
 			setupMocks: func(ur *repomocks.MockUserRepository, fr *repomocks.MockUserFileRepository, ug *securitymocks.MockUIDGenerator, ep *eventmocks.MockEventPublisher) {
 				ur.EXPECT().GetByUID(mock.Anything, "nonexistent-uid").Return(nil, domainerrors.ErrUserNotFound).Once()
 			},
-			param: params.UserFileCreateParam{
+			param: param.UserFileCreateParam{
 				UserUID:    "nonexistent-uid",
 				FileType:   "image",
 				FileName:   "photo.jpg",
@@ -347,7 +347,7 @@ func TestUserFileService_Update(t *testing.T) {
 		name       string
 		setupMocks func(*repomocks.MockUserFileRepository, *eventmocks.MockEventPublisher)
 		uid        string
-		param      params.UserFileUpdateParam
+		param      param.UserFileUpdateParam
 		wantErr    error
 	}{
 		{
@@ -358,7 +358,7 @@ func TestUserFileService_Update(t *testing.T) {
 				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
-			param: params.UserFileUpdateParam{
+			param: param.UserFileUpdateParam{
 				FileName:   util.Ptr("newname.jpg"),
 				FilePath:   util.Ptr("/uploads/newname.jpg"),
 				MimeType:   util.Ptr("image/png"),
@@ -374,7 +374,7 @@ func TestUserFileService_Update(t *testing.T) {
 				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
-			param: params.UserFileUpdateParam{
+			param: param.UserFileUpdateParam{
 				FileName: util.Ptr("updated.jpg"),
 			},
 		},
@@ -384,7 +384,7 @@ func TestUserFileService_Update(t *testing.T) {
 				fr.EXPECT().GetByUID(mock.Anything, "nonexistent-file").Return(nil, domainerrors.ErrFileNotFound).Once()
 			},
 			uid: "nonexistent-file",
-			param: params.UserFileUpdateParam{
+			param: param.UserFileUpdateParam{
 				FileName: util.Ptr("newname.jpg"),
 			},
 			wantErr: domainerrors.ErrFileNotFound,

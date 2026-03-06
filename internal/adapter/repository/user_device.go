@@ -93,7 +93,7 @@ func (r *UserDeviceRepository) Revoke(ctx context.Context, userID, deviceID int6
 }
 
 // List retrieves all user-device relationships with pagination and filtering.
-func (r *UserDeviceRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) (*model.UserDevices, error) {
+func (r *UserDeviceRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserDeviceListFilterParam) (*model.UserDevices, error) {
 	limit := 10
 	offset := 0
 	page := 1

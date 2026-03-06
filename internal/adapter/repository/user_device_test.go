@@ -274,17 +274,17 @@ func TestUserDeviceRepository_Revoke(t *testing.T) {
 func TestUserDeviceRepository_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
-		filter     *params.UserDeviceListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.UserDeviceListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserDeviceListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List all user-device relationships with pagination",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) {
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserDeviceListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(2))
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_device`).
 					WillReturnRows(countRows)

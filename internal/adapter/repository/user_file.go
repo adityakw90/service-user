@@ -107,7 +107,7 @@ func (r *UserFileRepository) Delete(ctx context.Context, file *model.UserFile) e
 }
 
 // List retrieves files with pagination and filtering.
-func (r *UserFileRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) (*model.UserFiles, error) {
+func (r *UserFileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) (*model.UserFiles, error) {
 	limit := 10
 	offset := 0
 	page := 1

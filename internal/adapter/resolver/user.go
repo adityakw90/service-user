@@ -180,7 +180,7 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 }
 
 // Invalidate clears cached entries for the specified UIDs/IDs.
-func (r *userResolver) Invalidate(ctx context.Context, opts ...params.InvalidateOpt) error {
+func (r *userResolver) Invalidate(ctx context.Context, opts ...param.InvalidateOpt) error {
 	// TODO: Implement cache invalidation
 	return nil
 }

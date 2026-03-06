@@ -1,4 +1,4 @@
-package params
+package param
 
 // InvalidateOptions holds the options for Invalidate operations.
 type InvalidateOptions struct {

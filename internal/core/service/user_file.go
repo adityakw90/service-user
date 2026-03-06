@@ -93,14 +93,14 @@ func (s *userFileService) Get(ctx context.Context, uid string) (*model.UserFile,
 	return file, nil
 }
 
-func (s *userFileService) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) (*model.UserFiles, error) {
+func (s *userFileService) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) (*model.UserFiles, error) {
 	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
 		Operation: "list",
 	}, nil)
 
 	// Set defaults for pagination
 	if pagination == nil {
-		pagination = &params.PaginationParam{
+		pagination = &param.PaginationParam{
 			Page:    util.Ptr(1),
 			Limit:   util.Ptr(10),
 			Sort:    util.Ptr("asc"),
@@ -109,7 +109,7 @@ func (s *userFileService) List(ctx context.Context, pagination *params.Paginatio
 	}
 
 	if filter == nil {
-		filter = &params.UserFileListFilterParam{}
+		filter = &param.UserFileListFilterParam{}
 	}
 
 	files, err := s.userFileRepo.List(ctx, pagination, filter)
@@ -144,7 +144,7 @@ func (s *userFileService) List(ctx context.Context, pagination *params.Paginatio
 	return files, nil
 }
 
-func (s *userFileService) Add(ctx context.Context, param params.UserFileCreateParam) (*model.UserFile, error) {
+func (s *userFileService) Add(ctx context.Context, param param.UserFileCreateParam) (*model.UserFile, error) {
 	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
 		UserUID:   &param.UserUID,
 		FileName:  &param.FileName,
@@ -220,7 +220,7 @@ func (s *userFileService) Add(ctx context.Context, param params.UserFileCreatePa
 	return file, nil
 }
 
-func (s *userFileService) Update(ctx context.Context, uid string, param params.UserFileUpdateParam) error {
+func (s *userFileService) Update(ctx context.Context, uid string, param param.UserFileUpdateParam) error {
 	s.userFileObserver.OnSignal(ctx, signal.SignalStart, signal.UserFileSignal{
 		UID:       &uid,
 		Operation: "update",

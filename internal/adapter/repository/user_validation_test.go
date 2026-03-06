@@ -9,33 +9,33 @@ import (
 func TestUserRepository_validateOrderBy(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
+		pagination *param.PaginationParam
 		want       string
 	}{
 		{
 			name: "Valid OrderBy - username",
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				OrderBy: func() *string { s := "username"; return &s }(),
 			},
 			want: "username",
 		},
 		{
 			name: "Valid OrderBy - email",
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				OrderBy: func() *string { s := "email"; return &s }(),
 			},
 			want: "email",
 		},
 		{
 			name: "Invalid OrderBy - SQL injection attempt",
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				OrderBy: func() *string { s := "id; DROP TABLE users; --"; return &s }(),
 			},
 			want: "created_at", // fallback to default
 		},
 		{
 			name: "Invalid OrderBy - non-existent column",
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				OrderBy: func() *string { s := "nonexistent"; return &s }(),
 			},
 			want: "created_at", // fallback to default
@@ -47,7 +47,7 @@ func TestUserRepository_validateOrderBy(t *testing.T) {
 		},
 		{
 			name: "Nil OrderBy",
-			pagination: &params.PaginationParam{
+			pagination: &param.PaginationParam{
 				OrderBy: nil,
 			},
 			want: "created_at",

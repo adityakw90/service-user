@@ -93,7 +93,7 @@ func (r *ProfileRepository) Delete(ctx context.Context, profile *model.UserProfi
 }
 
 // List retrieves all profiles with pagination and filtering.
-func (r *ProfileRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserProfileListFilterParam) (*model.UserProfiles, error) {
+func (r *ProfileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserProfileListFilterParam) (*model.UserProfiles, error) {
 	limit := 10
 	offset := 0
 	page := 1

@@ -1,4 +1,4 @@
-package params
+package param
 
 type UserFileListFilterParam struct {
 	Uids       []string // file uids

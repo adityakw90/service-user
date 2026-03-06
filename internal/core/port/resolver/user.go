@@ -20,5 +20,5 @@ type UserResolver interface {
 
 	// Invalidate clears cached entries for the specified UIDs/IDs.
 	// Accepts functional options: WithUIDs(), WithIDs()
-	Invalidate(ctx context.Context, opts ...params.InvalidateOpt) error
+	Invalidate(ctx context.Context, opts ...param.InvalidateOpt) error
 }

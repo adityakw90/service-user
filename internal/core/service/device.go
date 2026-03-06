@@ -64,14 +64,14 @@ func (s *deviceService) Get(ctx context.Context, uid string) (*model.Device, err
 	return device, nil
 }
 
-func (s *deviceService) List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error) {
+func (s *deviceService) List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
 	s.deviceObserver.OnSignal(ctx, signal.SignalStart, signal.DeviceSignal{
 		Operation: "list",
 	}, nil)
 
 	// Set defaults for pagination
 	if pagination == nil {
-		pagination = &params.PaginationParam{
+		pagination = &param.PaginationParam{
 			Page:    util.Ptr(1),
 			Limit:   util.Ptr(10),
 			Sort:    util.Ptr("asc"),
@@ -80,7 +80,7 @@ func (s *deviceService) List(ctx context.Context, pagination *params.PaginationP
 	}
 
 	if filter == nil {
-		filter = &params.DeviceListFilterParam{}
+		filter = &param.DeviceListFilterParam{}
 	}
 
 	devices, err := s.deviceRepo.List(ctx, pagination, filter)
@@ -116,7 +116,7 @@ func (s *deviceService) Delete(ctx context.Context, uid string) error {
 
 	// Check if there are active user devices linked to this device
 	revoked := false
-	userDevices, err := s.userDeviceRepo.List(ctx, &params.PaginationParam{Page: util.Ptr(1), Limit: util.Ptr(1)}, &params.UserDeviceListFilterParam{
+	userDevices, err := s.userDeviceRepo.List(ctx, &param.PaginationParam{Page: util.Ptr(1), Limit: util.Ptr(1)}, &param.UserDeviceListFilterParam{
 		DeviceUids: []string{uid},
 		Revoked:    &revoked,
 	})

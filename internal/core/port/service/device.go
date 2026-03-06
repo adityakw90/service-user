@@ -12,7 +12,7 @@ type DeviceService interface {
 	Get(ctx context.Context, uid string) (*model.Device, error)
 
 	// get list device
-	List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
+	List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error)
 
 	// delete device
 	Delete(ctx context.Context, uid string) error

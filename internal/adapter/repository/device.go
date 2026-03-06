@@ -85,16 +85,16 @@ func (r *DeviceRepository) Delete(ctx context.Context, device *model.Device) err
 }
 
 // allowedOrderByDevice maps OrderBy string values to their typed enum for validation.
-var allowedOrderByDevice = map[string]params.DeviceOrderBy{
-	"id":                 params.OrderByDeviceID,
-	"uid":                params.OrderByDeviceUID,
-	"device_fingerprint": params.OrderByDeviceFingerprint,
-	"device_name":        params.OrderByDeviceName,
-	"created_at":         params.OrderByDeviceCreatedAt,
+var allowedOrderByDevice = map[string]param.DeviceOrderBy{
+	"id":                 param.OrderByDeviceID,
+	"uid":                param.OrderByDeviceUID,
+	"device_fingerprint": param.OrderByDeviceFingerprint,
+	"device_name":        param.OrderByDeviceName,
+	"created_at":         param.OrderByDeviceCreatedAt,
 }
 
 // validateOrderBy validates the OrderBy value against allowed Device columns using O(1) map lookup.
-func (r *DeviceRepository) validateOrderBy(pagination *params.PaginationParam, defaultOrderBy string) string {
+func (r *DeviceRepository) validateOrderBy(pagination *param.PaginationParam, defaultOrderBy string) string {
 	if pagination != nil && pagination.OrderBy != nil {
 		if _, ok := allowedOrderByDevice[*pagination.OrderBy]; ok {
 			return *pagination.OrderBy
@@ -104,7 +104,7 @@ func (r *DeviceRepository) validateOrderBy(pagination *params.PaginationParam, d
 }
 
 // List retrieves all devices with pagination and filtering.
-func (r *DeviceRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error) {
+func (r *DeviceRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -198,7 +198,7 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *params.Paginati
 }
 
 // ListByUserID lists all devices for a user.
-func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error) {
+func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
 	limit := 10
 	offset := 0
 	page := 1
