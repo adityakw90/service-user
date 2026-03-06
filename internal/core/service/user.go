@@ -249,6 +249,9 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 		return nil, err
 	}
 
+	// Invalidate cache for new user
+	_ = s.resolvers.User().Invalidate(ctx, params.WithUIDs(user.UID))
+
 	// Create empty profile
 	profile := &model.UserProfile{
 		UserID:  user.ID,
@@ -426,6 +429,9 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 		return err
 	}
 
+	// Invalidate cache for updated user
+	_ = s.resolvers.User().Invalidate(ctx, params.WithUIDs(user.UID), params.WithIDs(user.ID))
+
 	// Publish user updated event
 	err = s.eventPublisher.Publish(ctx, event.EventUserUpdated, event.EventUserUpdatedData{
 		UserUID:      uid,
@@ -497,6 +503,9 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 		}, err)
 		return err
 	}
+
+	// Invalidate cache for deleted user
+	_ = s.resolvers.User().Invalidate(ctx, params.WithUIDs(user.UID), params.WithIDs(user.ID))
 
 	// Publish user deleted event
 	err = s.eventPublisher.Publish(ctx, event.EventUserDeleted, event.EventUserDeletedData{
