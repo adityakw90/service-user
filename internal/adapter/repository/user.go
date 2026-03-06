@@ -183,13 +183,21 @@ func (r *UserRepository) List(ctx context.Context, pagination *params.Pagination
 	}
 
 	// Get paginated results
+	// Apply sorting
+	orderByValue := r.validateOrderBy(pagination, "created_at")
+	if pagination != nil && pagination.Sort != nil {
+		orderByValue += " " + *pagination.Sort
+	} else {
+		orderByValue += " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at
 		FROM "user"
 		%s
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByValue, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
