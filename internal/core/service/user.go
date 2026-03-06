@@ -136,7 +136,7 @@ func (s *userService) Get(ctx context.Context, uid string) (*model.User, error) 
 	return user, nil
 }
 
-func (s *userService) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserListFilterParam) (*model.Users, error) {
+func (s *userService) List(ctx context.Context, pagination   *p.PaginationParam, filter   *p.UserListFilterParam) (*model.Users, error) {
 	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
 		Operation: "list",
 	}, nil)
@@ -166,27 +166,27 @@ func (s *userService) List(ctx context.Context, pagination *params.PaginationPar
 	return users, nil
 }
 
-func (s *userService) Create(ctx context.Context, param *params.UserCreateParam) (*model.User, error) {
+func (s *userService) Create(ctx context.Context, param   *p.UserCreateParam) (*model.User, error) {
 	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		Username:  &param.Username,
-		Email:     &param.Email,
+		Username:  &p.Username,
+		Email:     &p.Email,
 		Operation: "create",
 	}, nil)
 
 	// Validate input
-	if param.Username == "" {
+	if p.Username == "" {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 			Operation: "create",
 		}, domainerrors.ErrInvalidUsername)
 		return nil, domainerrors.ErrInvalidUsername
 	}
-	if param.Email == "" {
+	if p.Email == "" {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 			Operation: "create",
 		}, domainerrors.ErrInvalidEmail)
 		return nil, domainerrors.ErrInvalidEmail
 	}
-	if param.Password == "" {
+	if p.Password == "" {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 			Operation: "create",
 		}, domainerrors.ErrInvalidPassword)
@@ -197,7 +197,7 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 	_, err := s.userRepo.GetByEmail(ctx, param.Email)
 	if err == nil {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Email:     &param.Email,
+			Email:     &p.Email,
 			Operation: "create",
 		}, domainerrors.ErrDuplicateEmail)
 		return nil, domainerrors.ErrDuplicateEmail
@@ -212,7 +212,7 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 	_, err = s.userRepo.GetByUsername(ctx, param.Username)
 	if err == nil {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Username:  &param.Username,
+			Username:  &p.Username,
 			Operation: "create",
 		}, domainerrors.ErrDuplicateUsername)
 		return nil, domainerrors.ErrDuplicateUsername
@@ -224,7 +224,7 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 	}
 
 	// Hash password
-	hashedPassword, err := s.passwordHasher.Hash(param.Password)
+	hashedPassword, err := s.passwordHasher.Hash(p.Password)
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			Operation: "create",
@@ -289,7 +289,7 @@ func (s *userService) Create(ctx context.Context, param *params.UserCreateParam)
 	return user, nil
 }
 
-func (s *userService) Update(ctx context.Context, uid string, param *params.UserUpdateParam) error {
+func (s *userService) Update(ctx context.Context, uid string, param   *p.UserUpdateParam) error {
 	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
 		UID:       &uid,
 		Operation: "update",
@@ -337,8 +337,8 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 	changesCount := 0
 
 	// Update username if provided
-	if param.Username != nil {
-		if *param.Username == "" {
+	if p.Username != nil {
+		if  *p.Username == "" {
 			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 				UID:       &uid,
 				Operation: "update",
@@ -346,7 +346,7 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 			return domainerrors.ErrInvalidUsername
 		}
 		// Check for duplicate
-		existing, err := s.userRepo.GetByUsername(ctx, *param.Username)
+		existing, err := s.userRepo.GetByUsername(ctx,  *p.Username)
 		if err == nil && existing.UID != uid {
 			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 				UID:       &uid,
@@ -360,13 +360,13 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 			}, err)
 			return err
 		}
-		user.Username = *param.Username
+		user.Username =  *p.Username
 		changesCount++
 	}
 
 	// Update email if provided
-	if param.Email != nil {
-		if *param.Email == "" {
+	if p.Email != nil {
+		if  *p.Email == "" {
 			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 				UID:       &uid,
 				Operation: "update",
@@ -374,7 +374,7 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 			return domainerrors.ErrInvalidEmail
 		}
 		// Check for duplicate
-		existing, err := s.userRepo.GetByEmail(ctx, *param.Email)
+		existing, err := s.userRepo.GetByEmail(ctx,  *p.Email)
 		if err == nil && existing.UID != uid {
 			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 				UID:       &uid,
@@ -388,20 +388,20 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 			}, err)
 			return err
 		}
-		user.Email = *param.Email
+		user.Email =  *p.Email
 		changesCount++
 	}
 
 	// Update password if provided
-	if param.Password != nil {
-		if *param.Password == "" {
+	if p.Password != nil {
+		if  *p.Password == "" {
 			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 				UID:       &uid,
 				Operation: "update",
 			}, domainerrors.ErrInvalidPassword)
 			return domainerrors.ErrInvalidPassword
 		}
-		hashedPassword, err := s.passwordHasher.Hash(*param.Password)
+		hashedPassword, err := s.passwordHasher.Hash( *p.Password)
 		if err != nil {
 			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 				UID:       &uid,
@@ -414,8 +414,8 @@ func (s *userService) Update(ctx context.Context, uid string, param *params.User
 	}
 
 	// Update status if provided
-	if param.Status != nil {
-		user.Status = *param.Status
+	if p.Status != nil {
+		user.Status =  *p.Status
 		changesCount++
 	}
 
@@ -840,7 +840,7 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 	return nil
 }
 
-func (s *userService) ListDevice(ctx context.Context, userUID string, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) (*model.Devices, error) {
+func (s *userService) ListDevice(ctx context.Context, userUID string, pagination   *p.PaginationParam, filter   *p.UserDeviceListFilterParam) (*model.Devices, error) {
 	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
 		UID:       &userUID,
 		Operation: "list_device",
@@ -1021,21 +1021,21 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	return nil
 }
 
-func (s *userService) ChangePassword(ctx context.Context, userUID string, param *params.UserChangePasswordParam) error {
+func (s *userService) ChangePassword(ctx context.Context, userUID string, param   *p.UserChangePasswordParam) error {
 	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
 		UID:       &userUID,
 		Operation: "change_password",
 	}, nil)
 
 	// Validate input
-	if param.CurrentPassword == "" {
+	if p.CurrentPassword == "" {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 			UID:       &userUID,
 			Operation: "change_password",
 		}, domainerrors.ErrInvalidCurrentPassword)
 		return domainerrors.ErrInvalidCurrentPassword
 	}
-	if param.NewPassword == "" {
+	if p.NewPassword == "" {
 		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
 			UID:       &userUID,
 			Operation: "change_password",
@@ -1092,7 +1092,7 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, param 
 	}
 
 	// Hash new password
-	hashedPassword, err := s.passwordHasher.Hash(param.NewPassword)
+	hashedPassword, err := s.passwordHasher.Hash(p.NewPassword)
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			UID:       &userUID,
