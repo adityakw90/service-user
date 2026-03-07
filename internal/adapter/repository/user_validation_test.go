@@ -54,11 +54,9 @@ func TestUserRepository_validateOrderBy(t *testing.T) {
 		},
 	}
 
-	repo := &UserRepository{} // minimal setup for validation test
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := repo.validateOrderBy(tt.pagination, "created_at")
+			got := validateOrderBy(tt.pagination, "created_at", allowedOrderByUser)
 			if got != tt.want {
 				t.Errorf("validateOrderBy() = %v, want %v", got, tt.want)
 			}

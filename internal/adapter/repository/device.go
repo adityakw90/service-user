@@ -93,19 +93,6 @@ var allowedOrderByDevice = map[string]param.DeviceOrderBy{
 	"created_at":         param.OrderByDeviceCreatedAt,
 }
 
-// validateOrderBy validates the OrderBy value against allowed Device columns using O(1) map lookup.
-func (r *DeviceRepository) validateOrderBy(pagination *param.PaginationParam, defaultOrderBy string) string {
-	if pagination != nil && pagination.OrderBy != nil && *pagination.OrderBy != "" {
-		orderBy := strings.TrimSpace(*pagination.OrderBy)
-		if orderBy != "" {
-			if _, ok := allowedOrderByDevice[orderBy]; ok {
-				return orderBy
-			}
-		}
-	}
-	return defaultOrderBy
-}
-
 // List retrieves all devices with pagination and filtering.
 func (r *DeviceRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
 	limit := 10
@@ -151,12 +138,7 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := r.validateOrderBy(pagination, "created_at")
-
-	// Ensure orderByValue is never empty
-	if orderByValue == "" {
-		orderByValue = "created_at"
-	}
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByDevice)
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue
@@ -265,12 +247,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 
 	// Get paginated results - select only device columns
 	// Apply sorting
-	orderByValue := r.validateOrderBy(pagination, "created_at")
-
-	// Ensure orderByValue is never empty
-	if orderByValue == "" {
-		orderByValue = "created_at"
-	}
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByDevice)
 
 	// Build ORDER BY clause with table alias
 	orderByClause := fmt.Sprintf("d.%s", orderByValue)

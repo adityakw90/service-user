@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
@@ -87,6 +88,13 @@ func (r *PinRepository) Delete(ctx context.Context, pin *model.UserPin) error {
 	return err
 }
 
+// allowedOrderByUserPin maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserPin = map[string]param.UserPinOrderBy{
+	"user_id":    param.OrderByUserPinUserID,
+	"created_at": param.OrderByUserPinCreatedAt,
+	"updated_at": param.OrderByUserPinUpdatedAt,
+}
+
 // List retrieves all PINs with pagination and filtering.
 func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) (*model.UserPins, error) {
 	limit := 10
@@ -110,12 +118,23 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 	}
 
 	// Get paginated results
-	query := `
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserPin)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT user_id, code, created_at, updated_at
 		FROM user_pin
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $1 OFFSET $2
-	`
+	`, orderByClause)
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -146,10 +165,10 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 	return &model.UserPins{
 		Items: pinItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }

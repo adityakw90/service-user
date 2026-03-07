@@ -92,6 +92,13 @@ func (r *ProfileRepository) Delete(ctx context.Context, profile *model.UserProfi
 	return err
 }
 
+// allowedOrderByUserProfile maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserProfile = map[string]param.UserProfileOrderBy{
+	"user_id":    param.OrderByUserProfileID,
+	"created_at": param.OrderByUserProfileCreatedAt,
+	"updated_at": param.OrderByUserProfileUpdatedAt,
+}
+
 // List retrieves all profiles with pagination and filtering.
 func (r *ProfileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserProfileListFilterParam) (*model.UserProfiles, error) {
 	limit := 10
@@ -115,12 +122,23 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 	}
 
 	// Get paginated results
-	query := `
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserProfile)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT user_id, first_name, last_name, bio, avatar_file_id, attributes, created_at, updated_at
 		FROM user_profile
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $1 OFFSET $2
-	`
+	`, orderByClause)
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -154,10 +172,10 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 	return &model.UserProfiles{
 		Items: profileItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }

@@ -119,19 +119,6 @@ var allowedOrderByUser = map[string]param.UserOrderBy{
 	"updated_at": param.OrderByUserUpdatedAt,
 }
 
-// validateOrderBy validates the OrderBy value against allowed User columns using O(1) map lookup.
-func (r *UserRepository) validateOrderBy(pagination *param.PaginationParam, defaultOrderBy string) string {
-	if pagination != nil && pagination.OrderBy != nil && *pagination.OrderBy != "" {
-		orderBy := strings.TrimSpace(*pagination.OrderBy)
-		if orderBy != "" {
-			if _, ok := allowedOrderByUser[orderBy]; ok {
-				return orderBy
-			}
-		}
-	}
-	return defaultOrderBy
-}
-
 // List retrieves users with pagination and filtering.
 func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserListFilterParam) (*model.Users, error) {
 	limit := 10
@@ -187,12 +174,7 @@ func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationP
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := r.validateOrderBy(pagination, "created_at")
-
-	// Ensure orderByValue is never empty
-	if orderByValue == "" {
-		orderByValue = "created_at"
-	}
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUser)
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue

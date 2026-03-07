@@ -106,6 +106,16 @@ func (r *UserFileRepository) Delete(ctx context.Context, file *model.UserFile) e
 	return err
 }
 
+// allowedOrderByUserFile maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserFile = map[string]param.UserFileOrderBy{
+	"id":         param.OrderByUserFileID,
+	"uid":        param.OrderByUserFileUID,
+	"user_id":    param.OrderByUserFileUserID,
+	"file_type":  param.OrderByUserFileFileType,
+	"file_name":  param.OrderByUserFileFileName,
+	"created_at": param.OrderByUserFileCreatedAt,
+}
+
 // List retrieves files with pagination and filtering.
 func (r *UserFileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) (*model.UserFiles, error) {
 	limit := 10
@@ -200,13 +210,24 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 	}
 
 	// Get paginated results
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserFile)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at
 		FROM user_file
 		%s
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
@@ -234,10 +255,10 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 	return &model.UserFiles{
 		Items: fileItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }

@@ -29,3 +29,15 @@ type UserFileUpdateParam struct {
 	SizeBytes  *int64
 	Visibility *string
 }
+
+// UserFileOrderBy represents allowed OrderBy column values for UserFile.
+type UserFileOrderBy string
+
+const (
+	OrderByUserFileID         UserFileOrderBy = "id"
+	OrderByUserFileUID        UserFileOrderBy = "uid"
+	OrderByUserFileUserID     UserFileOrderBy = "user_id"
+	OrderByUserFileFileType   UserFileOrderBy = "file_type"
+	OrderByUserFileFileName   UserFileOrderBy = "file_name"
+	OrderByUserFileCreatedAt  UserFileOrderBy = "created_at"
+)
