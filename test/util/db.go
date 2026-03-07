@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -205,8 +205,8 @@ type pgxExecutor interface {
 }
 
 // UserToCreateParam converts a model.User to UserCreateParam for service calls.
-func UserToCreateParam(user *model.User, password string) *params.UserCreateParam {
-	return &params.UserCreateParam{
+func UserToCreateParam(user *model.User, password string) *param.UserCreateParam {
+	return &param.UserCreateParam{
 		Username: user.Username,
 		Email:    user.Email,
 		Password: password,

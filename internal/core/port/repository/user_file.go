@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 type UserFileRepository interface {
@@ -13,5 +13,5 @@ type UserFileRepository interface {
 	Delete(ctx context.Context, userFile *model.UserFile) error
 	GetByID(ctx context.Context, id int64) (*model.UserFile, error)
 	GetByUID(ctx context.Context, uid string) (*model.UserFile, error)
-	List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) (*model.UserFiles, error)
+	List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) (*model.UserFiles, error)
 }

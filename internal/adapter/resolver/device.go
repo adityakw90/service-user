@@ -8,6 +8,7 @@ import (
 
 	"github.com/adityakw90/go-monitoring"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,6 +24,7 @@ type deviceResolver struct {
 	tracer             monitoring.Tracer
 }
 
+// deviceIdentity represents the database model for device identity mapping
 type deviceIdentity struct {
 	id  int64
 	uid string
@@ -58,11 +60,14 @@ func (r *deviceResolver) fetchIDFromDB(ctx context.Context, uid string) (*device
 	defer rows.Close()
 
 	for rows.Next() {
-
 		err := rows.Scan(&iden.id, &iden.uid)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if iden.id == 0 {
+		return nil, domainerrors.ErrDeviceNotFound
 	}
 
 	return &iden, nil
@@ -144,7 +149,7 @@ func (r *deviceResolver) UIDsByIDs(ctx context.Context, deviceIDs []int64) (map[
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "deviceResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperUID(
+	result, err := mapperID(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -182,4 +187,10 @@ func (r *deviceResolver) UIDsByIDs(ctx context.Context, deviceIDs []int64) (map[
 	))
 
 	return result, nil
+}
+
+// Invalidate clears cached entries for the specified UIDs/IDs.
+func (r *deviceResolver) Invalidate(ctx context.Context, opts ...param.InvalidateOpt) error {
+	// TODO: Implement cache invalidation
+	return nil
 }

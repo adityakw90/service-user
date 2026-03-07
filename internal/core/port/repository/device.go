@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 type DeviceRepository interface {
@@ -14,6 +14,6 @@ type DeviceRepository interface {
 	GetByID(ctx context.Context, id int64) (*model.Device, error)
 	GetByUID(ctx context.Context, uid string) (*model.Device, error)
 	GetByFingerprint(ctx context.Context, fingerprint string) (*model.Device, error)
-	List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
-	ListByUserID(ctx context.Context, userId int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error)
+	List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error)
+	ListByUserID(ctx context.Context, userId int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error)
 }

@@ -6,8 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/infra"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -203,8 +206,8 @@ func TestNewUserFileResolver(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			got := NewUserFileResolver(mockPool, nil, "test", time.Minute, logger, tracer)
 
@@ -313,15 +316,15 @@ func TestUserFileResolver_IDsByUIDs(t *testing.T) {
 			defer mockPool.Close()
 
 			// Setup miniredis
-			redisClient, redisCleanup, err := newMockRedis()
-			require.NoError(t, err)
-			defer redisCleanup()
+			s := miniredis.RunT(t)
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
 
 			// Setup test expectations
 			tt.setupDBMock(t, mockPool)
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			r := &userFileResolver{
 				db:                 mockPool,
@@ -446,15 +449,15 @@ func TestUserFileResolver_UIDsByIDs(t *testing.T) {
 			defer mockPool.Close()
 
 			// Setup miniredis
-			redisClient, redisCleanup, err := newMockRedis()
-			require.NoError(t, err)
-			defer redisCleanup()
+			s := miniredis.RunT(t)
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
 
 			// Setup test expectations
 			tt.setupDBMock(t, mockPool)
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			r := &userFileResolver{
 				db:                 mockPool,

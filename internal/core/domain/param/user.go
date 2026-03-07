@@ -1,4 +1,4 @@
-package params
+package param
 
 import "github.com/adityakw90/service-user/internal/core/domain/model"
 
@@ -33,3 +33,16 @@ type UserChangePasswordParam struct {
 	CurrentPassword string
 	NewPassword     string
 }
+
+// UserOrderBy represents allowed OrderBy column values for User.
+type UserOrderBy string
+
+const (
+	OrderByUserID        UserOrderBy = "id"
+	OrderByUserUID       UserOrderBy = "uid"
+	OrderByUserUsername  UserOrderBy = "username"
+	OrderByUserEmail     UserOrderBy = "email"
+	OrderByUserStatus    UserOrderBy = "status"
+	OrderByUserCreatedAt UserOrderBy = "created_at"
+	OrderByUserUpdatedAt UserOrderBy = "updated_at"
+)

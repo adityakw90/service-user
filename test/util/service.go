@@ -92,10 +92,10 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	userDeviceRepo := repository.NewUserDeviceRepository(dbPool)
 
 	// Initialize resolver
-	userResolver := resolver.NewUserResolver(
+	resolverProvider := resolver.NewResolverProvider(
 		dbPool,
 		redisClient,
-		"SUS:resolver-test:user",
+		"SUS:resolver-test",
 		15*time.Minute,
 		monitoring.Logger,
 		monitoring.Tracer,
@@ -164,6 +164,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		tokenWhitelist,
 		userObserver,
 		eventPublisher,
+		resolverProvider,
 	)
 
 	// Initialize OAuth provider if configured
@@ -228,7 +229,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 
 	// Initialize user file service with resolver
 	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := svc.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver, eventPublisher)
+	userFileService := svc.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
 
 	// prepare db and redis
 	// TruncateTestTables(t, ctx, dbPool)

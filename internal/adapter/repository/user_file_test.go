@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -294,17 +294,17 @@ func TestUserFileRepository_Delete(t *testing.T) {
 func TestUserFileRepository_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
-		filter     *params.UserFileListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserFileListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.UserFileListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List all files with pagination",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) {
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(2))
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
 					WillReturnRows(countRows)
@@ -321,9 +321,9 @@ func TestUserFileRepository_List(t *testing.T) {
 		},
 		{
 			name:       "List files with filter by file type",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
-			filter:     &params.UserFileListFilterParam{FileType: util.Ptr("avatar")},
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserFileListFilterParam) {
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			filter:     &param.UserFileListFilterParam{FileType: util.Ptr("avatar")},
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file WHERE file_type = \$1`).
 					WithArgs("avatar").

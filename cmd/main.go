@@ -170,10 +170,10 @@ func main() {
 	_ = repository.NewUserFileRepository(dbPool)
 
 	// Initialize resolvers
-	userResolver := resolver.NewUserResolver(
+	resolverProvider := resolver.NewResolverProvider(
 		dbPool,
 		redisClient,
-		cfg.App.Code+":resolver:user",
+		cfg.App.Code+":resolver",
 		1*time.Hour,
 		iMon.Logger,
 		iMon.Tracer,
@@ -395,6 +395,7 @@ func main() {
 		tokenWhitelist,
 		userObserver,
 		eventPublisher,
+		resolverProvider,
 	)
 
 	// Initialize auth service with all features
@@ -426,7 +427,7 @@ func main() {
 
 	// Initialize user file service
 	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := service.NewUserFileService(userFileRepo, userRepo, userResolver, uidGen, userFileObserver, eventPublisher)
+	userFileService := service.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
 
 	// Initialize gRPC handlers
 	userHandler := grpcadapter.NewUserHandler(userService)

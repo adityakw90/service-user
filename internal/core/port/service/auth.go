@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 // AuthService is the primary port (inbound) for authentication use cases.
 type AuthService interface {
 	// Authenticate authenticates a user with credentials and returns tokens.
-	Authenticate(ctx context.Context, payload *params.AuthParams) (*model.Token, error)
+	Authenticate(ctx context.Context, payload *param.AuthParams) (*model.Token, error)
 
 	// Google OAuth
 	GoogleOAuth(ctx context.Context, redirectURI string) (string, string, error)

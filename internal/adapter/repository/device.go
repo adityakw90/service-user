@@ -4,33 +4,21 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
 
-// deviceModel is the database model for device data.
-type deviceModel struct {
-	ID                int64
-	UID               string
-	DeviceFingerprint string
-	DeviceName        string
-	CreatedAt         time.Time
-}
-
-// toDomain converts a device model to a domain entity.
-func (m *deviceModel) toDomain() *model.Device {
-	return &model.Device{
-		ID:                m.ID,
-		UID:               m.UID,
-		DeviceFingerprint: m.DeviceFingerprint,
-		DeviceName:        m.DeviceName,
-		CreatedAt:         m.CreatedAt,
-	}
+// allowedOrderByDevice maps OrderBy string values to their typed enum for validation.
+var allowedOrderByDevice = map[string]param.DeviceOrderBy{
+	"id":                 param.OrderByDeviceID,
+	"uid":                param.OrderByDeviceUID,
+	"device_fingerprint": param.OrderByDeviceFingerprint,
+	"device_name":        param.OrderByDeviceName,
+	"created_at":         param.OrderByDeviceCreatedAt,
 }
 
 // DeviceRepository implements repository.DeviceRepository for PostgreSQL.
@@ -85,7 +73,7 @@ func (r *DeviceRepository) Delete(ctx context.Context, device *model.Device) err
 }
 
 // List retrieves all devices with pagination and filtering.
-func (r *DeviceRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error) {
+func (r *DeviceRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -128,13 +116,24 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *params.Paginati
 	}
 
 	// Get paginated results
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByDevice)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT id, uid, device_fingerprint, device_name, created_at
 		FROM device
 		%s
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
@@ -171,7 +170,7 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *params.Paginati
 }
 
 // ListByUserID lists all devices for a user.
-func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagination *params.PaginationParam, filter *params.DeviceListFilterParam) (*model.Devices, error) {
+func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -226,14 +225,27 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	}
 
 	// Get paginated results - select only device columns
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByDevice)
+
+	// Build ORDER BY clause with table alias
+	orderByClause := fmt.Sprintf("d.%s", orderByValue)
+
+	// Add sort direction if provided and not empty
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT d.id, d.uid, d.device_fingerprint, d.device_name, d.created_at
 		FROM device d
 		JOIN user_device ud ON d.id = ud.device_id
 		%s
-		ORDER BY d.created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
@@ -270,7 +282,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 }
 
 func (r *DeviceRepository) scanDevice(row pgx.Row) (*model.Device, error) {
-	var m deviceModel
+	var m model.Device
 	err := row.Scan(
 		&m.ID, &m.UID, &m.DeviceFingerprint, &m.DeviceName, &m.CreatedAt,
 	)
@@ -280,20 +292,20 @@ func (r *DeviceRepository) scanDevice(row pgx.Row) (*model.Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 func (r *DeviceRepository) scanRows(rows pgx.Rows) ([]*model.Device, error) {
 	var devices []*model.Device
 	for rows.Next() {
-		var m deviceModel
+		var m model.Device
 		err := rows.Scan(
 			&m.ID, &m.UID, &m.DeviceFingerprint, &m.DeviceName, &m.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		devices = append(devices, m.toDomain())
+		devices = append(devices, &m)
 	}
 	return devices, nil
 }

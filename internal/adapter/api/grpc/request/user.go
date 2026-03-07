@@ -5,7 +5,7 @@ import (
 
 	user "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
 )
 
@@ -30,12 +30,12 @@ type UserFilterRequest struct {
 	Query    *string  `validate:"omitempty"`
 }
 
-func (r *UserFilterRequest) ToUserFilterParams() *params.UserListFilterParam {
+func (r *UserFilterRequest) ToUserFilterParams() *param.UserListFilterParam {
 	var status model.UserStatus
 	if r.Status != nil {
 		status = model.UserStatus(*r.Status)
 	}
-	return &params.UserListFilterParam{
+	return &param.UserListFilterParam{
 		Uids:     r.Uids,
 		Username: r.Username,
 		Email:    r.Email,
@@ -84,30 +84,30 @@ type UserListRequest struct {
 	Filter     *UserFilterRequest
 }
 
-func (r *UserListRequest) ToUserListParams() *params.UserListParam {
-	var pagination *params.PaginationParam
+func (r *UserListRequest) ToUserListParams() *param.UserListParam {
+	var pagination *param.PaginationParam
 	if r.Pagination != nil {
 		pagination = r.Pagination.ToPaginationParams()
 	} else {
 		// Default pagination
 		page := 1
 		limit := 10
-		pagination = &params.PaginationParam{
+		pagination = &param.PaginationParam{
 			Page:    &page,
 			Limit:   &limit,
-			Sort:    util.Ptr("created_at"),
-			OrderBy: util.Ptr("desc"),
+			Sort:    util.Ptr("desc"),
+			OrderBy: util.Ptr("created_at"),
 		}
 	}
 
-	var filter *params.UserListFilterParam
+	var filter *param.UserListFilterParam
 	if r.Filter != nil {
 		filter = r.Filter.ToUserFilterParams()
 	} else {
-		filter = &params.UserListFilterParam{}
+		filter = &param.UserListFilterParam{}
 	}
 
-	return &params.UserListParam{
+	return &param.UserListParam{
 		Pagination: pagination,
 		Filter:     filter,
 	}
@@ -254,8 +254,8 @@ type UserFilterDeviceRequest struct {
 	Revoked    *bool
 }
 
-func (r *UserFilterDeviceRequest) ToUserDeviceListFilterParams() *params.UserDeviceListFilterParam {
-	return &params.UserDeviceListFilterParam{
+func (r *UserFilterDeviceRequest) ToUserDeviceListFilterParams() *param.UserDeviceListFilterParam {
+	return &param.UserDeviceListFilterParam{
 		DeviceUids: r.DeviceUids,
 		DeviceName: r.DeviceName,
 		Revoked:    r.Revoked,
@@ -288,30 +288,30 @@ type UserListDevicesRequest struct {
 	Filter     *UserFilterDeviceRequest
 }
 
-func (r *UserListDevicesRequest) ToUserDeviceListParam() *params.UserDeviceListParam {
-	var pagination *params.PaginationParam
+func (r *UserListDevicesRequest) ToUserDeviceListParam() *param.UserDeviceListParam {
+	var pagination *param.PaginationParam
 	if r.Pagination != nil {
 		pagination = r.Pagination.ToPaginationParams()
 	} else {
 		// Default pagination
 		page := 1
 		limit := 10
-		pagination = &params.PaginationParam{
+		pagination = &param.PaginationParam{
 			Page:    &page,
 			Limit:   &limit,
-			Sort:    util.Ptr("created_at"),
-			OrderBy: util.Ptr("desc"),
+			OrderBy: util.Ptr("created_at"),
+			Sort:    util.Ptr("desc"),
 		}
 	}
 
-	var filter *params.UserDeviceListFilterParam
+	var filter *param.UserDeviceListFilterParam
 	if r.Filter != nil {
 		filter = r.Filter.ToUserDeviceListFilterParams()
 	} else {
-		filter = &params.UserDeviceListFilterParam{}
+		filter = &param.UserDeviceListFilterParam{}
 	}
 	filter.UserUids = []string{r.UserUid}
-	return &params.UserDeviceListParam{
+	return &param.UserDeviceListParam{
 		Pagination: pagination,
 		Filter:     filter,
 	}

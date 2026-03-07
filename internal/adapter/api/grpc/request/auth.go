@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	auth "github.com/adityakw90/service-user-proto/gen/go/auth"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 // AuthRequest represents validated auth request data.
@@ -18,8 +18,8 @@ type AuthRequest struct {
 	Extra             *map[string]any `validate:"omitempty"`
 }
 
-func (r *AuthRequest) ToAuthParams() *params.AuthParams {
-	return &params.AuthParams{
+func (r *AuthRequest) ToAuthParams() *param.AuthParams {
+	return &param.AuthParams{
 		Identifier:        r.Identifier,
 		IdentifierType:    r.IdentifierType,
 		Password:          r.Password,

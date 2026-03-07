@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	common "github.com/adityakw90/service-user-proto/gen/go/common"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 type PaginationRequest struct {
@@ -14,8 +14,8 @@ type PaginationRequest struct {
 	OrderBy string `validate:"omitempty"`
 }
 
-func (pr *PaginationRequest) ToPaginationParams() *params.PaginationParam {
-	return &params.PaginationParam{
+func (pr *PaginationRequest) ToPaginationParams() *param.PaginationParam {
+	return &param.PaginationParam{
 		Page:    &pr.Page,
 		Limit:   &pr.Limit,
 		Sort:    &pr.Sort,

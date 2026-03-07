@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
 )
 
@@ -91,8 +91,8 @@ func createUserPin(userID int64, userUID string, code string) *model.UserPin {
 }
 
 // Helper function to create auth params
-func createAuthParams(identifier, identifierType, password, deviceName, deviceFingerprint, deviceIP string) *params.AuthParams {
-	return &params.AuthParams{
+func createAuthParams(identifier, identifierType, password, deviceName, deviceFingerprint, deviceIP string) *param.AuthParams {
+	return &param.AuthParams{
 		Identifier:        identifier,
 		IdentifierType:    identifierType,
 		Password:          password,
@@ -103,8 +103,8 @@ func createAuthParams(identifier, identifierType, password, deviceName, deviceFi
 }
 
 // Helper function to create user create params
-func createUserCreateParams(username, email, password string) *params.UserCreateParam {
-	return &params.UserCreateParam{
+func createUserCreateParams(username, email, password string) *param.UserCreateParam {
+	return &param.UserCreateParam{
 		Username: username,
 		Email:    email,
 		Password: password,
@@ -112,8 +112,8 @@ func createUserCreateParams(username, email, password string) *params.UserCreate
 }
 
 // Helper function to create user update params
-func createUserUpdateParams(username, email, password *string, status *model.UserStatus) *params.UserUpdateParam {
-	return &params.UserUpdateParam{
+func createUserUpdateParams(username, email, password *string, status *model.UserStatus) *param.UserUpdateParam {
+	return &param.UserUpdateParam{
 		Username: username,
 		Email:    email,
 		Password: password,

@@ -3,39 +3,19 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
 
-// profileModel is the database model for profile data.
-type profileModel struct {
-	UserID       int64
-	FirstName    string
-	LastName     string
-	Bio          string
-	AvatarFileID *int64
-	Attributes   map[string]any
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-}
-
-// toDomain converts a profile model to a domain entity.
-func (m *profileModel) toDomain() *model.UserProfile {
-	return &model.UserProfile{
-		UserID:       m.UserID,
-		FirstName:    m.FirstName,
-		LastName:     m.LastName,
-		Bio:          m.Bio,
-		AvatarFileID: m.AvatarFileID,
-		Attributes:   m.Attributes,
-		CreatedAt:    m.CreatedAt,
-		UpdatedAt:    m.UpdatedAt,
-	}
+// allowedOrderByUserProfile maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserProfile = map[string]param.UserProfileOrderBy{
+	"user_id":    param.OrderByUserProfileID,
+	"created_at": param.OrderByUserProfileCreatedAt,
+	"updated_at": param.OrderByUserProfileUpdatedAt,
 }
 
 // ProfileRepository implements port.ProfileRepository for PostgreSQL.
@@ -93,7 +73,7 @@ func (r *ProfileRepository) Delete(ctx context.Context, profile *model.UserProfi
 }
 
 // List retrieves all profiles with pagination and filtering.
-func (r *ProfileRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserProfileListFilterParam) (*model.UserProfiles, error) {
+func (r *ProfileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserProfileListFilterParam) (*model.UserProfiles, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -115,12 +95,23 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *params.Paginat
 	}
 
 	// Get paginated results
-	query := `
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserProfile)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT user_id, first_name, last_name, bio, avatar_file_id, attributes, created_at, updated_at
 		FROM user_profile
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $1 OFFSET $2
-	`
+	`, orderByClause)
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -129,7 +120,7 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *params.Paginat
 
 	var profiles []*model.UserProfile
 	for rows.Next() {
-		var m profileModel
+		var m model.UserProfile
 		err := rows.Scan(
 			&m.UserID, &m.FirstName, &m.LastName, &m.Bio,
 			&m.AvatarFileID, &m.Attributes, &m.CreatedAt, &m.UpdatedAt,
@@ -137,7 +128,7 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *params.Paginat
 		if err != nil {
 			return nil, err
 		}
-		profiles = append(profiles, m.toDomain())
+		profiles = append(profiles, &m)
 	}
 
 	// Convert []*UserProfile to []UserProfile
@@ -154,16 +145,16 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *params.Paginat
 	return &model.UserProfiles{
 		Items: profileItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }
 
 func (r *ProfileRepository) scanProfile(row pgx.Row) (*model.UserProfile, error) {
-	var m profileModel
+	var m model.UserProfile
 	err := row.Scan(
 		&m.UserID, &m.FirstName, &m.LastName, &m.Bio,
 		&m.AvatarFileID, &m.Attributes, &m.CreatedAt, &m.UpdatedAt,
@@ -174,5 +165,5 @@ func (r *ProfileRepository) scanProfile(row pgx.Row) (*model.UserProfile, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan profile: %w", err)
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }

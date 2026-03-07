@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 )
 
 type UserProfileRepository interface {
@@ -12,5 +12,5 @@ type UserProfileRepository interface {
 	Update(ctx context.Context, profile *model.UserProfile) error
 	Delete(ctx context.Context, profile *model.UserProfile) error
 	GetByUserID(ctx context.Context, id int64) (*model.UserProfile, error)
-	List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserProfileListFilterParam) (*model.UserProfiles, error)
+	List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserProfileListFilterParam) (*model.UserProfiles, error)
 }

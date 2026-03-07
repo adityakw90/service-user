@@ -45,11 +45,19 @@ func UnaryRequestInterceptor(
 
 		// Extract metadata from incoming request
 		clientName := "Unknown"
+		actorId := "Unknown"
+		actorType := "Unknown"
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = m.Tracer.ExtractContext(ctx, md)
 
 			if mdClient, exists := md["client"]; exists && len(mdClient) > 0 {
 				clientName = mdClient[0]
+			}
+			if mdActorId, exists := md["actor-id"]; exists && len(mdActorId) > 0 {
+				actorId = mdActorId[0]
+			}
+			if mdActorType, exists := md["actor-type"]; exists && len(mdActorType) > 0 {
+				actorType = mdActorType[0]
 			}
 		}
 
@@ -65,6 +73,7 @@ func UnaryRequestInterceptor(
 
 		// Store client name in context
 		ctx = util.SetClientName(ctx, clientName)
+		ctx = util.SetActor(ctx, actorId, actorType)
 
 		// Add useful attributes to the span
 		span.SetAttributes(
@@ -74,6 +83,8 @@ func UnaryRequestInterceptor(
 			attribute.String("rpc.service", info.FullMethod),
 			attribute.String("trace.id", traceID),
 			attribute.String("client.name", clientName),
+			attribute.String("actor.id", actorId),
+			attribute.String("actor.type", actorType),
 		)
 
 		// start trace request

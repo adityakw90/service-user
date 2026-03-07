@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
-	"github.com/pashagolub/pgxmock/v3"
+	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -82,7 +82,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 			id:   1,
 			setupMock: func(mock pgxmock.PgxPoolIface, id int64) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(int64(id), "test-uid", "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(id), "test-uid", "testuser", "test@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1`).
 					WithArgs(id).
 					WillReturnRows(rows)
@@ -143,7 +143,7 @@ func TestUserRepository_GetByUID(t *testing.T) {
 			uid:  "test-uid-123",
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(int64(1), uid, "testuser", "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), uid, "testuser", "test@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1`).
 					WithArgs(uid).
 					WillReturnRows(rows)
@@ -203,7 +203,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			email: "test@example.com",
 			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(int64(1), "test-uid", "testuser", email, "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), "test-uid", "testuser", email, "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1`).
 					WithArgs(email).
 					WillReturnRows(rows)
@@ -263,7 +263,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 			username: "testuser",
 			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(int64(1), "test-uid", username, "test@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), "test-uid", username, "test@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1`).
 					WithArgs(username).
 					WillReturnRows(rows)
@@ -415,24 +415,25 @@ func TestUserRepository_Delete(t *testing.T) {
 func TestUserRepository_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
-		filter     *params.UserListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.UserListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List all users with pagination",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserListFilterParam) {
-				countRows := pgxmock.NewRows([]string{"count"}).AddRow(2)
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(2))
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
 					WillReturnRows(countRows)
 
+				// Create rows with proper column type information for status (int32)
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", int32(1), time.Now(), time.Now(), nil).
-					AddRow(int64(2), "uid2", "user2", "user2@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil).
+					AddRow(int64(2), "uid2", "user2", "user2@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
 					WithArgs(10, 0).
 					WillReturnRows(rows)
@@ -442,16 +443,16 @@ func TestUserRepository_List(t *testing.T) {
 		},
 		{
 			name:       "List users with filter by username",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
-			filter:     &params.UserListFilterParam{Username: util.Ptr("testuser")},
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserListFilterParam) {
-				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			filter:     &param.UserListFilterParam{Username: util.Ptr("testuser")},
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
 					WithArgs("testuser").
 					WillReturnRows(countRows)
 
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
-					AddRow(int64(1), "uid1", *filter.Username, "user1@example.com", "hash", int32(1), time.Now(), time.Now(), nil)
+					AddRow(int64(1), "uid1", *filter.Username, "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
 				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT \$2 OFFSET \$3`).
 					WithArgs("testuser", 10, 0).
 					WillReturnRows(rows)

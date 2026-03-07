@@ -8,38 +8,20 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
 
-// userModel is the database model for user data.
-// Adapters should scan into this model, not directly into domain entities.
-type userModel struct {
-	ID        int64
-	UID       string
-	Username  string
-	Email     string
-	Password  string
-	Status    int32
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
-// toDomain converts a user model to a domain entity.
-func (m *userModel) toDomain() *model.User {
-	return &model.User{
-		ID:        m.ID,
-		UID:       m.UID,
-		Username:  m.Username,
-		Email:     m.Email,
-		Password:  m.Password,
-		Status:    model.UserStatus(m.Status),
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-		DeletedAt: m.DeletedAt,
-	}
+// allowedOrderByUser maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUser = map[string]param.UserOrderBy{
+	"id":         param.OrderByUserID,
+	"uid":        param.OrderByUserUID,
+	"username":   param.OrderByUserUsername,
+	"email":      param.OrderByUserEmail,
+	"status":     param.OrderByUserStatus,
+	"created_at": param.OrderByUserCreatedAt,
+	"updated_at": param.OrderByUserUpdatedAt,
 }
 
 // UserRepository implements repository.UserRepository for PostgreSQL.
@@ -109,7 +91,7 @@ func (r *UserRepository) Delete(ctx context.Context, user *model.User) error {
 }
 
 // List retrieves users with pagination and filtering.
-func (r *UserRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserListFilterParam) (*model.Users, error) {
+func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserListFilterParam) (*model.Users, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -162,13 +144,24 @@ func (r *UserRepository) List(ctx context.Context, pagination *params.Pagination
 	}
 
 	// Get paginated results
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUser)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at
 		FROM "user"
 		%s
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, whereClause, argIdx, argIdx+1)
+	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.db.Query(ctx, query, args...)
@@ -210,7 +203,7 @@ func (r *UserRepository) AddUserDevice(ctx context.Context, user *model.User, de
 }
 
 func (r *UserRepository) scanUser(row pgx.Row) (*model.User, error) {
-	var m userModel
+	var m model.User
 	err := row.Scan(
 		&m.ID, &m.UID, &m.Username, &m.Email, &m.Password,
 		&m.Status, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt,
@@ -221,13 +214,13 @@ func (r *UserRepository) scanUser(row pgx.Row) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 func (r *UserRepository) scanRows(rows pgx.Rows) ([]*model.User, error) {
 	var users []*model.User
 	for rows.Next() {
-		var m userModel
+		var m model.User
 		err := rows.Scan(
 			&m.ID, &m.UID, &m.Username, &m.Email, &m.Password,
 			&m.Status, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt,
@@ -235,7 +228,7 @@ func (r *UserRepository) scanRows(rows pgx.Rows) ([]*model.User, error) {
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, m.toDomain())
+		users = append(users, &m)
 	}
 	return users, nil
 }

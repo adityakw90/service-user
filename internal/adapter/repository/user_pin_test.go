@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -217,17 +217,17 @@ func TestPinRepository_Delete(t *testing.T) {
 func TestPinRepository_List(t *testing.T) {
 	tests := []struct {
 		name       string
-		pagination *params.PaginationParam
-		filter     *params.UserPinListFilterParam
-		setupMock  func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserPinListFilterParam)
+		pagination *param.PaginationParam
+		filter     *param.UserPinListFilterParam
+		setupMock  func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam)
 		wantCount  int
 		wantErr    bool
 	}{
 		{
 			name:       "List all PINs with pagination",
-			pagination: &params.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1)},
 			filter:     nil,
-			setupMock: func(mock pgxmock.PgxPoolIface, pagination *params.PaginationParam, filter *params.UserPinListFilterParam) {
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(2))
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).
 					WillReturnRows(countRows)

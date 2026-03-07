@@ -2,14 +2,24 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
+
+// allowedOrderByUserDevice maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserDevice = map[string]param.UserDeviceOrderBy{
+	"id":             param.OrderByUserDeviceID,
+	"user_id":        param.OrderByUserDeviceUserID,
+	"device_id":      param.OrderByUserDeviceDeviceID,
+	"last_active_at": param.OrderByUserDeviceLastActiveAt,
+	"created_at":     param.OrderByUserDeviceCreatedAt,
+}
 
 // UserDeviceRepository implements repository.UserDeviceRepository for PostgreSQL.
 type UserDeviceRepository struct {
@@ -93,7 +103,7 @@ func (r *UserDeviceRepository) Revoke(ctx context.Context, userID, deviceID int6
 }
 
 // List retrieves all user-device relationships with pagination and filtering.
-func (r *UserDeviceRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserDeviceListFilterParam) (*model.UserDevices, error) {
+func (r *UserDeviceRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserDeviceListFilterParam) (*model.UserDevices, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -115,12 +125,23 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *params.Pagi
 	}
 
 	// Get paginated results
-	query := `
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserDevice)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at
 		FROM user_device
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $1 OFFSET $2
-	`
+	`, orderByClause)
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -154,10 +175,10 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *params.Pagi
 	return &model.UserDevices{
 		Items: udItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }

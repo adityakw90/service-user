@@ -6,8 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/infra"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,9 +48,10 @@ func TestDeviceResolver_FetchIDFromDB(t *testing.T) {
 					WithArgs("nonexistent-uid").
 					WillReturnRows(rows)
 			},
-			wantID:  0,
-			wantUID: "",
-			wantErr: false,
+			wantID:    0,
+			wantUID:   "",
+			wantErr:   true,
+			wantErrIs: domainerrors.ErrDeviceNotFound,
 		},
 		{
 			name: "database error",
@@ -198,8 +202,8 @@ func TestNewDeviceResolver(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			got := NewDeviceResolver(mockPool, nil, "test", time.Minute, logger, tracer)
 
@@ -272,7 +276,7 @@ func TestDeviceResolver_IDsByUIDs(t *testing.T) {
 			},
 		},
 		{
-			name:       "device not found returns zero in result map",
+			name:       "device not found returns error",
 			deviceUIDs: []string{"nonexistent-uid"},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"})
@@ -280,15 +284,8 @@ func TestDeviceResolver_IDsByUIDs(t *testing.T) {
 					WithArgs("nonexistent-uid").
 					WillReturnRows(rows)
 			},
-			wantErr: false,
-			validateResult: func(t *testing.T, result map[string]int64) {
-				if len(result) != 1 {
-					t.Errorf("expected 1 entry, got %d", len(result))
-				}
-				if result["nonexistent-uid"] != 0 {
-					t.Errorf("expected id 0 for nonexistent device, got %d", result["nonexistent-uid"])
-				}
-			},
+			wantErr:    true,
+			wantErrIs:  domainerrors.ErrDeviceNotFound,
 		},
 		{
 			name:       "database error",
@@ -311,15 +308,15 @@ func TestDeviceResolver_IDsByUIDs(t *testing.T) {
 			defer mockPool.Close()
 
 			// Setup miniredis
-			redisClient, redisCleanup, err := newMockRedis()
-			require.NoError(t, err)
-			defer redisCleanup()
+			s := miniredis.RunT(t)
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
 
 			// Setup test expectations
 			tt.setupDBMock(t, mockPool)
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			r := &deviceResolver{
 				db:                 mockPool,
@@ -444,15 +441,15 @@ func TestDeviceResolver_UIDsByIDs(t *testing.T) {
 			defer mockPool.Close()
 
 			// Setup miniredis
-			redisClient, redisCleanup, err := newMockRedis()
-			require.NoError(t, err)
-			defer redisCleanup()
+			s := miniredis.RunT(t)
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
 
 			// Setup test expectations
 			tt.setupDBMock(t, mockPool)
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			r := &deviceResolver{
 				db:                 mockPool,

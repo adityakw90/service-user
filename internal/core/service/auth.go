@@ -8,7 +8,7 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	port "github.com/adityakw90/service-user/internal/core/port/oauth"
@@ -74,7 +74,7 @@ func NewAuthService(
 	}
 }
 
-func (s *authService) Authenticate(ctx context.Context, payload *params.AuthParams) (*model.Token, error) {
+func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParams) (*model.Token, error) {
 	s.authObserver.OnSignal(ctx, domainSignal.SignalStart, domainSignal.AuthSignal{
 		Identifier:        payload.Identifier,
 		IdentifierType:    payload.IdentifierType,

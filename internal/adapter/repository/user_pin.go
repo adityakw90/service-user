@@ -2,31 +2,20 @@ package repository
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
 
-// pinModel is the database model for PIN data.
-type pinModel struct {
-	UserID    int64
-	Code      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-// toDomain converts a PIN model to a domain entity.
-func (m *pinModel) toDomain() *model.UserPin {
-	return &model.UserPin{
-		UserID:    m.UserID,
-		Code:      m.Code,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-	}
+// allowedOrderByUserPin maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserPin = map[string]param.UserPinOrderBy{
+	"user_id":    param.OrderByUserPinUserID,
+	"created_at": param.OrderByUserPinCreatedAt,
+	"updated_at": param.OrderByUserPinUpdatedAt,
 }
 
 // PinRepository implements port.PinRepository for PostgreSQL.
@@ -46,7 +35,7 @@ func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.U
 		FROM user_pin
 		WHERE user_id = $1
 	`
-	var m pinModel
+	var m model.UserPin
 	err := r.db.QueryRow(ctx, query, userID).Scan(
 		&m.UserID, &m.Code, &m.CreatedAt, &m.UpdatedAt,
 	)
@@ -56,7 +45,7 @@ func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.U
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 // Create adds a new PIN.
@@ -88,7 +77,7 @@ func (r *PinRepository) Delete(ctx context.Context, pin *model.UserPin) error {
 }
 
 // List retrieves all PINs with pagination and filtering.
-func (r *PinRepository) List(ctx context.Context, pagination *params.PaginationParam, filter *params.UserPinListFilterParam) (*model.UserPins, error) {
+func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) (*model.UserPins, error) {
 	limit := 10
 	offset := 0
 	page := 1
@@ -110,12 +99,23 @@ func (r *PinRepository) List(ctx context.Context, pagination *params.PaginationP
 	}
 
 	// Get paginated results
-	query := `
+	// Apply sorting
+	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserPin)
+
+	// Build ORDER BY clause
+	orderByClause := orderByValue
+	if pagination != nil && pagination.Sort != nil && *pagination.Sort != "" {
+		orderByClause += " " + *pagination.Sort
+	} else {
+		orderByClause += " DESC"
+	}
+
+	query := fmt.Sprintf(`
 		SELECT user_id, code, created_at, updated_at
 		FROM user_pin
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $1 OFFSET $2
-	`
+	`, orderByClause)
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -124,12 +124,12 @@ func (r *PinRepository) List(ctx context.Context, pagination *params.PaginationP
 
 	var pins []*model.UserPin
 	for rows.Next() {
-		var m pinModel
+		var m model.UserPin
 		err := rows.Scan(&m.UserID, &m.Code, &m.CreatedAt, &m.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
-		pins = append(pins, m.toDomain())
+		pins = append(pins, &m)
 	}
 
 	// Convert []*UserPin to []UserPin
@@ -146,10 +146,10 @@ func (r *PinRepository) List(ctx context.Context, pagination *params.PaginationP
 	return &model.UserPins{
 		Items: pinItems,
 		Meta: model.Meta{
-			Total:  total,
-			Page:   page,
-			Limit:  limit,
-			Pages:  totalPages,
+			Total: total,
+			Page:  page,
+			Limit: limit,
+			Pages: totalPages,
 		},
 	}, nil
 }

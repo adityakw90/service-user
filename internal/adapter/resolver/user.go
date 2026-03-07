@@ -8,6 +8,7 @@ import (
 
 	"github.com/adityakw90/go-monitoring"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel/attribute"
@@ -23,6 +24,7 @@ type userResolver struct {
 	tracer             monitoring.Tracer
 }
 
+// userIdentity represents the database model for user identity mapping
 type userIdentity struct {
 	id  int64
 	uid string
@@ -147,7 +149,7 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperUID(
+	result, err := mapperID(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -185,4 +187,10 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 	))
 
 	return result, nil
+}
+
+// Invalidate clears cached entries for the specified UIDs/IDs.
+func (r *userResolver) Invalidate(ctx context.Context, opts ...param.InvalidateOpt) error {
+	// TODO: Implement cache invalidation
+	return nil
 }

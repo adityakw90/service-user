@@ -12,7 +12,7 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/params"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portsvc "github.com/adityakw90/service-user/internal/core/port/service"
 )
 
@@ -83,7 +83,7 @@ func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddR
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	u, err := h.service.Create(ctx, &params.UserCreateParam{
+	u, err := h.service.Create(ctx, &param.UserCreateParam{
 		Username: req.Username,
 		Email:    req.Email,
 		Password: req.Password,
@@ -102,7 +102,7 @@ func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*com
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	param := &params.UserUpdateParam{}
+	param := &param.UserUpdateParam{}
 	if req.Username != nil {
 		param.Username = req.Username
 	}
@@ -160,7 +160,7 @@ func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfile
 		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
 	}
 
-	opts := params.UserProfileUpdateParam{}
+	opts := param.UserProfileUpdateParam{}
 	if req.FirstName != "" {
 		opts.FirstName = &req.FirstName
 	}
@@ -250,7 +250,7 @@ func (h *UserHandler) ChangePassword(ctx context.Context, req *user.ChangePasswo
 		return nil, status.Error(codes.InvalidArgument, "new password and confirm password do not match")
 	}
 
-	if err := h.service.ChangePassword(ctx, req.Uid, &params.UserChangePasswordParam{
+	if err := h.service.ChangePassword(ctx, req.Uid, &param.UserChangePasswordParam{
 		CurrentPassword: req.CurrentPassword,
 		NewPassword:     req.NewPassword,
 	}); err != nil {
