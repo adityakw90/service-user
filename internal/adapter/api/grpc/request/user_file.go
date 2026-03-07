@@ -74,8 +74,8 @@ func (r *UserFileListRequest) ToUserFileListParams() *param.UserFileListParam {
 		pagination = &param.PaginationParam{
 			Page:    &page,
 			Limit:   &limit,
-			Sort:    util.Ptr("created_at"),
-			OrderBy: util.Ptr("desc"),
+			Sort:    util.Ptr("desc"),
+			OrderBy: util.Ptr("created_at"),
 		}
 	}
 
