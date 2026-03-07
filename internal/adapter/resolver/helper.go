@@ -2,199 +2,122 @@ package resolver
 
 import (
 	"context"
-	"fmt"
+	"sync"
 	"time"
 
 	monitoring "github.com/adityakw90/go-monitoring"
 	"github.com/redis/go-redis/v9"
 )
 
-type identity struct {
-	id  int64
-	uid string
-}
-
 // mapperID is a generic helper for bidirectional ID/UID mapping with caching.
 // Uses Redis pipeline for batch GET operations and concurrent DB fetches.
-func mapperID[T comparable, U any](
+// Copied from service-access for consistency across microservices.
+func mapperID[T any, KS comparable, KT comparable](
 	ctx context.Context,
 	logger monitoring.Logger,
 	redisClient *redis.Client,
-	input []T,
-	parseResult func(string) U,
-	keyFunc func(T) string,
-	fetchFunc func(context.Context, T) (*identity, error),
-	extractFunc func(*identity) U,
+	keys []KS,
+	convertResult func(string) KT,
+	cacheKeyFunc func(KS) string,
+	dbFetchFunc func(KS) (*T, error),
+	getValueFromStruct func(*T) KT,
 	cacheDuration time.Duration,
-) (map[T]U, error) {
-	result := make(map[T]U)
-	missing := make([]T, 0, len(input))
-	missingIdx := make(map[T]int, len(input))
+) (map[KS]KT, error) {
+	// Result map
+	results := make(map[KS]KT)
+	var uncachedKeys []KS
 
-	// Try cache first using Redis pipeline for batch GET
+	// Redis pipeline to batch GET requests
 	pipe := redisClient.Pipeline()
-	cmds := make([]*redis.StringCmd, len(input))
+	cacheResults := make([]*redis.StringCmd, len(keys))
 
-	for i, item := range input {
-		key := keyFunc(item)
-		cmds[i] = pipe.Get(ctx, key)
+	for i, key := range keys {
+		cacheKey := cacheKeyFunc(key)
+		cacheResults[i] = pipe.Get(ctx, cacheKey)
 	}
 
+	// Execute the Redis pipeline
 	_, err := pipe.Exec(ctx)
 	if err != nil && err != redis.Nil {
-		// Pipeline failed, try individual GETs as fallback
-		for _, item := range input {
-			key := keyFunc(item)
-			cached, err := redisClient.Get(ctx, key).Result()
-			if err == nil && cached != "" {
-				result[item] = parseResult(cached)
-			} else {
-				missing = append(missing, item)
-				missingIdx[item] = len(missing) - 1
-			}
-		}
-	} else {
-		// Pipeline succeeded
-		for i, item := range input {
-			cached, _ := cmds[i].Result()
-			if cached != "" {
-				result[item] = parseResult(cached)
-			} else {
-				missing = append(missing, item)
-				missingIdx[item] = len(missing) - 1
-			}
+		return nil, err
+	}
+
+	// Process the results, identify cache misses
+	for i, result := range cacheResults {
+		cachedValue, err := result.Result()
+		switch err {
+		case nil:
+			// Convert the cached value and store it
+			results[keys[i]] = convertResult(cachedValue)
+		case redis.Nil:
+			// Cache miss, add the key to uncachedKeys
+			uncachedKeys = append(uncachedKeys, keys[i])
+		default:
+			// Log Redis errors but continue
+			logger.Error("Redis error", map[string]interface{}{
+				"error.message": err.Error(),
+				"key":           keys[i],
+			})
 		}
 	}
 
-	// Fetch missing from DB concurrently
-	if len(missing) > 0 {
-		type fetchResult struct {
-			item T
-			id   *identity
-			err  error
-		}
+	// If all keys were cached, return the result
+	if len(uncachedKeys) == 0 {
+		return results, nil
+	}
 
-		results := make(chan fetchResult, len(missing))
+	// Use goroutines to fetch uncached keys from the database
+	errChan := make(chan error, len(uncachedKeys))
+	var wg sync.WaitGroup
+	mu := sync.Mutex{} // Protects shared access to the map
 
-		for _, item := range missing {
-			go func(it T) {
-				// Create context with timeout for each fetch
-				ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-				defer cancel()
+	for _, key := range uncachedKeys {
+		wg.Add(1)
+		go func(key KS) {
+			defer wg.Done()
 
-				id, err := fetchFunc(ctx, it)
-				results <- fetchResult{item: it, id: id, err: err}
-			}(item)
-		}
+			// use new context with timeout
+			newCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			defer cancel()
 
-		for range missing {
-			fr := <-results
-			if fr.err != nil {
-				return nil, fr.err
+			// Fetch from DB
+			value, err := dbFetchFunc(key)
+			if err != nil {
+				errChan <- err
+				return
 			}
 
-			// Cache the result
-			key := keyFunc(fr.item)
-			value := fmt.Sprintf("%d", fr.id.id)
-			if err := redisClient.Set(ctx, key, value, cacheDuration).Err(); err != nil {
-				logger.Debug("Failed to cache", map[string]interface{}{
-					"key":   key,
-					"error": err.Error(),
+			// Cache the value
+			cacheKey := cacheKeyFunc(key)
+			cacheValue := getValueFromStruct(value)
+			if err := redisClient.Set(newCtx, cacheKey, cacheValue, cacheDuration).Err(); err != nil {
+				// log redis error but allowed
+				logger.Error("Failed to set cache", map[string]interface{}{
+					"error.message": err.Error(),
 				})
 			}
 
-			result[fr.item] = extractFunc(fr.id)
+			// Store the result
+			mu.Lock()
+			results[key] = cacheValue
+			mu.Unlock()
+
+			errChan <- nil
+		}(key)
+	}
+
+	// Wait for all goroutines to finish
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	// Check if any error was returned
+	for err := range errChan {
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	return result, nil
-}
-
-// mapperUID is a generic helper for ID to UID mapping with caching.
-func mapperUID[T comparable, U any](
-	ctx context.Context,
-	logger monitoring.Logger,
-	redisClient *redis.Client,
-	input []T,
-	parseResult func(string) U,
-	keyFunc func(T) string,
-	fetchFunc func(context.Context, T) (*identity, error),
-	extractFunc func(*identity) U,
-	cacheDuration time.Duration,
-) (map[T]U, error) {
-	result := make(map[T]U)
-	missing := make([]T, 0, len(input))
-
-	// Try cache first using Redis pipeline
-	pipe := redisClient.Pipeline()
-	cmds := make([]*redis.StringCmd, len(input))
-
-	for i, item := range input {
-		key := keyFunc(item)
-		cmds[i] = pipe.Get(ctx, key)
-	}
-
-	_, err := pipe.Exec(ctx)
-	if err != nil && err != redis.Nil {
-		// Pipeline failed, try individual GETs
-		for _, item := range input {
-			key := keyFunc(item)
-			cached, err := redisClient.Get(ctx, key).Result()
-			if err == nil && cached != "" {
-				result[item] = parseResult(cached)
-			} else {
-				missing = append(missing, item)
-			}
-		}
-	} else {
-		for i, item := range input {
-			cached, _ := cmds[i].Result()
-			if cached != "" {
-				result[item] = parseResult(cached)
-			} else {
-				missing = append(missing, item)
-			}
-		}
-	}
-
-	// Fetch missing from DB concurrently
-	if len(missing) > 0 {
-		type fetchResult struct {
-			item T
-			id   *identity
-			err  error
-		}
-
-		results := make(chan fetchResult, len(missing))
-
-		for _, item := range missing {
-			go func(it T) {
-				ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-				defer cancel()
-
-				id, err := fetchFunc(ctx, it)
-				results <- fetchResult{item: it, id: id, err: err}
-			}(item)
-		}
-
-		for range missing {
-			fr := <-results
-			if fr.err != nil {
-				return nil, fr.err
-			}
-
-			key := keyFunc(fr.item)
-			value := fr.id.uid
-			if err := redisClient.Set(ctx, key, value, cacheDuration).Err(); err != nil {
-				logger.Debug("Failed to cache", map[string]interface{}{
-					"key":   key,
-					"error": err.Error(),
-				})
-			}
-
-			result[fr.item] = extractFunc(fr.id)
-		}
-	}
-
-	return result, nil
+	return results, nil
 }

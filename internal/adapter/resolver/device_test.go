@@ -45,9 +45,10 @@ func TestDeviceResolver_FetchIDFromDB(t *testing.T) {
 					WithArgs("nonexistent-uid").
 					WillReturnRows(rows)
 			},
-			wantID:  0,
-			wantUID: "",
-			wantErr: false,
+			wantID:    0,
+			wantUID:   "",
+			wantErr:   true,
+			wantErrIs: domainerrors.ErrDeviceNotFound,
 		},
 		{
 			name: "database error",
@@ -75,7 +76,7 @@ func TestDeviceResolver_FetchIDFromDB(t *testing.T) {
 				db: mockPool,
 			}
 
-			got, err := r.fetchIDFromDB(context.Background(), tt.uid)
+			got, err := r.fetchIDFromDB(tt.uid)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchIDFromDB() error = %v, wantErr %v", err, tt.wantErr)
@@ -159,7 +160,7 @@ func TestDeviceResolver_FetchUIDFromDB(t *testing.T) {
 				db: mockPool,
 			}
 
-			got, err := r.fetchUIDFromDB(context.Background(), tt.id)
+			got, err := r.fetchUIDFromDB(tt.id)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchUIDFromDB() error = %v, wantErr %v", err, tt.wantErr)
@@ -272,7 +273,7 @@ func TestDeviceResolver_IDsByUIDs(t *testing.T) {
 			},
 		},
 		{
-			name:       "device not found returns zero in result map",
+			name:       "device not found returns error",
 			deviceUIDs: []string{"nonexistent-uid"},
 			setupDBMock: func(t *testing.T, mock pgxmock.PgxPoolIface) {
 				rows := pgxmock.NewRows([]string{"id", "uid"})
@@ -280,15 +281,8 @@ func TestDeviceResolver_IDsByUIDs(t *testing.T) {
 					WithArgs("nonexistent-uid").
 					WillReturnRows(rows)
 			},
-			wantErr: false,
-			validateResult: func(t *testing.T, result map[string]int64) {
-				if len(result) != 1 {
-					t.Errorf("expected 1 entry, got %d", len(result))
-				}
-				if result["nonexistent-uid"] != 0 {
-					t.Errorf("expected id 0 for nonexistent device, got %d", result["nonexistent-uid"])
-				}
-			},
+			wantErr:    true,
+			wantErrIs:  domainerrors.ErrDeviceNotFound,
 		},
 		{
 			name:       "database error",

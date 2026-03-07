@@ -24,6 +24,12 @@ type userResolver struct {
 	tracer             monitoring.Tracer
 }
 
+// userIdentity represents the database model for user identity mapping
+type userIdentity struct {
+	id  int64
+	uid string
+}
+
 func NewUserResolver(
 	db PostgrePool,
 	redisClient *redis.Client,
@@ -42,10 +48,10 @@ func NewUserResolver(
 	}
 }
 
-func (r *userResolver) fetchIDFromDB(ctx context.Context, uid string) (*identity, error) {
-	var iden identity
+func (r *userResolver) fetchIDFromDB(uid string) (*userIdentity, error) {
+	var iden userIdentity
 
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.Query(context.Background(),
 		`SELECT id, uid FROM "user" WHERE uid=$1`, uid,
 	)
 	if err != nil {
@@ -67,10 +73,10 @@ func (r *userResolver) fetchIDFromDB(ctx context.Context, uid string) (*identity
 	return &iden, nil
 }
 
-func (r *userResolver) fetchUIDFromDB(ctx context.Context, id int64) (*identity, error) {
-	var iden identity
+func (r *userResolver) fetchUIDFromDB(id int64) (*userIdentity, error) {
+	var iden userIdentity
 
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.Query(context.Background(),
 		`SELECT id, uid FROM "user" WHERE id=$1`, id,
 	)
 	if err != nil {
@@ -109,7 +115,7 @@ func (r *userResolver) IDsByUIDs(ctx context.Context, userUIDs []string) (map[st
 			return r.redisPrefix + ":" + uid + ":id"
 		},
 		r.fetchIDFromDB,
-		func(user *identity) int64 {
+		func(user *userIdentity) int64 {
 			return user.id
 		},
 		r.redisCacheDuration,
@@ -141,7 +147,7 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperUID(
+	result, err := mapperID(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -151,7 +157,7 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
 		r.fetchUIDFromDB,
-		func(user *identity) string {
+		func(user *userIdentity) string {
 			return user.uid
 		},
 		r.redisCacheDuration,

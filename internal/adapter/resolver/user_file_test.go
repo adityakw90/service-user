@@ -76,7 +76,7 @@ func TestUserFileResolver_FetchIDFromDB(t *testing.T) {
 				db: mockPool,
 			}
 
-			got, err := r.fetchIDFromDB(context.Background(), tt.uid)
+			got, err := r.fetchIDFromDB(tt.uid)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchIDFromDB() error = %v, wantErr %v", err, tt.wantErr)
@@ -164,7 +164,7 @@ func TestUserFileResolver_FetchUIDFromDB(t *testing.T) {
 				db: mockPool,
 			}
 
-			got, err := r.fetchUIDFromDB(context.Background(), tt.id)
+			got, err := r.fetchUIDFromDB(tt.id)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchUIDFromDB() error = %v, wantErr %v", err, tt.wantErr)

@@ -24,6 +24,12 @@ type deviceResolver struct {
 	tracer             monitoring.Tracer
 }
 
+// deviceIdentity represents the database model for device identity mapping
+type deviceIdentity struct {
+	id  int64
+	uid string
+}
+
 func NewDeviceResolver(
 	db PostgrePool,
 	redisClient *redis.Client,
@@ -42,10 +48,10 @@ func NewDeviceResolver(
 	}
 }
 
-func (r *deviceResolver) fetchIDFromDB(ctx context.Context, uid string) (*identity, error) {
-	var iden identity
+func (r *deviceResolver) fetchIDFromDB(uid string) (*deviceIdentity, error) {
+	var iden deviceIdentity
 
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.Query(context.Background(),
 		`SELECT id, uid FROM device WHERE uid=$1`, uid,
 	)
 	if err != nil {
@@ -58,6 +64,10 @@ func (r *deviceResolver) fetchIDFromDB(ctx context.Context, uid string) (*identi
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if iden.id == 0 {
+		return nil, domainerrors.ErrDeviceNotFound
 	}
 
 	return &iden, nil
@@ -80,7 +90,7 @@ func (r *deviceResolver) IDsByUIDs(ctx context.Context, deviceUIDs []string) (ma
 			return r.redisPrefix + ":" + uid + ":id"
 		},
 		r.fetchIDFromDB,
-		func(device *identity) int64 {
+		func(device *deviceIdentity) int64 {
 			return device.id
 		},
 		r.redisCacheDuration,
@@ -108,10 +118,10 @@ func (r *deviceResolver) IDsByUIDs(ctx context.Context, deviceUIDs []string) (ma
 	return result, nil
 }
 
-func (r *deviceResolver) fetchUIDFromDB(ctx context.Context, id int64) (*identity, error) {
-	var iden identity
+func (r *deviceResolver) fetchUIDFromDB(id int64) (*deviceIdentity, error) {
+	var iden deviceIdentity
 
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.Query(context.Background(),
 		`SELECT id, uid FROM device WHERE id=$1`, id,
 	)
 	if err != nil {
@@ -137,7 +147,7 @@ func (r *deviceResolver) UIDsByIDs(ctx context.Context, deviceIDs []int64) (map[
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "deviceResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperUID(
+	result, err := mapperID(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -147,7 +157,7 @@ func (r *deviceResolver) UIDsByIDs(ctx context.Context, deviceIDs []int64) (map[
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
 		r.fetchUIDFromDB,
-		func(device *identity) string {
+		func(device *deviceIdentity) string {
 			return device.uid
 		},
 		r.redisCacheDuration,

@@ -24,6 +24,12 @@ type userFileResolver struct {
 	tracer             monitoring.Tracer
 }
 
+// userFileIdentity represents the database model for user file identity mapping
+type userFileIdentity struct {
+	id  int64
+	uid string
+}
+
 func NewUserFileResolver(
 	db PostgrePool,
 	redisClient *redis.Client,
@@ -42,10 +48,10 @@ func NewUserFileResolver(
 	}
 }
 
-func (r *userFileResolver) fetchIDFromDB(ctx context.Context, uid string) (*identity, error) {
-	var iden identity
+func (r *userFileResolver) fetchIDFromDB(uid string) (*userFileIdentity, error) {
+	var iden userFileIdentity
 
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.Query(context.Background(),
 		`SELECT id, uid FROM user_file WHERE uid=$1`, uid,
 	)
 	if err != nil {
@@ -67,10 +73,10 @@ func (r *userFileResolver) fetchIDFromDB(ctx context.Context, uid string) (*iden
 	return &iden, nil
 }
 
-func (r *userFileResolver) fetchUIDFromDB(ctx context.Context, id int64) (*identity, error) {
-	var iden identity
+func (r *userFileResolver) fetchUIDFromDB(id int64) (*userFileIdentity, error) {
+	var iden userFileIdentity
 
-	rows, err := r.db.Query(ctx,
+	rows, err := r.db.Query(context.Background(),
 		`SELECT id, uid FROM user_file WHERE id=$1`, id,
 	)
 	if err != nil {
@@ -109,7 +115,7 @@ func (r *userFileResolver) IDsByUIDs(ctx context.Context, userFileUIDs []string)
 			return r.redisPrefix + ":" + uid + ":id"
 		},
 		r.fetchIDFromDB,
-		func(userFile *identity) int64 {
+		func(userFile *userFileIdentity) int64 {
 			return userFile.id
 		},
 		r.redisCacheDuration,
@@ -141,7 +147,7 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userFileResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperUID(
+	result, err := mapperID(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -151,7 +157,7 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
 		r.fetchUIDFromDB,
-		func(userFile *identity) string {
+		func(userFile *userFileIdentity) string {
 			return userFile.uid
 		},
 		r.redisCacheDuration,
