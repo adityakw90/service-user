@@ -11,6 +11,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// allowedOrderByUserPin maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserPin = map[string]param.UserPinOrderBy{
+	"user_id":    param.OrderByUserPinUserID,
+	"created_at": param.OrderByUserPinCreatedAt,
+	"updated_at": param.OrderByUserPinUpdatedAt,
+}
+
 // PinRepository implements port.PinRepository for PostgreSQL.
 type PinRepository struct {
 	db PostgrePool
@@ -67,13 +74,6 @@ func (r *PinRepository) Delete(ctx context.Context, pin *model.UserPin) error {
 	query := `DELETE FROM user_pin WHERE user_id = $1`
 	_, err := r.db.Exec(ctx, query, pin.UserID)
 	return err
-}
-
-// allowedOrderByUserPin maps OrderBy string values to their typed enum for validation.
-var allowedOrderByUserPin = map[string]param.UserPinOrderBy{
-	"user_id":    param.OrderByUserPinUserID,
-	"created_at": param.OrderByUserPinCreatedAt,
-	"updated_at": param.OrderByUserPinUpdatedAt,
 }
 
 // List retrieves all PINs with pagination and filtering.

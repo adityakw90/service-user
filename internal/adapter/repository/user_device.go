@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// allowedOrderByUserDevice maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserDevice = map[string]param.UserDeviceOrderBy{
+	"id":             param.OrderByUserDeviceID,
+	"user_id":        param.OrderByUserDeviceUserID,
+	"device_id":      param.OrderByUserDeviceDeviceID,
+	"last_active_at": param.OrderByUserDeviceLastActiveAt,
+	"created_at":     param.OrderByUserDeviceCreatedAt,
+}
+
 // UserDeviceRepository implements repository.UserDeviceRepository for PostgreSQL.
 type UserDeviceRepository struct {
 	db PostgrePool
@@ -91,15 +100,6 @@ func (r *UserDeviceRepository) Revoke(ctx context.Context, userID, deviceID int6
 	query := `UPDATE user_device SET revoked_at = $1 WHERE user_id = $2 AND device_id = $3`
 	_, err := r.db.Exec(ctx, query, time.Now().UTC(), userID, deviceID)
 	return err
-}
-
-// allowedOrderByUserDevice maps OrderBy string values to their typed enum for validation.
-var allowedOrderByUserDevice = map[string]param.UserDeviceOrderBy{
-	"id":             param.OrderByUserDeviceID,
-	"user_id":        param.OrderByUserDeviceUserID,
-	"device_id":      param.OrderByUserDeviceDeviceID,
-	"last_active_at": param.OrderByUserDeviceLastActiveAt,
-	"created_at":     param.OrderByUserDeviceCreatedAt,
 }
 
 // List retrieves all user-device relationships with pagination and filtering.

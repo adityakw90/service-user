@@ -11,6 +11,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// allowedOrderByUserProfile maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserProfile = map[string]param.UserProfileOrderBy{
+	"user_id":    param.OrderByUserProfileID,
+	"created_at": param.OrderByUserProfileCreatedAt,
+	"updated_at": param.OrderByUserProfileUpdatedAt,
+}
+
 // ProfileRepository implements port.ProfileRepository for PostgreSQL.
 type ProfileRepository struct {
 	db PostgrePool
@@ -63,13 +70,6 @@ func (r *ProfileRepository) Delete(ctx context.Context, profile *model.UserProfi
 	query := `DELETE FROM user_profile WHERE user_id = $1`
 	_, err := r.db.Exec(ctx, query, profile.UserID)
 	return err
-}
-
-// allowedOrderByUserProfile maps OrderBy string values to their typed enum for validation.
-var allowedOrderByUserProfile = map[string]param.UserProfileOrderBy{
-	"user_id":    param.OrderByUserProfileID,
-	"created_at": param.OrderByUserProfileCreatedAt,
-	"updated_at": param.OrderByUserProfileUpdatedAt,
 }
 
 // List retrieves all profiles with pagination and filtering.

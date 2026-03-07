@@ -12,6 +12,15 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// allowedOrderByDevice maps OrderBy string values to their typed enum for validation.
+var allowedOrderByDevice = map[string]param.DeviceOrderBy{
+	"id":                 param.OrderByDeviceID,
+	"uid":                param.OrderByDeviceUID,
+	"device_fingerprint": param.OrderByDeviceFingerprint,
+	"device_name":        param.OrderByDeviceName,
+	"created_at":         param.OrderByDeviceCreatedAt,
+}
+
 // DeviceRepository implements repository.DeviceRepository for PostgreSQL.
 type DeviceRepository struct {
 	db PostgrePool
@@ -61,15 +70,6 @@ func (r *DeviceRepository) Delete(ctx context.Context, device *model.Device) err
 	query := `DELETE FROM device WHERE id = $1`
 	_, err := r.db.Exec(ctx, query, device.ID)
 	return err
-}
-
-// allowedOrderByDevice maps OrderBy string values to their typed enum for validation.
-var allowedOrderByDevice = map[string]param.DeviceOrderBy{
-	"id":                 param.OrderByDeviceID,
-	"uid":                param.OrderByDeviceUID,
-	"device_fingerprint": param.OrderByDeviceFingerprint,
-	"device_name":        param.OrderByDeviceName,
-	"created_at":         param.OrderByDeviceCreatedAt,
 }
 
 // List retrieves all devices with pagination and filtering.

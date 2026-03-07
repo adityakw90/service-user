@@ -12,6 +12,16 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// allowedOrderByUserFile maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUserFile = map[string]param.UserFileOrderBy{
+	"id":         param.OrderByUserFileID,
+	"uid":        param.OrderByUserFileUID,
+	"user_id":    param.OrderByUserFileUserID,
+	"file_type":  param.OrderByUserFileFileType,
+	"file_name":  param.OrderByUserFileFileName,
+	"created_at": param.OrderByUserFileCreatedAt,
+}
+
 // UserFileRepository implements repository.UserFileRepository for PostgreSQL.
 type UserFileRepository struct {
 	db PostgrePool
@@ -73,16 +83,6 @@ func (r *UserFileRepository) Delete(ctx context.Context, file *model.UserFile) e
 	query := `DELETE FROM user_file WHERE id = $1`
 	_, err := r.db.Exec(ctx, query, file.ID)
 	return err
-}
-
-// allowedOrderByUserFile maps OrderBy string values to their typed enum for validation.
-var allowedOrderByUserFile = map[string]param.UserFileOrderBy{
-	"id":         param.OrderByUserFileID,
-	"uid":        param.OrderByUserFileUID,
-	"user_id":    param.OrderByUserFileUserID,
-	"file_type":  param.OrderByUserFileFileType,
-	"file_name":  param.OrderByUserFileFileName,
-	"created_at": param.OrderByUserFileCreatedAt,
 }
 
 // List retrieves files with pagination and filtering.

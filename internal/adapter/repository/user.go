@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// allowedOrderByUser maps OrderBy string values to their typed enum for validation.
+var allowedOrderByUser = map[string]param.UserOrderBy{
+	"id":         param.OrderByUserID,
+	"uid":        param.OrderByUserUID,
+	"username":   param.OrderByUserUsername,
+	"email":      param.OrderByUserEmail,
+	"status":     param.OrderByUserStatus,
+	"created_at": param.OrderByUserCreatedAt,
+	"updated_at": param.OrderByUserUpdatedAt,
+}
+
 // UserRepository implements repository.UserRepository for PostgreSQL.
 type UserRepository struct {
 	db PostgrePool
@@ -77,17 +88,6 @@ func (r *UserRepository) Delete(ctx context.Context, user *model.User) error {
 	query := `UPDATE "user" SET deleted_at = $1 WHERE id = $2`
 	_, err := r.db.Exec(ctx, query, time.Now().UTC(), user.ID)
 	return err
-}
-
-// allowedOrderByUser maps OrderBy string values to their typed enum for validation.
-var allowedOrderByUser = map[string]param.UserOrderBy{
-	"id":         param.OrderByUserID,
-	"uid":        param.OrderByUserUID,
-	"username":   param.OrderByUserUsername,
-	"email":      param.OrderByUserEmail,
-	"status":     param.OrderByUserStatus,
-	"created_at": param.OrderByUserCreatedAt,
-	"updated_at": param.OrderByUserUpdatedAt,
 }
 
 // List retrieves users with pagination and filtering.
