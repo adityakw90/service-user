@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/infra"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
@@ -76,7 +77,7 @@ func TestDeviceResolver_FetchIDFromDB(t *testing.T) {
 				db: mockPool,
 			}
 
-			got, err := r.fetchIDFromDB(tt.uid)
+			got, err := r.fetchIDFromDB(context.Background(), tt.uid)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchIDFromDB() error = %v, wantErr %v", err, tt.wantErr)
@@ -160,7 +161,7 @@ func TestDeviceResolver_FetchUIDFromDB(t *testing.T) {
 				db: mockPool,
 			}
 
-			got, err := r.fetchUIDFromDB(tt.id)
+			got, err := r.fetchUIDFromDB(context.Background(), tt.id)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("fetchUIDFromDB() error = %v, wantErr %v", err, tt.wantErr)
@@ -199,8 +200,8 @@ func TestNewDeviceResolver(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			got := NewDeviceResolver(mockPool, nil, "test", time.Minute, logger, tracer)
 
@@ -312,8 +313,8 @@ func TestDeviceResolver_IDsByUIDs(t *testing.T) {
 			// Setup test expectations
 			tt.setupDBMock(t, mockPool)
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			r := &deviceResolver{
 				db:                 mockPool,
@@ -445,8 +446,8 @@ func TestDeviceResolver_UIDsByIDs(t *testing.T) {
 			// Setup test expectations
 			tt.setupDBMock(t, mockPool)
 
-			logger := &mockLogger{}
-			tracer := newNoOpTracer()
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
 
 			r := &deviceResolver{
 				db:                 mockPool,

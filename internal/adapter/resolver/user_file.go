@@ -48,10 +48,10 @@ func NewUserFileResolver(
 	}
 }
 
-func (r *userFileResolver) fetchIDFromDB(uid string) (*userFileIdentity, error) {
+func (r *userFileResolver) fetchIDFromDB(ctx context.Context, uid string) (*userFileIdentity, error) {
 	var iden userFileIdentity
 
-	rows, err := r.db.Query(context.Background(),
+	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM user_file WHERE uid=$1`, uid,
 	)
 	if err != nil {
@@ -73,10 +73,10 @@ func (r *userFileResolver) fetchIDFromDB(uid string) (*userFileIdentity, error) 
 	return &iden, nil
 }
 
-func (r *userFileResolver) fetchUIDFromDB(id int64) (*userFileIdentity, error) {
+func (r *userFileResolver) fetchUIDFromDB(ctx context.Context, id int64) (*userFileIdentity, error) {
 	var iden userFileIdentity
 
-	rows, err := r.db.Query(context.Background(),
+	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM user_file WHERE id=$1`, id,
 	)
 	if err != nil {
@@ -114,7 +114,9 @@ func (r *userFileResolver) IDsByUIDs(ctx context.Context, userFileUIDs []string)
 		func(uid string) string {
 			return r.redisPrefix + ":" + uid + ":id"
 		},
-		r.fetchIDFromDB,
+		func(uid string) (*userFileIdentity, error) {
+			return r.fetchIDFromDB(newCtx, uid)
+		},
 		func(userFile *userFileIdentity) int64 {
 			return userFile.id
 		},
@@ -156,7 +158,9 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 		func(id int64) string {
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
-		r.fetchUIDFromDB,
+		func(id int64) (*userFileIdentity, error) {
+			return r.fetchUIDFromDB(newCtx, id)
+		},
 		func(userFile *userFileIdentity) string {
 			return userFile.uid
 		},

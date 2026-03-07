@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/redis/go-redis/v9"
@@ -76,7 +77,7 @@ func TestMapperID_CacheHit(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			logger := &mockLogger{}
+			logger := infra.NewNoopLogger()
 
 			// Execute
 			got, err := mapperID(
@@ -188,7 +189,7 @@ func TestMapperID_CacheMiss(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			logger := &mockLogger{}
+			logger := infra.NewNoopLogger()
 
 			// Execute
 			got, err := mapperID(
@@ -282,7 +283,7 @@ func TestMapperID_DatabaseError(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			logger := &mockLogger{}
+			logger := infra.NewNoopLogger()
 
 			// Execute
 			got, err := mapperID(
@@ -393,7 +394,7 @@ func TestMapperID_IDToUID(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			logger := &mockLogger{}
+			logger := infra.NewNoopLogger()
 
 			// Execute
 			got, err := mapperID(

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/infra"
 	monitoring "github.com/adityakw90/go-monitoring"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v3"
@@ -20,7 +21,7 @@ func TestNewResolverProvider(t *testing.T) {
 		redisClient        *redis.Client
 		redisPrefix        string
 		redisCacheDuration time.Duration
-		logger             *mockLogger
+		logger             monitoring.Logger
 		tracer             monitoring.Tracer
 	}{
 		{
@@ -29,8 +30,8 @@ func TestNewResolverProvider(t *testing.T) {
 			redisClient:        nil,
 			redisPrefix:        "test",
 			redisCacheDuration: time.Hour,
-			logger:             &mockLogger{},
-			tracer:             newNoOpTracer(),
+			logger:             infra.NewNoopLogger(),
+			tracer:             infra.NewNoopTracer(),
 		},
 	}
 
@@ -82,8 +83,8 @@ func TestResolverProvider_User(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			provider := &resolverProvider{
 				redisPrefix: tt.redisPrefix,
-				logger:      &mockLogger{},
-				tracer:      newNoOpTracer(),
+				logger:      infra.NewNoopLogger(),
+				tracer:      infra.NewNoopTracer(),
 			}
 
 			userResolver := provider.User()
@@ -113,8 +114,8 @@ func TestResolverProvider_Device(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			provider := &resolverProvider{
 				redisPrefix: tt.redisPrefix,
-				logger:      &mockLogger{},
-				tracer:      newNoOpTracer(),
+				logger:      infra.NewNoopLogger(),
+				tracer:      infra.NewNoopTracer(),
 			}
 
 			deviceResolver := provider.Device()
@@ -128,8 +129,8 @@ func TestResolverProvider_Device(t *testing.T) {
 func TestResolverProvider_MultipleCalls(t *testing.T) {
 	provider := &resolverProvider{
 		redisPrefix: "test",
-		logger:      &mockLogger{},
-		tracer:      newNoOpTracer(),
+		logger:      infra.NewNoopLogger(),
+		tracer:      infra.NewNoopTracer(),
 	}
 
 	// Call User() multiple times
@@ -164,8 +165,8 @@ func TestResolverProvider_WithRealDependencies(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
 	defer redisClient.Close()
 
-	logger := &mockLogger{}
-	tracer := newNoOpTracer()
+	logger := infra.NewNoopLogger()
+	tracer := infra.NewNoopTracer()
 
 	// Create provider with real mock dependencies
 	provider := NewResolverProvider(

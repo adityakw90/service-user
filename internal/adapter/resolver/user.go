@@ -48,10 +48,10 @@ func NewUserResolver(
 	}
 }
 
-func (r *userResolver) fetchIDFromDB(uid string) (*userIdentity, error) {
+func (r *userResolver) fetchIDFromDB(ctx context.Context, uid string) (*userIdentity, error) {
 	var iden userIdentity
 
-	rows, err := r.db.Query(context.Background(),
+	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM "user" WHERE uid=$1`, uid,
 	)
 	if err != nil {
@@ -73,10 +73,10 @@ func (r *userResolver) fetchIDFromDB(uid string) (*userIdentity, error) {
 	return &iden, nil
 }
 
-func (r *userResolver) fetchUIDFromDB(id int64) (*userIdentity, error) {
+func (r *userResolver) fetchUIDFromDB(ctx context.Context, id int64) (*userIdentity, error) {
 	var iden userIdentity
 
-	rows, err := r.db.Query(context.Background(),
+	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM "user" WHERE id=$1`, id,
 	)
 	if err != nil {
@@ -114,7 +114,9 @@ func (r *userResolver) IDsByUIDs(ctx context.Context, userUIDs []string) (map[st
 		func(uid string) string {
 			return r.redisPrefix + ":" + uid + ":id"
 		},
-		r.fetchIDFromDB,
+		func(uid string) (*userIdentity, error) {
+			return r.fetchIDFromDB(newCtx, uid)
+		},
 		func(user *userIdentity) int64 {
 			return user.id
 		},
@@ -156,7 +158,9 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 		func(id int64) string {
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
-		r.fetchUIDFromDB,
+		func(id int64) (*userIdentity, error) {
+			return r.fetchUIDFromDB(newCtx, id)
+		},
 		func(user *userIdentity) string {
 			return user.uid
 		},

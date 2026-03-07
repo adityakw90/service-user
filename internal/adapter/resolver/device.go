@@ -48,10 +48,10 @@ func NewDeviceResolver(
 	}
 }
 
-func (r *deviceResolver) fetchIDFromDB(uid string) (*deviceIdentity, error) {
+func (r *deviceResolver) fetchIDFromDB(ctx context.Context, uid string) (*deviceIdentity, error) {
 	var iden deviceIdentity
 
-	rows, err := r.db.Query(context.Background(),
+	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM device WHERE uid=$1`, uid,
 	)
 	if err != nil {
@@ -89,7 +89,9 @@ func (r *deviceResolver) IDsByUIDs(ctx context.Context, deviceUIDs []string) (ma
 		func(uid string) string {
 			return r.redisPrefix + ":" + uid + ":id"
 		},
-		r.fetchIDFromDB,
+		func(uid string) (*deviceIdentity, error) {
+			return r.fetchIDFromDB(newCtx, uid)
+		},
 		func(device *deviceIdentity) int64 {
 			return device.id
 		},
@@ -118,10 +120,10 @@ func (r *deviceResolver) IDsByUIDs(ctx context.Context, deviceUIDs []string) (ma
 	return result, nil
 }
 
-func (r *deviceResolver) fetchUIDFromDB(id int64) (*deviceIdentity, error) {
+func (r *deviceResolver) fetchUIDFromDB(ctx context.Context, id int64) (*deviceIdentity, error) {
 	var iden deviceIdentity
 
-	rows, err := r.db.Query(context.Background(),
+	rows, err := r.db.Query(ctx,
 		`SELECT id, uid FROM device WHERE id=$1`, id,
 	)
 	if err != nil {
@@ -156,7 +158,9 @@ func (r *deviceResolver) UIDsByIDs(ctx context.Context, deviceIDs []int64) (map[
 		func(id int64) string {
 			return r.redisPrefix + ":id:" + strconv.FormatInt(id, 10) + ":uid"
 		},
-		r.fetchUIDFromDB,
+		func(id int64) (*deviceIdentity, error) {
+			return r.fetchUIDFromDB(newCtx, id)
+		},
 		func(device *deviceIdentity) string {
 			return device.uid
 		},
