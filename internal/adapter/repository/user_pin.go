@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -11,24 +10,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
-
-// pinModel is the database model for PIN data.
-type pinModel struct {
-	UserID    int64
-	Code      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-// toDomain converts a PIN model to a domain entity.
-func (m *pinModel) toDomain() *model.UserPin {
-	return &model.UserPin{
-		UserID:    m.UserID,
-		Code:      m.Code,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-	}
-}
 
 // PinRepository implements port.PinRepository for PostgreSQL.
 type PinRepository struct {
@@ -47,7 +28,7 @@ func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.U
 		FROM user_pin
 		WHERE user_id = $1
 	`
-	var m pinModel
+	var m model.UserPin
 	err := r.db.QueryRow(ctx, query, userID).Scan(
 		&m.UserID, &m.Code, &m.CreatedAt, &m.UpdatedAt,
 	)
@@ -57,7 +38,7 @@ func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.U
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 // Create adds a new PIN.
@@ -143,12 +124,12 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 
 	var pins []*model.UserPin
 	for rows.Next() {
-		var m pinModel
+		var m model.UserPin
 		err := rows.Scan(&m.UserID, &m.Code, &m.CreatedAt, &m.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
-		pins = append(pins, m.toDomain())
+		pins = append(pins, &m)
 	}
 
 	// Convert []*UserPin to []UserPin

@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -11,32 +10,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
-
-// profileModel is the database model for profile data.
-type profileModel struct {
-	UserID       int64
-	FirstName    string
-	LastName     string
-	Bio          string
-	AvatarFileID *int64
-	Attributes   map[string]any
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-}
-
-// toDomain converts a profile model to a domain entity.
-func (m *profileModel) toDomain() *model.UserProfile {
-	return &model.UserProfile{
-		UserID:       m.UserID,
-		FirstName:    m.FirstName,
-		LastName:     m.LastName,
-		Bio:          m.Bio,
-		AvatarFileID: m.AvatarFileID,
-		Attributes:   m.Attributes,
-		CreatedAt:    m.CreatedAt,
-		UpdatedAt:    m.UpdatedAt,
-	}
-}
 
 // ProfileRepository implements port.ProfileRepository for PostgreSQL.
 type ProfileRepository struct {
@@ -147,7 +120,7 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 
 	var profiles []*model.UserProfile
 	for rows.Next() {
-		var m profileModel
+		var m model.UserProfile
 		err := rows.Scan(
 			&m.UserID, &m.FirstName, &m.LastName, &m.Bio,
 			&m.AvatarFileID, &m.Attributes, &m.CreatedAt, &m.UpdatedAt,
@@ -155,7 +128,7 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 		if err != nil {
 			return nil, err
 		}
-		profiles = append(profiles, m.toDomain())
+		profiles = append(profiles, &m)
 	}
 
 	// Convert []*UserProfile to []UserProfile
@@ -181,7 +154,7 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 }
 
 func (r *ProfileRepository) scanProfile(row pgx.Row) (*model.UserProfile, error) {
-	var m profileModel
+	var m model.UserProfile
 	err := row.Scan(
 		&m.UserID, &m.FirstName, &m.LastName, &m.Bio,
 		&m.AvatarFileID, &m.Attributes, &m.CreatedAt, &m.UpdatedAt,
@@ -192,5 +165,5 @@ func (r *ProfileRepository) scanProfile(row pgx.Row) (*model.UserProfile, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to scan profile: %w", err)
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }

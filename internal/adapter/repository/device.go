@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -12,26 +11,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
-
-// deviceModel is the database model for device data.
-type deviceModel struct {
-	ID                int64
-	UID               string
-	DeviceFingerprint string
-	DeviceName        string
-	CreatedAt         time.Time
-}
-
-// toDomain converts a device model to a domain entity.
-func (m *deviceModel) toDomain() *model.Device {
-	return &model.Device{
-		ID:                m.ID,
-		UID:               m.UID,
-		DeviceFingerprint: m.DeviceFingerprint,
-		DeviceName:        m.DeviceName,
-		CreatedAt:         m.CreatedAt,
-	}
-}
 
 // DeviceRepository implements repository.DeviceRepository for PostgreSQL.
 type DeviceRepository struct {
@@ -303,7 +282,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 }
 
 func (r *DeviceRepository) scanDevice(row pgx.Row) (*model.Device, error) {
-	var m deviceModel
+	var m model.Device
 	err := row.Scan(
 		&m.ID, &m.UID, &m.DeviceFingerprint, &m.DeviceName, &m.CreatedAt,
 	)
@@ -313,20 +292,20 @@ func (r *DeviceRepository) scanDevice(row pgx.Row) (*model.Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 func (r *DeviceRepository) scanRows(rows pgx.Rows) ([]*model.Device, error) {
 	var devices []*model.Device
 	for rows.Next() {
-		var m deviceModel
+		var m model.Device
 		err := rows.Scan(
 			&m.ID, &m.UID, &m.DeviceFingerprint, &m.DeviceName, &m.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
 		}
-		devices = append(devices, m.toDomain())
+		devices = append(devices, &m)
 	}
 	return devices, nil
 }

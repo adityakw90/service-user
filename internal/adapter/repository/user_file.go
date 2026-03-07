@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
@@ -12,36 +11,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	"github.com/jackc/pgx/v5"
 )
-
-// userFileModel is the database model for user file data.
-type userFileModel struct {
-	ID         int64
-	UID        string
-	UserID     int64
-	FileType   string
-	FileName   string
-	FilePath   string
-	MimeType   string
-	SizeBytes  int64
-	Visibility string
-	CreatedAt  time.Time
-}
-
-// toDomain converts a user file model to a domain entity.
-func (m *userFileModel) toDomain() *model.UserFile {
-	return &model.UserFile{
-		ID:         m.ID,
-		UID:        m.UID,
-		UserID:     m.UserID,
-		FileType:   m.FileType,
-		FileName:   m.FileName,
-		FilePath:   m.FilePath,
-		MimeType:   m.MimeType,
-		SizeBytes:  m.SizeBytes,
-		Visibility: m.Visibility,
-		CreatedAt:  m.CreatedAt,
-	}
-}
 
 // UserFileRepository implements repository.UserFileRepository for PostgreSQL.
 type UserFileRepository struct {
@@ -264,7 +233,7 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 }
 
 func (r *UserFileRepository) scanFile(row pgx.Row) (*model.UserFile, error) {
-	var m userFileModel
+	var m model.UserFile
 	err := row.Scan(
 		&m.ID, &m.UID, &m.UserID, &m.FileType, &m.FileName,
 		&m.FilePath, &m.MimeType, &m.SizeBytes, &m.Visibility, &m.CreatedAt,
@@ -275,13 +244,13 @@ func (r *UserFileRepository) scanFile(row pgx.Row) (*model.UserFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 func (r *UserFileRepository) scanRows(rows pgx.Rows) ([]*model.UserFile, error) {
 	var files []*model.UserFile
 	for rows.Next() {
-		var m userFileModel
+		var m model.UserFile
 		err := rows.Scan(
 			&m.ID, &m.UID, &m.UserID, &m.FileType, &m.FileName,
 			&m.FilePath, &m.MimeType, &m.SizeBytes, &m.Visibility, &m.CreatedAt,
@@ -289,7 +258,7 @@ func (r *UserFileRepository) scanRows(rows pgx.Rows) ([]*model.UserFile, error) 
 		if err != nil {
 			return nil, err
 		}
-		files = append(files, m.toDomain())
+		files = append(files, &m)
 	}
 	return files, nil
 }

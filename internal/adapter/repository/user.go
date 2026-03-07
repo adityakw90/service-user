@@ -13,35 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// userModel is the database model for user data.
-// Adapters should scan into this model, not directly into domain entities.
-type userModel struct {
-	ID        int64
-	UID       string
-	Username  string
-	Email     string
-	Password  string
-	Status    int32
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt *time.Time
-}
-
-// toDomain converts a user model to a domain entity.
-func (m *userModel) toDomain() *model.User {
-	return &model.User{
-		ID:        m.ID,
-		UID:       m.UID,
-		Username:  m.Username,
-		Email:     m.Email,
-		Password:  m.Password,
-		Status:    model.UserStatus(m.Status),
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
-		DeletedAt: m.DeletedAt,
-	}
-}
-
 // UserRepository implements repository.UserRepository for PostgreSQL.
 type UserRepository struct {
 	db PostgrePool
@@ -232,7 +203,7 @@ func (r *UserRepository) AddUserDevice(ctx context.Context, user *model.User, de
 }
 
 func (r *UserRepository) scanUser(row pgx.Row) (*model.User, error) {
-	var m userModel
+	var m model.User
 	err := row.Scan(
 		&m.ID, &m.UID, &m.Username, &m.Email, &m.Password,
 		&m.Status, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt,
@@ -243,13 +214,13 @@ func (r *UserRepository) scanUser(row pgx.Row) (*model.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.toDomain(), nil
+	return &m, nil
 }
 
 func (r *UserRepository) scanRows(rows pgx.Rows) ([]*model.User, error) {
 	var users []*model.User
 	for rows.Next() {
-		var m userModel
+		var m model.User
 		err := rows.Scan(
 			&m.ID, &m.UID, &m.Username, &m.Email, &m.Password,
 			&m.Status, &m.CreatedAt, &m.UpdatedAt, &m.DeletedAt,
@@ -257,7 +228,7 @@ func (r *UserRepository) scanRows(rows pgx.Rows) ([]*model.User, error) {
 		if err != nil {
 			return nil, err
 		}
-		users = append(users, m.toDomain())
+		users = append(users, &m)
 	}
 	return users, nil
 }
