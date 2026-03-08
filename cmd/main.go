@@ -3,23 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	gomon "github.com/adityakw90/go-monitoring"
-	"github.com/adityakw90/service-user-proto/gen/go/auth"
-	"github.com/adityakw90/service-user-proto/gen/go/device"
-	"github.com/adityakw90/service-user-proto/gen/go/user"
-	"github.com/adityakw90/service-user-proto/gen/go/user_file"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
-	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
-	grpcMiddleware "github.com/adityakw90/service-user/internal/adapter/api/grpc/middleware"
-	grpcvalidator "github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
+	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc"
 	"github.com/adityakw90/service-user/internal/adapter/oauth"
 	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
@@ -430,58 +420,31 @@ func main() {
 	userFileRepo := repository.NewUserFileRepository(dbPool)
 	userFileService := service.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
 
-	// Initialize gRPC handlers
-	validator := grpcvalidator.New()
-	userHandler := grpcadapter.NewUserHandler(userService, validator)
-	authHandler := grpcadapter.NewAuthHandler(authService, validator)
-	deviceHandler := grpcadapter.NewDeviceHandler(deviceService, validator)
-	userFileHandler := grpcadapter.NewUserFileHandler(userFileService, validator)
-
-	// Start gRPC server
-	addr := fmt.Sprintf("%s:%d", cfg.App.IP, cfg.App.Port)
-	lis, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Fatal("failed to listen", map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
-
-	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(
-			grpcMiddleware.ChainUnaryInterceptors(
-				grpcMiddleware.UnaryRequestInterceptor(iMon),
-			),
-		),
-		grpc.StreamInterceptor(
-			grpcMiddleware.ChainStreamInterceptors(
-				grpcMiddleware.StreamRequestInterceptor(iMon),
-			),
-		),
+	// Create gRPC server with centralized setup
+	grpcServer := grpcadapter.NewServer(
+		authService,
+		userService,
+		deviceService,
+		userFileService,
+		iMon,
 	)
-	user.RegisterUserServiceServer(srv, userHandler)
-	auth.RegisterAuthServiceServer(srv, authHandler)
-	device.RegisterDeviceServiceServer(srv, deviceHandler)
-	user_file.RegisterUserFileServiceServer(srv, userFileHandler)
-	reflection.Register(srv)
 
-	logger.Info("gRPC server listening", map[string]interface{}{
-		"addr": addr,
-	})
-
-	// Handle shutdown
+	// Start gRPC server in background
+	addr := fmt.Sprintf("%s:%d", cfg.App.IP, cfg.App.Port)
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-		logger.Info("shutting down server", nil)
-		srv.GracefulStop()
+		if err := grpcServer.Start(addr); err != nil {
+			logger.Fatal("failed to start gRPC server", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
 	}()
 
-	if err := srv.Serve(lis); err != nil {
-		logger.Fatal("failed to serve", map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
+	// Graceful shutdown
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+	logger.Info("shutting down server", nil)
+	grpcServer.Stop()
 }
 
 func createAuthObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.AuthSignal] {
