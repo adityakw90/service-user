@@ -147,8 +147,6 @@ func setupMockMonitoring(t *testing.T) *monitoring.Monitoring {
 		TracerProviderPort:  6831,
 		TracerSampleRatio:   1.0,
 		MetricProvider:      "stdout", // Use stdout for simplicity
-		MetricProviderHost:  "localhost",
-		MetricProviderPort:  9090,
 	})
 	if err != nil {
 		t.Fatalf("failed to create monitoring: %v", err)
