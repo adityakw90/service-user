@@ -38,7 +38,7 @@ func (h *DeviceHandler) Get(ctx context.Context, req *device.GetRequest) (*devic
 
 	d, err := h.service.Get(ctx, req.Uid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoDeviceFull(d), nil
@@ -55,7 +55,7 @@ func (h *DeviceHandler) List(ctx context.Context, req *device.ListRequest) (*dev
 
 	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*device.Device, len(result.Items))
@@ -82,7 +82,7 @@ func (h *DeviceHandler) Delete(ctx context.Context, req *device.DeleteRequest) (
 	}
 
 	if err := h.service.Delete(ctx, req.Uid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil

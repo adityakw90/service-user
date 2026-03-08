@@ -40,7 +40,7 @@ func (h *UserHandler) Get(ctx context.Context, req *user.GetRequest) (*user.User
 
 	u, err := h.service.Get(ctx, req.Uid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoUser(u), nil
@@ -57,7 +57,7 @@ func (h *UserHandler) List(ctx context.Context, req *user.ListRequest) (*user.Li
 
 	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*user.User, len(result.Items))
@@ -89,7 +89,7 @@ func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddR
 		Password: req.Password,
 	})
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &user.AddResponse{Uid: u.UID}, nil
@@ -118,7 +118,7 @@ func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*com
 	}
 
 	if err := h.service.Update(ctx, req.Uid, param); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -132,7 +132,7 @@ func (h *UserHandler) Delete(ctx context.Context, req *user.DeleteRequest) (*com
 	}
 
 	if err := h.service.Delete(ctx, req.Uid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -147,7 +147,7 @@ func (h *UserHandler) GetProfile(ctx context.Context, req *user.GetProfileReques
 
 	p, err := h.service.GetProfile(ctx, req.UserUid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoProfile(p), nil
@@ -175,7 +175,7 @@ func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfile
 	}
 
 	if err := h.service.UpdateProfile(ctx, req.UserUid, opts); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -189,7 +189,7 @@ func (h *UserHandler) UpdatePin(ctx context.Context, req *user.UpdatePinRequest)
 	}
 
 	if err := h.service.SetPin(ctx, req.UserUid, req.Pin); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -206,7 +206,7 @@ func (h *UserHandler) ListDevice(ctx context.Context, req *user.ListDevicesReque
 
 	result, err := h.service.ListDevice(ctx, r.UserUid, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*user.Device, len(result.Items))
@@ -233,7 +233,7 @@ func (h *UserHandler) RevokeDevice(ctx context.Context, req *user.RevokeDeviceRe
 	}
 
 	if err := h.service.RevokeDevice(ctx, req.UserUid, req.DeviceUid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -254,7 +254,7 @@ func (h *UserHandler) ChangePassword(ctx context.Context, req *user.ChangePasswo
 		CurrentPassword: req.CurrentPassword,
 		NewPassword:     req.NewPassword,
 	}); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil

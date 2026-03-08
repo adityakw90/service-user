@@ -9,7 +9,6 @@ import (
 
 	auth "github.com/adityakw90/service-user-proto/gen/go/auth"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/request"
-	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	portsvc "github.com/adityakw90/service-user/internal/core/port/service"
 )
@@ -40,7 +39,7 @@ func (h *AuthHandler) Auth(ctx context.Context, req *auth.AuthRequest) (*auth.To
 
 	result, err := h.service.Authenticate(ctx, payload)
 	if err != nil {
-		return nil, response.MapAuthError(err)
+		return nil, err
 	}
 
 	return &auth.Token{
@@ -58,7 +57,7 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *auth.RefreshTokenRe
 
 	result, err := h.service.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, response.MapAuthError(err)
+		return nil, err
 	}
 
 	return &auth.Token{
@@ -76,7 +75,7 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, req *auth.ValidateToken
 
 	claims, err := h.service.ValidateToken(ctx, req.AccessToken)
 	if err != nil {
-		return nil, response.MapAuthError(err)
+		return nil, err
 	}
 
 	resp := &auth.ValidateTokenResponse{
@@ -102,7 +101,7 @@ func (h *AuthHandler) VerifyPin(ctx context.Context, req *auth.VerifyPinRequest)
 
 	valid, err := h.service.VerifyPin(ctx, req.Uid, req.Code)
 	if err != nil {
-		return nil, response.MapAuthError(err)
+		return nil, err
 	}
 
 	return &auth.VerifyPinResponse{Valid: valid}, nil

@@ -48,7 +48,7 @@ func (h *UserFileHandler) Get(ctx context.Context, req *userFile.GetRequest) (*u
 
 	f, err := h.service.Get(ctx, req.Uid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoUserFile(f), nil
@@ -65,7 +65,7 @@ func (h *UserFileHandler) List(ctx context.Context, req *userFile.ListRequest) (
 
 	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*userFile.UserFile, len(result.Items))
@@ -113,7 +113,7 @@ func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*u
 
 	f, err := h.service.Add(ctx, createParam)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &userFile.AddResponse{Uid: f.UID}, nil
@@ -159,7 +159,7 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 	}
 
 	if err := h.service.Update(ctx, req.Uid, updateParam); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &userFile.UpdateResponse{Success: true}, nil
@@ -173,7 +173,7 @@ func (h *UserFileHandler) Delete(ctx context.Context, req *userFile.DeleteReques
 	}
 
 	if err := h.service.Delete(ctx, req.Uid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &userFile.DeleteResponse{Success: true}, nil
