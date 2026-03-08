@@ -43,7 +43,7 @@ func NewServer(
 	authHandler := handler.NewAuthHandler(authService, v)
 	userHandler := handler.NewUserHandler(userService, v)
 	deviceHandler := handler.NewDeviceHandler(deviceService, v)
-	userFileHandler := handler.NewUserFileHandler(userFileService)
+	userFileHandler := handler.NewUserFileHandler(userFileService, v)
 
 	// Create gRPC server with chained interceptors
 	server := grpc.NewServer(

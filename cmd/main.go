@@ -435,7 +435,7 @@ func main() {
 	userHandler := grpcadapter.NewUserHandler(userService, validator)
 	authHandler := grpcadapter.NewAuthHandler(authService, validator)
 	deviceHandler := grpcadapter.NewDeviceHandler(deviceService, validator)
-	userFileHandler := grpcadapter.NewUserFileHandler(userFileService)
+	userFileHandler := grpcadapter.NewUserFileHandler(userFileService, validator)
 
 	// Start gRPC server
 	addr := fmt.Sprintf("%s:%d", cfg.App.IP, cfg.App.Port)

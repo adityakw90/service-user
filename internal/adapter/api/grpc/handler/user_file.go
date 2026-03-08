@@ -32,10 +32,10 @@ type UserFileHandler struct {
 }
 
 // NewUserFileHandler creates a new UserFileHandler.
-func NewUserFileHandler(service portsvc.UserFileService) *UserFileHandler {
+func NewUserFileHandler(service portsvc.UserFileService, v *validator.Validator) *UserFileHandler {
 	return &UserFileHandler{
 		service:   service,
-		validator: validator.New(),
+		validator: v,
 	}
 }
 
