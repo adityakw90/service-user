@@ -434,7 +434,7 @@ func main() {
 	validator := grpcvalidator.New()
 	userHandler := grpcadapter.NewUserHandler(userService, validator)
 	authHandler := grpcadapter.NewAuthHandler(authService, validator)
-	deviceHandler := grpcadapter.NewDeviceHandler(deviceService)
+	deviceHandler := grpcadapter.NewDeviceHandler(deviceService, validator)
 	userFileHandler := grpcadapter.NewUserFileHandler(userFileService)
 
 	// Start gRPC server

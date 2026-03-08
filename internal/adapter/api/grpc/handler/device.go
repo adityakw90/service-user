@@ -22,10 +22,10 @@ type DeviceHandler struct {
 }
 
 // NewDeviceHandler creates a new DeviceHandler.
-func NewDeviceHandler(service portsvc.DeviceService) *DeviceHandler {
+func NewDeviceHandler(service portsvc.DeviceService, v *validator.Validator) *DeviceHandler {
 	return &DeviceHandler{
 		service:   service,
-		validator: validator.New(),
+		validator: v,
 	}
 }
 

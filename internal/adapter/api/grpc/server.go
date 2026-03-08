@@ -42,7 +42,7 @@ func NewServer(
 	// Create handlers with validator injection
 	authHandler := handler.NewAuthHandler(authService, v)
 	userHandler := handler.NewUserHandler(userService, v)
-	deviceHandler := handler.NewDeviceHandler(deviceService)
+	deviceHandler := handler.NewDeviceHandler(deviceService, v)
 	userFileHandler := handler.NewUserFileHandler(userFileService)
 
 	// Create gRPC server with chained interceptors

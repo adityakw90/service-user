@@ -42,7 +42,7 @@ func NewTestGRPCServer(testServices *TestServices) (*TestGRPCServer, error) {
 	validator := grpcvalidator.New()
 	userHandler := grpcadapter.NewUserHandler(testServices.UserService, validator)
 	authHandler := grpcadapter.NewAuthHandler(testServices.AuthService, validator)
-	deviceHandler := grpcadapter.NewDeviceHandler(testServices.DeviceService)
+	deviceHandler := grpcadapter.NewDeviceHandler(testServices.DeviceService, validator)
 	userFileHandler := grpcadapter.NewUserFileHandler(testServices.UserFileService)
 
 	// Create server
