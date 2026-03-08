@@ -3,9 +3,6 @@ package handler
 import (
 	"context"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	common "github.com/adityakw90/service-user-proto/gen/go/common"
 	device "github.com/adityakw90/service-user-proto/gen/go/device"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/request"
@@ -33,7 +30,7 @@ func NewDeviceHandler(service portsvc.DeviceService, v *validator.Validator) *De
 func (h *DeviceHandler) Get(ctx context.Context, req *device.GetRequest) (*device.Device, error) {
 	r := request.DeviceGetRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	d, err := h.service.Get(ctx, req.Uid)
@@ -48,7 +45,7 @@ func (h *DeviceHandler) Get(ctx context.Context, req *device.GetRequest) (*devic
 func (h *DeviceHandler) List(ctx context.Context, req *device.ListRequest) (*device.ListResponse, error) {
 	r := request.DeviceListRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	p := r.ToDeviceListParams()
@@ -78,7 +75,7 @@ func (h *DeviceHandler) List(ctx context.Context, req *device.ListRequest) (*dev
 func (h *DeviceHandler) Delete(ctx context.Context, req *device.DeleteRequest) (*common.Success, error) {
 	r := request.DeviceDeleteRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	if err := h.service.Delete(ctx, req.Uid); err != nil {
