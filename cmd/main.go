@@ -19,6 +19,7 @@ import (
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
 	grpcMiddleware "github.com/adityakw90/service-user/internal/adapter/api/grpc/middleware"
+	grpcvalidator "github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	"github.com/adityakw90/service-user/internal/adapter/oauth"
 	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/publisher"
@@ -430,8 +431,9 @@ func main() {
 	userFileService := service.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
 
 	// Initialize gRPC handlers
+	validator := grpcvalidator.New()
 	userHandler := grpcadapter.NewUserHandler(userService)
-	authHandler := grpcadapter.NewAuthHandler(authService)
+	authHandler := grpcadapter.NewAuthHandler(authService, validator)
 	deviceHandler := grpcadapter.NewDeviceHandler(deviceService)
 	userFileHandler := grpcadapter.NewUserFileHandler(userFileService)
 

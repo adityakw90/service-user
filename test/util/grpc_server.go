@@ -13,6 +13,7 @@ import (
 	user_filegrpc "github.com/adityakw90/service-user-proto/gen/go/user_file"
 
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc/handler"
+	grpcvalidator "github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 )
 
 // TestGRPCServer wraps a running gRPC server for testing.
@@ -38,8 +39,9 @@ func NewTestGRPCServer(testServices *TestServices) (*TestGRPCServer, error) {
 	}
 
 	// Create gRPC handlers
+	validator := grpcvalidator.New()
 	userHandler := grpcadapter.NewUserHandler(testServices.UserService)
-	authHandler := grpcadapter.NewAuthHandler(testServices.AuthService)
+	authHandler := grpcadapter.NewAuthHandler(testServices.AuthService, validator)
 	deviceHandler := grpcadapter.NewDeviceHandler(testServices.DeviceService)
 	userFileHandler := grpcadapter.NewUserFileHandler(testServices.UserFileService)
 

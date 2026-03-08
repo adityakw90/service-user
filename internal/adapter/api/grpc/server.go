@@ -36,11 +36,11 @@ func NewServer(
 	userFileService service.UserFileService,
 	mon *monitoring.Monitoring,
 ) *Server {
-	// Create validator instance for future use (will be injected into handlers in next task)
-	_ = validator.New()
+	// Create validator instance
+	v := validator.New()
 
-	// Create handlers using their current constructors (without validator injection)
-	authHandler := handler.NewAuthHandler(authService)
+	// Create handlers with validator injection
+	authHandler := handler.NewAuthHandler(authService, v)
 	userHandler := handler.NewUserHandler(userService)
 	deviceHandler := handler.NewDeviceHandler(deviceService)
 	userFileHandler := handler.NewUserFileHandler(userFileService)
