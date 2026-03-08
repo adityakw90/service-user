@@ -5,7 +5,6 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	device "github.com/adityakw90/service-user-proto/gen/go/device"
@@ -95,14 +94,6 @@ func TimestampPtr(t *time.Time) *timestamppb.Timestamp {
 		return nil
 	}
 	return timestamppb.New(*t)
-}
-
-func ToStruct(m map[string]any) *structpb.Struct {
-	if m == nil {
-		return nil
-	}
-	s, _ := structpb.NewStruct(m)
-	return s
 }
 
 // MapAuthError maps service errors to gRPC errors for AuthHandler.
