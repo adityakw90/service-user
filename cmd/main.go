@@ -421,7 +421,7 @@ func main() {
 	userFileService := service.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
 
 	// Create gRPC server with centralized setup
-	grpcServer := grpcadapter.NewServer(
+	srv := grpcadapter.NewServer(
 		authService,
 		userService,
 		deviceService,
@@ -431,20 +431,20 @@ func main() {
 
 	// Start gRPC server in background
 	addr := fmt.Sprintf("%s:%d", cfg.App.IP, cfg.App.Port)
+	// Handle shutdown
 	go func() {
-		if err := grpcServer.Start(addr); err != nil {
-			logger.Fatal("failed to start gRPC server", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		logger.Info("shutting down server", nil)
+		srv.Stop()
 	}()
 
-	// Graceful shutdown
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-	logger.Info("shutting down server", nil)
-	grpcServer.Stop()
+	if err := srv.Start(addr); err != nil {
+		logger.Fatal("failed to serve", map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
 }
 
 func createAuthObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.AuthSignal] {
