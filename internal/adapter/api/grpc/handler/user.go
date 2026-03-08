@@ -24,10 +24,10 @@ type UserHandler struct {
 }
 
 // NewUserHandler creates a new UserHandler.
-func NewUserHandler(service portsvc.UserService) *UserHandler {
+func NewUserHandler(service portsvc.UserService, v *validator.Validator) *UserHandler {
 	return &UserHandler{
 		service:   service,
-		validator: validator.New(),
+		validator: v,
 	}
 }
 

@@ -432,7 +432,7 @@ func main() {
 
 	// Initialize gRPC handlers
 	validator := grpcvalidator.New()
-	userHandler := grpcadapter.NewUserHandler(userService)
+	userHandler := grpcadapter.NewUserHandler(userService, validator)
 	authHandler := grpcadapter.NewAuthHandler(authService, validator)
 	deviceHandler := grpcadapter.NewDeviceHandler(deviceService)
 	userFileHandler := grpcadapter.NewUserFileHandler(userFileService)
