@@ -22,10 +22,10 @@ type AuthHandler struct {
 }
 
 // NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(service portsvc.AuthService) *AuthHandler {
+func NewAuthHandler(service portsvc.AuthService, v *validator.Validator) *AuthHandler {
 	return &AuthHandler{
 		service:   service,
-		validator: validator.New(),
+		validator: v,
 	}
 }
 

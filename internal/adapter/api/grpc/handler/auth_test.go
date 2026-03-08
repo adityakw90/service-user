@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	servicemocks "github.com/adityakw90/service-user/test/mocks/service"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,18 @@ import (
 
 	authpb "github.com/adityakw90/service-user-proto/gen/go/auth"
 )
+
+// TestNewAuthHandler tests the NewAuthHandler constructor.
+func TestNewAuthHandler(t *testing.T) {
+	mockService := servicemocks.NewMockAuthService(t)
+	v := validator.New()
+
+	h := NewAuthHandler(mockService, v)
+
+	assert.NotNil(t, h)
+	assert.Equal(t, mockService, h.service)
+	assert.Equal(t, v, h.validator)
+}
 
 // TestAuthHandler_GoogleOAuth tests the GoogleOAuth handler method.
 func TestAuthHandler_GoogleOAuth(t *testing.T) {
@@ -115,7 +128,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			}
 
 			// Create handler
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			// Execute
 			got, err := handler.GoogleOAuth(context.Background(), tt.input)
@@ -277,7 +291,8 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			}
 
 			// Create handler
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			// Execute
 			got, err := handler.HandleGoogleOAuth(context.Background(), tt.input)
@@ -339,7 +354,8 @@ func TestAuthHandler_GoogleOAuth_ValidURIVariations(t *testing.T) {
 			mockService.EXPECT().GoogleOAuth(mock.Anything, tt.redirectURI).Return(
 				"https://accounts.google.com/o/oauth2/v2/auth?state=test", "test", nil).Once()
 
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			req := &authpb.GoogleOAuthRequest{
 				RedirectUri: tt.redirectURI,
@@ -397,7 +413,8 @@ func TestAuthHandler_HandleGoogleOAuth_ValidURIVariations(t *testing.T) {
 					Refresh: "test-refresh-token",
 				}, nil).Once()
 
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
@@ -446,7 +463,8 @@ func TestAuthHandler_GoogleOAuth_InvalidInputVariations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := servicemocks.NewMockAuthService(t)
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			req := &authpb.GoogleOAuthRequest{
 				RedirectUri: tt.redirectURI,
@@ -512,7 +530,8 @@ func TestAuthHandler_HandleGoogleOAuth_InvalidInputVariations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockService := servicemocks.NewMockAuthService(t)
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
@@ -560,7 +579,8 @@ func TestAuthHandler_GoogleOAuth_WhitespaceHandling(t *testing.T) {
 			mockService.EXPECT().GoogleOAuth(mock.Anything, tt.redirectURI).Return(
 				"https://accounts.google.com/o/oauth2/v2/auth", "test", nil).Once()
 
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			req := &authpb.GoogleOAuthRequest{
 				RedirectUri: tt.redirectURI,
@@ -618,7 +638,8 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 					Refresh: "test-refresh",
 				}, nil).Once()
 
-			handler := NewAuthHandler(mockService)
+			v := validator.New()
+			handler := NewAuthHandler(mockService, v)
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
