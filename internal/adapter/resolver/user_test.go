@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/infra"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/alicebob/miniredis/v2"
@@ -484,6 +485,144 @@ func TestUserResolver_UIDsByIDs(t *testing.T) {
 			}
 
 			assert.NoError(t, mockPool.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestUserResolver_Invalidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    []param.InvalidateOpt
+		setup   func(s *miniredis.Miniredis)
+		wantErr bool
+		verify  func(s *miniredis.Miniredis)
+	}{
+		{
+			name: "Happy Path - invalidate by UID",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("user-uid-1"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:user-uid-1:id", "100")
+				s.Set("user:id:100:uid", "user-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.False(t, s.Exists("user:user-uid-1:id"))
+				assert.False(t, s.Exists("user:id:100:uid"))
+			},
+		},
+		{
+			name: "Happy Path - invalidate by ID",
+			opts: []param.InvalidateOpt{
+				param.WithIDs(100),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:user-uid-1:id", "100")
+				s.Set("user:id:100:uid", "user-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.False(t, s.Exists("user:user-uid-1:id"))
+				assert.False(t, s.Exists("user:id:100:uid"))
+			},
+		},
+		{
+			name: "Happy Path - invalidate multiple UIDs",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("user-uid-1", "user-uid-2"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:user-uid-1:id", "100")
+				s.Set("user:id:100:uid", "user-uid-1")
+				s.Set("user:user-uid-2:id", "200")
+				s.Set("user:id:200:uid", "user-uid-2")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.False(t, s.Exists("user:user-uid-1:id"))
+				assert.False(t, s.Exists("user:id:100:uid"))
+				assert.False(t, s.Exists("user:user-uid-2:id"))
+				assert.False(t, s.Exists("user:id:200:uid"))
+			},
+		},
+		{
+			name: "Happy Path - invalidate mixed UIDs and IDs",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("user-uid-1"),
+				param.WithIDs(200),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:user-uid-1:id", "100")
+				s.Set("user:id:100:uid", "user-uid-1")
+				s.Set("user:user-uid-2:id", "200")
+				s.Set("user:id:200:uid", "user-uid-2")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.False(t, s.Exists("user:user-uid-1:id"))
+				assert.False(t, s.Exists("user:id:100:uid"))
+				assert.False(t, s.Exists("user:user-uid-2:id"))
+				assert.False(t, s.Exists("user:id:200:uid"))
+			},
+		},
+		{
+			name: "Happy Path - empty options (no-op)",
+			opts: []param.InvalidateOpt{},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:user-uid-1:id", "100")
+				s.Set("user:id:100:uid", "user-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.True(t, s.Exists("user:user-uid-1:id"))
+				assert.True(t, s.Exists("user:id:100:uid"))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			// Setup cache
+			if tt.setup != nil {
+				tt.setup(s)
+			}
+
+			logger := infra.NewNoopLogger()
+			tracer := infra.NewNoopTracer()
+
+			r := &userResolver{
+				redisClient:        redisClient,
+				redisPrefix:        "user",
+				redisCacheDuration: time.Minute,
+				logger:             logger,
+				tracer:             tracer,
+			}
+
+			ctx := context.Background()
+
+			// Execute
+			err := r.Invalidate(ctx, tt.opts...)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Verify state
+			if tt.verify != nil {
+				tt.verify(s)
+			}
 		})
 	}
 }
