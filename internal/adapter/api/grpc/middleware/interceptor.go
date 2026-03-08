@@ -24,8 +24,9 @@ func ChainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.Un
 		currHandler := handler
 		for i := n - 1; i >= 0; i-- {
 			currInterceptor := interceptors[i]
+			prevHandler := currHandler
 			currHandler = func(currCtx context.Context, currReq interface{}) (interface{}, error) {
-				return currInterceptor(currCtx, currReq, info, currHandler)
+				return currInterceptor(currCtx, currReq, info, prevHandler)
 			}
 		}
 		return currHandler(ctx, req)
@@ -50,8 +51,9 @@ func ChainStreamInterceptors(interceptors ...grpc.StreamServerInterceptor) grpc.
 		currHandler := handler
 		for i := n - 1; i >= 0; i-- {
 			currInterceptor := interceptors[i]
+			prevHandler := currHandler
 			currHandler = func(currSrv interface{}, currSS grpc.ServerStream) error {
-				return currInterceptor(currSrv, currSS, info, currHandler)
+				return currInterceptor(currSrv, currSS, info, prevHandler)
 			}
 		}
 		return currHandler(srv, ss)
