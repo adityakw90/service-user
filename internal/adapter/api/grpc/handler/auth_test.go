@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	servicemocks "github.com/adityakw90/service-user/test/mocks/service"
@@ -82,7 +83,7 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.Internal,
-			errContains: "failed to initiate OAuth",
+			errContains: "internal server error",
 		},
 		{
 			name:       "Invalid Input - empty redirect URI",
@@ -92,7 +93,7 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.InvalidArgument,
-			errContains: "RedirectUri",
+			errContains: "validation error",
 		},
 		{
 			name:       "Invalid Input - invalid URI format",
@@ -102,7 +103,7 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.InvalidArgument,
-			errContains: "RedirectUri",
+			errContains: "validation error",
 		},
 		{
 			name: "Service returns context canceled error",
@@ -114,8 +115,7 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
-			wantCode:    codes.Internal,
-			errContains: "failed to initiate OAuth",
+			wantCode:    codes.Canceled,
 		},
 	}
 
@@ -137,8 +137,10 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			// Assert
 			if tt.wantErr {
 				require.Error(t, err)
-				st, ok := status.FromError(err)
-				require.True(t, ok, "error should be a gRPC status error")
+				// Convert error through middleware to simulate actual flow
+				grpcErr := response.MakeErrorResponse(err)
+				st, ok := status.FromError(grpcErr)
+				require.True(t, ok, "error should be a gRPC status error after conversion")
 				assert.Equal(t, tt.wantCode, st.Code())
 				if tt.errContains != "" {
 					assert.Contains(t, st.Message(), tt.errContains)
@@ -216,7 +218,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.Internal,
-			errContains: "failed to handle OAuth",
+			errContains: "internal server error",
 		},
 		{
 			name:       "Invalid Input - empty code",
@@ -228,7 +230,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.InvalidArgument,
-			errContains: "Code",
+			errContains: "validation error",
 		},
 		{
 			name:       "Invalid Input - empty redirect URI",
@@ -240,7 +242,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.InvalidArgument,
-			errContains: "RedirectUri",
+			errContains: "validation error",
 		},
 		{
 			name:       "Invalid Input - both code and redirect URI empty",
@@ -263,7 +265,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			wantErr:     true,
 			wantCode:    codes.InvalidArgument,
-			errContains: "RedirectUri",
+			errContains: "validation error",
 		},
 		{
 			name: "Service returns context canceled error",
@@ -277,8 +279,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
-			wantCode:    codes.Internal,
-			errContains: "failed to handle OAuth",
+			wantCode:    codes.Canceled,
 		},
 	}
 
@@ -300,8 +301,10 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			// Assert
 			if tt.wantErr {
 				require.Error(t, err)
-				st, ok := status.FromError(err)
-				require.True(t, ok, "error should be a gRPC status error")
+				// Convert error through middleware to simulate actual flow
+				grpcErr := response.MakeErrorResponse(err)
+				st, ok := status.FromError(grpcErr)
+				require.True(t, ok, "error should be a gRPC status error after conversion")
 				assert.Equal(t, tt.wantCode, st.Code())
 				if tt.errContains != "" {
 					assert.Contains(t, st.Message(), tt.errContains)
@@ -473,10 +476,12 @@ func TestAuthHandler_GoogleOAuth_InvalidInputVariations(t *testing.T) {
 			_, err := handler.GoogleOAuth(context.Background(), req)
 
 			require.Error(t, err)
-			st, ok := status.FromError(err)
-			require.True(t, ok, "error should be a gRPC status error")
+			// Convert error through middleware to simulate actual flow
+			grpcErr := response.MakeErrorResponse(err)
+			st, ok := status.FromError(grpcErr)
+			require.True(t, ok, "error should be a gRPC status error after conversion")
 			assert.Equal(t, codes.InvalidArgument, st.Code())
-			assert.Contains(t, st.Message(), tt.errField)
+			assert.Contains(t, st.Message(), "validation error")
 		})
 	}
 }
@@ -542,9 +547,12 @@ func TestAuthHandler_HandleGoogleOAuth_InvalidInputVariations(t *testing.T) {
 			_, err := handler.HandleGoogleOAuth(context.Background(), req)
 
 			require.Error(t, err)
-			st, ok := status.FromError(err)
-			require.True(t, ok, "error should be a gRPC status error")
+			// Convert error through middleware to simulate actual flow
+			grpcErr := response.MakeErrorResponse(err)
+			st, ok := status.FromError(grpcErr)
+			require.True(t, ok, "error should be a gRPC status error after conversion")
 			assert.Equal(t, codes.InvalidArgument, st.Code())
+			assert.Contains(t, st.Message(), "validation error")
 		})
 	}
 }

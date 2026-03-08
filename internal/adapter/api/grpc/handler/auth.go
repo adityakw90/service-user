@@ -3,8 +3,6 @@ package handler
 import (
 	"context"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	auth "github.com/adityakw90/service-user-proto/gen/go/auth"
@@ -32,7 +30,7 @@ func NewAuthHandler(service portsvc.AuthService, v *validator.Validator) *AuthHa
 func (h *AuthHandler) Auth(ctx context.Context, req *auth.AuthRequest) (*auth.Token, error) {
 	r := request.AuthRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	payload := r.ToAuthParams()
@@ -52,7 +50,7 @@ func (h *AuthHandler) Auth(ctx context.Context, req *auth.AuthRequest) (*auth.To
 func (h *AuthHandler) RefreshToken(ctx context.Context, req *auth.RefreshTokenRequest) (*auth.Token, error) {
 	r := request.RefreshTokenRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	result, err := h.service.RefreshToken(ctx, req.RefreshToken)
@@ -70,7 +68,7 @@ func (h *AuthHandler) RefreshToken(ctx context.Context, req *auth.RefreshTokenRe
 func (h *AuthHandler) ValidateToken(ctx context.Context, req *auth.ValidateTokenRequest) (*auth.ValidateTokenResponse, error) {
 	r := request.ValidateTokenRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	claims, err := h.service.ValidateToken(ctx, req.AccessToken)
@@ -96,7 +94,7 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, req *auth.ValidateToken
 func (h *AuthHandler) VerifyPin(ctx context.Context, req *auth.VerifyPinRequest) (*auth.VerifyPinResponse, error) {
 	r := request.VerifyPinRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	valid, err := h.service.VerifyPin(ctx, req.Uid, req.Code)
@@ -111,12 +109,12 @@ func (h *AuthHandler) VerifyPin(ctx context.Context, req *auth.VerifyPinRequest)
 func (h *AuthHandler) GoogleOAuth(ctx context.Context, req *auth.GoogleOAuthRequest) (*auth.GoogleOAuthResponse, error) {
 	r := request.GoogleOAuthRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	url, state, err := h.service.GoogleOAuth(ctx, req.GetRedirectUri())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to initiate OAuth: %v", err)
+		return nil, err
 	}
 
 	return &auth.GoogleOAuthResponse{AuthorizationUrl: url, State: state}, nil
@@ -126,12 +124,12 @@ func (h *AuthHandler) GoogleOAuth(ctx context.Context, req *auth.GoogleOAuthRequ
 func (h *AuthHandler) HandleGoogleOAuth(ctx context.Context, req *auth.HandleGoogleOAuthRequest) (*auth.Token, error) {
 	r := request.HandleGoogleOAuthRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	result, err := h.service.HandleGoogleOAuth(ctx, req.GetCode(), req.GetState(), req.GetRedirectUri())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to handle OAuth: %v", err)
+		return nil, err
 	}
 
 	return &auth.Token{
@@ -144,12 +142,12 @@ func (h *AuthHandler) HandleGoogleOAuth(ctx context.Context, req *auth.HandleGoo
 func (h *AuthHandler) RevokeToken(ctx context.Context, req *auth.RevokeTokenRequest) (*auth.RevokeTokenResponse, error) {
 	r := request.RevokeTokenRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	err := h.service.RevokeToken(ctx, req.Token, req.TokenType)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to revoke token: %v", err)
+		return nil, err
 	}
 
 	return &auth.RevokeTokenResponse{Success: true}, nil
