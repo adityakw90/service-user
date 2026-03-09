@@ -1,100 +1,11 @@
 package response
 
 import (
-	"time"
-
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
-	device "github.com/adityakw90/service-user-proto/gen/go/device"
-	user "github.com/adityakw90/service-user-proto/gen/go/user"
-	userFile "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
-	"github.com/adityakw90/service-user/internal/core/domain/model"
 )
-
-func ToProtoUser(u *model.User) *user.User {
-	if u == nil {
-		return nil
-	}
-	return &user.User{
-		Uid:       u.UID,
-		Username:  u.Username,
-		Email:     u.Email,
-		Status:    int32(u.Status),
-		CreatedAt: Timestamp(u.CreatedAt),
-		UpdatedAt: Timestamp(u.UpdatedAt),
-		DeletedAt: TimestampPtr(u.DeletedAt),
-	}
-}
-
-func ToProtoProfile(p *model.UserProfile) *user.Profile {
-	if p == nil {
-		return nil
-	}
-	return &user.Profile{
-		Uid:        "",
-		FirstName:  p.FirstName,
-		LastName:   p.LastName,
-		Bio:        p.Bio,
-		Attributes: ToStruct(p.Attributes),
-	}
-}
-
-func ToProtoDevice(d *model.Device) *user.Device {
-	if d == nil {
-		return nil
-	}
-	return &user.Device{
-		DeviceUid:  d.UID,
-		DeviceName: d.DeviceName,
-		CreatedAt:  Timestamp(d.CreatedAt),
-	}
-}
-
-func ToProtoDeviceFull(d *model.Device) *device.Device {
-	if d == nil {
-		return nil
-	}
-	return &device.Device{
-		Uid:               d.UID,
-		DeviceFingerprint: d.DeviceFingerprint,
-		DeviceName:        d.DeviceName,
-		CreatedAt:         Timestamp(d.CreatedAt),
-	}
-}
-
-func ToProtoUserFile(f *model.UserFile) *userFile.UserFile {
-	if f == nil {
-		return nil
-	}
-	return &userFile.UserFile{
-		Uid:       f.UID,
-		UserUid:   f.UserUID,
-		FileType:  f.FileType,
-		FileName:  f.FileName,
-		FilePath:  f.FilePath,
-		MimeType:  f.MimeType,
-		SizeBytes: f.SizeBytes,
-		Visibility: f.Visibility,
-		CreatedAt: Timestamp(f.CreatedAt),
-	}
-}
-
-func Timestamp(t time.Time) *timestamppb.Timestamp {
-	if t.IsZero() {
-		return nil
-	}
-	return timestamppb.New(t)
-}
-
-func TimestampPtr(t *time.Time) *timestamppb.Timestamp {
-	if t == nil {
-		return nil
-	}
-	return timestamppb.New(*t)
-}
 
 // MapAuthError maps service errors to gRPC errors for AuthHandler.
 func MapAuthError(err error) error {
