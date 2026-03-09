@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user-proto/gen/go/common"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 )
@@ -30,10 +30,7 @@ func toProtoTimestampPB(t time.Time) *timestamppb.Timestamp {
 	if t.IsZero() {
 		return nil
 	}
-	return &timestamppb.Timestamp{
-		Seconds: t.Unix(),
-		Nanos:   int32(t.Nanosecond()),
-	}
+	return timestamppb.New(t)
 }
 
 // ToStruct converts map[string]any to protobuf Struct.
