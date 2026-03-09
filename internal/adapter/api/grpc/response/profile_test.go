@@ -92,6 +92,13 @@ func TestToProtoProfile(t *testing.T) {
 			if got.Uid != tt.want.Uid {
 				t.Errorf("ToProtoProfile().Uid = %v, want %v", got.Uid, tt.want.Uid)
 			}
+			// Verify Attributes field is correctly converted
+			if tt.input.Attributes != nil && got.Attributes == nil {
+				t.Errorf("ToProtoProfile().Attributes = nil, want non-nil (conversion failed)")
+			}
+			if tt.input.Attributes == nil && got.Attributes != nil {
+				t.Errorf("ToProtoProfile().Attributes = %v, want nil", got.Attributes)
+			}
 		})
 	}
 }
