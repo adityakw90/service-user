@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	common "github.com/adityakw90/service-user-proto/gen/go/common"
 	userFile "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/request"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
+	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portsvc "github.com/adityakw90/service-user/internal/core/port/service"
@@ -32,10 +30,10 @@ type UserFileHandler struct {
 }
 
 // NewUserFileHandler creates a new UserFileHandler.
-func NewUserFileHandler(service portsvc.UserFileService) *UserFileHandler {
+func NewUserFileHandler(service portsvc.UserFileService, v *validator.Validator) *UserFileHandler {
 	return &UserFileHandler{
 		service:   service,
-		validator: validator.New(),
+		validator: v,
 	}
 }
 
@@ -43,12 +41,12 @@ func NewUserFileHandler(service portsvc.UserFileService) *UserFileHandler {
 func (h *UserFileHandler) Get(ctx context.Context, req *userFile.GetRequest) (*userFile.UserFile, error) {
 	r := request.UserFileGetRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	f, err := h.service.Get(ctx, req.Uid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoUserFile(f), nil
@@ -58,14 +56,14 @@ func (h *UserFileHandler) Get(ctx context.Context, req *userFile.GetRequest) (*u
 func (h *UserFileHandler) List(ctx context.Context, req *userFile.ListRequest) (*userFile.ListResponse, error) {
 	r := request.UserFileListRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	p := r.ToUserFileListParams()
 
 	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*userFile.UserFile, len(result.Items))
@@ -88,7 +86,7 @@ func (h *UserFileHandler) List(ctx context.Context, req *userFile.ListRequest) (
 func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*userFile.AddResponse, error) {
 	r := request.UserFileAddRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	// Convert filedata to base64 and store as file path
@@ -96,7 +94,11 @@ func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*u
 	filePath := ""
 	if len(req.Filedata) > 0 {
 		if len(req.Filedata) > MaxFileSize {
-			return nil, status.Error(codes.ResourceExhausted, "file size exceeds maximum limit")
+			return nil, domainerrors.NewCustomError(
+				domainerrors.ErrRateLimitExceeded.Code,
+				"file size exceeds maximum limit",
+				nil,
+			)
 		}
 		filePath = "data:" + getMimeType(req.Filename) + ";base64," + base64.StdEncoding.EncodeToString(req.Filedata)
 	}
@@ -113,7 +115,7 @@ func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*u
 
 	f, err := h.service.Add(ctx, createParam)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &userFile.AddResponse{Uid: f.UID}, nil
@@ -123,7 +125,7 @@ func (h *UserFileHandler) Add(ctx context.Context, req *userFile.AddRequest) (*u
 func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateRequest) (*userFile.UpdateResponse, error) {
 	r := request.UserFileUpdateRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	updateParam := param.UserFileUpdateParam{}
@@ -135,7 +137,11 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 	}
 	if len(req.Filedata) > 0 {
 		if len(req.Filedata) > MaxFileSize {
-			return nil, status.Error(codes.ResourceExhausted, "file size exceeds maximum limit")
+			return nil, domainerrors.NewCustomError(
+				domainerrors.ErrRateLimitExceeded.Code,
+				"file size exceeds maximum limit",
+				nil,
+			)
 		}
 		// Determine filename for MIME type detection
 		filename := ""
@@ -159,7 +165,7 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 	}
 
 	if err := h.service.Update(ctx, req.Uid, updateParam); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &userFile.UpdateResponse{Success: true}, nil
@@ -169,11 +175,11 @@ func (h *UserFileHandler) Update(ctx context.Context, req *userFile.UpdateReques
 func (h *UserFileHandler) Delete(ctx context.Context, req *userFile.DeleteRequest) (*userFile.DeleteResponse, error) {
 	r := request.UserFileDeleteRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	if err := h.service.Delete(ctx, req.Uid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &userFile.DeleteResponse{Success: true}, nil

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v3"
@@ -437,6 +438,289 @@ func TestMapperID_IDToUID(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestInvalidate tests the invalidate helper function
+func TestInvalidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		prefix  string
+		opts    []param.InvalidateOpt
+		setup   func(s *miniredis.Miniredis)
+		wantErr bool
+		verify  func(s *miniredis.Miniredis)
+	}{
+		{
+			name: "Happy Path - invalidate single UID with bidirectional mapping",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("device-uid-1"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok, "forward mapping should be deleted")
+				ok = s.Exists("device:id:100:uid")
+				assert.False(t, ok, "reverse mapping should be deleted")
+			},
+		},
+		{
+			name: "Happy Path - invalidate multiple UIDs",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("device-uid-1", "device-uid-2", "device-uid-3"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+				s.Set("device:device-uid-2:id", "200")
+				s.Set("device:id:200:uid", "device-uid-2")
+				s.Set("device:device-uid-3:id", "300")
+				s.Set("device:id:300:uid", "device-uid-3")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:100:uid")
+				assert.False(t, ok)
+				ok = s.Exists("device:device-uid-2:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:200:uid")
+				assert.False(t, ok)
+				ok = s.Exists("device:device-uid-3:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:300:uid")
+				assert.False(t, ok)
+			},
+		},
+		{
+			name: "Happy Path - invalidate single ID with bidirectional mapping",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithIDs(100),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok, "forward mapping should be deleted")
+				ok = s.Exists("device:id:100:uid")
+				assert.False(t, ok, "reverse mapping should be deleted")
+			},
+		},
+		{
+			name: "Happy Path - invalidate multiple IDs",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithIDs(100, 200, 300),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+				s.Set("device:device-uid-2:id", "200")
+				s.Set("device:id:200:uid", "device-uid-2")
+				s.Set("device:device-uid-3:id", "300")
+				s.Set("device:id:300:uid", "device-uid-3")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:100:uid")
+				assert.False(t, ok)
+				ok = s.Exists("device:device-uid-2:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:200:uid")
+				assert.False(t, ok)
+				ok = s.Exists("device:device-uid-3:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:300:uid")
+				assert.False(t, ok)
+			},
+		},
+		{
+			name: "Happy Path - invalidate mixed UIDs and IDs",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("device-uid-1", "device-uid-2"),
+				param.WithIDs(300),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+				s.Set("device:device-uid-2:id", "200")
+				s.Set("device:id:200:uid", "device-uid-2")
+				s.Set("device:device-uid-3:id", "300")
+				s.Set("device:id:300:uid", "device-uid-3")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:100:uid")
+				assert.False(t, ok)
+				ok = s.Exists("device:device-uid-2:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:200:uid")
+				assert.False(t, ok)
+				ok = s.Exists("device:device-uid-3:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:300:uid")
+				assert.False(t, ok)
+			},
+		},
+		{
+			name: "Happy Path - duplicate UID and ID pair (deduplication)",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("device-uid-1"),
+				param.WithIDs(100),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok)
+				ok = s.Exists("device:id:100:uid")
+				assert.False(t, ok)
+			},
+		},
+		{
+			name: "Happy Path - invalidate UID when reverse mapping doesn't exist",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("device-uid-1"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				// Reverse mapping doesn't exist
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				ok := s.Exists("device:device-uid-1:id")
+				assert.False(t, ok, "forward mapping should be deleted")
+			},
+		},
+		{
+			name: "Happy Path - invalidate ID when forward mapping doesn't exist",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithIDs(100),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:id:100:uid", "device-uid-1")
+				// Forward mapping doesn't exist
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.False(t, s.Exists("device:id:100:uid"), "reverse mapping should be deleted")
+			},
+		},
+		{
+			name: "Happy Path - empty options (no-op)",
+			prefix: "device",
+			opts: []param.InvalidateOpt{},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("device:device-uid-1:id", "100")
+				s.Set("device:id:100:uid", "device-uid-1")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				// Keys should still exist
+				assert.True(t, s.Exists("device:device-uid-1:id"))
+				val, err := s.Get("device:device-uid-1:id")
+				assert.NoError(t, err)
+				assert.Equal(t, "100", val)
+			},
+		},
+		{
+			name: "Happy Path - invalidate non-existent keys (no-op)",
+			prefix: "device",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("non-existent-uid"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				// No keys set up
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				// Nothing to verify, should not error
+			},
+		},
+		{
+			name: "Happy Path - invalidate with different prefix",
+			prefix: "user",
+			opts: []param.InvalidateOpt{
+				param.WithUIDs("user-uid-1"),
+			},
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:user-uid-1:id", "100")
+				s.Set("user:id:100:uid", "user-uid-1")
+				// These should NOT be deleted
+				s.Set("device:device-uid-1:id", "200")
+			},
+			wantErr: false,
+			verify: func(s *miniredis.Miniredis) {
+				assert.False(t, s.Exists("user:user-uid-1:id"))
+				assert.False(t, s.Exists("user:id:100:uid"))
+				// Different prefix should remain
+				assert.True(t, s.Exists("device:device-uid-1:id"))
+				val, err := s.Get("device:device-uid-1:id")
+				assert.NoError(t, err)
+				assert.Equal(t, "200", val)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			// Setup cache
+			if tt.setup != nil {
+				tt.setup(s)
+			}
+
+			ctx := context.Background()
+
+			// Execute
+			err := invalidate(
+				ctx,
+				redisClient,
+				tt.prefix,
+				tt.opts...,
+			)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+
+			// Verify state
+			if tt.verify != nil {
+				tt.verify(s)
+			}
 		})
 	}
 }

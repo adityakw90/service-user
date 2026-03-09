@@ -3,14 +3,12 @@ package handler
 import (
 	"context"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	common "github.com/adityakw90/service-user-proto/gen/go/common"
 	user "github.com/adityakw90/service-user-proto/gen/go/user"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/request"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
+	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	portsvc "github.com/adityakw90/service-user/internal/core/port/service"
@@ -24,10 +22,10 @@ type UserHandler struct {
 }
 
 // NewUserHandler creates a new UserHandler.
-func NewUserHandler(service portsvc.UserService) *UserHandler {
+func NewUserHandler(service portsvc.UserService, v *validator.Validator) *UserHandler {
 	return &UserHandler{
 		service:   service,
-		validator: validator.New(),
+		validator: v,
 	}
 }
 
@@ -35,12 +33,12 @@ func NewUserHandler(service portsvc.UserService) *UserHandler {
 func (h *UserHandler) Get(ctx context.Context, req *user.GetRequest) (*user.User, error) {
 	r := request.UserGetRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	u, err := h.service.Get(ctx, req.Uid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoUser(u), nil
@@ -50,14 +48,14 @@ func (h *UserHandler) Get(ctx context.Context, req *user.GetRequest) (*user.User
 func (h *UserHandler) List(ctx context.Context, req *user.ListRequest) (*user.ListResponse, error) {
 	r := request.UserListRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	p := r.ToUserListParams()
 
 	result, err := h.service.List(ctx, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*user.User, len(result.Items))
@@ -80,7 +78,7 @@ func (h *UserHandler) List(ctx context.Context, req *user.ListRequest) (*user.Li
 func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddResponse, error) {
 	r := request.UserAddRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	u, err := h.service.Create(ctx, &param.UserCreateParam{
@@ -89,7 +87,7 @@ func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddR
 		Password: req.Password,
 	})
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &user.AddResponse{Uid: u.UID}, nil
@@ -99,7 +97,7 @@ func (h *UserHandler) Add(ctx context.Context, req *user.AddRequest) (*user.AddR
 func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*common.Success, error) {
 	r := request.UserUpdateRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	param := &param.UserUpdateParam{}
@@ -118,7 +116,7 @@ func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*com
 	}
 
 	if err := h.service.Update(ctx, req.Uid, param); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -128,11 +126,11 @@ func (h *UserHandler) Update(ctx context.Context, req *user.UpdateRequest) (*com
 func (h *UserHandler) Delete(ctx context.Context, req *user.DeleteRequest) (*common.Success, error) {
 	r := request.UserDeleteRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	if err := h.service.Delete(ctx, req.Uid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -142,12 +140,12 @@ func (h *UserHandler) Delete(ctx context.Context, req *user.DeleteRequest) (*com
 func (h *UserHandler) GetProfile(ctx context.Context, req *user.GetProfileRequest) (*user.Profile, error) {
 	r := request.UserGetProfileRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	p, err := h.service.GetProfile(ctx, req.UserUid)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return response.ToProtoProfile(p), nil
@@ -157,7 +155,7 @@ func (h *UserHandler) GetProfile(ctx context.Context, req *user.GetProfileReques
 func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfileRequest) (*common.Success, error) {
 	r := request.UserUpdateProfileRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	opts := param.UserProfileUpdateParam{}
@@ -175,7 +173,7 @@ func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfile
 	}
 
 	if err := h.service.UpdateProfile(ctx, req.UserUid, opts); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -185,11 +183,11 @@ func (h *UserHandler) UpdateProfile(ctx context.Context, req *user.UpdateProfile
 func (h *UserHandler) UpdatePin(ctx context.Context, req *user.UpdatePinRequest) (*common.Success, error) {
 	r := request.UserUpdatePinRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	if err := h.service.SetPin(ctx, req.UserUid, req.Pin); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -199,14 +197,14 @@ func (h *UserHandler) UpdatePin(ctx context.Context, req *user.UpdatePinRequest)
 func (h *UserHandler) ListDevice(ctx context.Context, req *user.ListDevicesRequest) (*user.ListDevicesResponse, error) {
 	r := request.UserListDevicesRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	p := r.ToUserDeviceListParam()
 
 	result, err := h.service.ListDevice(ctx, r.UserUid, p.Pagination, p.Filter)
 	if err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	items := make([]*user.Device, len(result.Items))
@@ -229,11 +227,11 @@ func (h *UserHandler) ListDevice(ctx context.Context, req *user.ListDevicesReque
 func (h *UserHandler) RevokeDevice(ctx context.Context, req *user.RevokeDeviceRequest) (*common.Success, error) {
 	r := request.UserRevokeDeviceRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	if err := h.service.RevokeDevice(ctx, req.UserUid, req.DeviceUid); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil
@@ -243,18 +241,22 @@ func (h *UserHandler) RevokeDevice(ctx context.Context, req *user.RevokeDeviceRe
 func (h *UserHandler) ChangePassword(ctx context.Context, req *user.ChangePasswordRequest) (*common.Success, error) {
 	r := request.UserChangePasswordRequestFromPb(req)
 	if err := h.validator.Struct(r); err != nil {
-		return nil, status.Error(codes.InvalidArgument, validator.ValidationErrors(err))
+		return nil, err
 	}
 
 	if req.NewPassword != req.ConfirmPassword {
-		return nil, status.Error(codes.InvalidArgument, "new password and confirm password do not match")
+		return nil, domainerrors.NewCustomError(
+			domainerrors.ErrValidation.Code,
+			"new password and confirm password do not match",
+			nil,
+		)
 	}
 
 	if err := h.service.ChangePassword(ctx, req.Uid, &param.UserChangePasswordParam{
 		CurrentPassword: req.CurrentPassword,
 		NewPassword:     req.NewPassword,
 	}); err != nil {
-		return nil, response.MapError(err)
+		return nil, err
 	}
 
 	return &common.Success{Success: true}, nil

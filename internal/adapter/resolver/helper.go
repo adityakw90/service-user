@@ -2,10 +2,12 @@ package resolver
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
 	monitoring "github.com/adityakw90/go-monitoring"
+	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -120,4 +122,92 @@ func mapperID[T any, KS comparable, KT comparable](
 	}
 
 	return results, nil
+}
+
+// helper for invalidate cache
+// Uses Redis pipeline for efficient batch operations.
+func invalidate(
+	ctx context.Context,
+	redisClient *redis.Client,
+	redisPrefix string,
+	opts ...param.InvalidateOpt,
+) error {
+	// Parse options
+	options := &param.InvalidateOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	if len(options.UIDs) == 0 && len(options.IDs) == 0 {
+		return nil
+	}
+
+	// Use a map to avoid duplicate keys (e.g., if both UID and ID are passed)
+	keysToDelete := make(map[string]struct{}, (len(options.UIDs)+len(options.IDs))*2)
+
+	// Pipeline to batch all GET operations
+	pipe := redisClient.Pipeline()
+
+	// Queue GET commands for UIDs to find their corresponding IDs
+	uidGetCmds := make([]*redis.StringCmd, len(options.UIDs))
+	for i, uid := range options.UIDs {
+		uidKey := redisPrefix + ":" + uid + ":id"
+		uidGetCmds[i] = pipe.Get(ctx, uidKey)
+	}
+
+	// Queue GET commands for IDs to find their corresponding UIDs
+	idGetCmds := make([]*redis.StringCmd, len(options.IDs))
+	for i, id := range options.IDs {
+		idStr := strconv.FormatInt(id, 10)
+		idKey := redisPrefix + ":id:" + idStr + ":uid"
+		idGetCmds[i] = pipe.Get(ctx, idKey)
+	}
+
+	// Execute the pipeline
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		// Log error but continue - some keys might still be cached
+		// We'll delete the keys we know about (forward/reverse mappings)
+	}
+
+	// Process UID results - add forward mapping and lookup reverse mapping
+	for i, uid := range options.UIDs {
+		uidKey := redisPrefix + ":" + uid + ":id"
+		keysToDelete[uidKey] = struct{}{}
+
+		// Try to get the ID from cache to build the reverse key
+		idStr, err := uidGetCmds[i].Result()
+		if err == nil && idStr != "" {
+			// ID exists in cache, also delete the reverse mapping key
+			idKey := redisPrefix + ":id:" + idStr + ":uid"
+			keysToDelete[idKey] = struct{}{}
+		}
+	}
+
+	// Process ID results - add reverse mapping and lookup forward mapping
+	for i, id := range options.IDs {
+		idStr := strconv.FormatInt(id, 10)
+		idKey := redisPrefix + ":id:" + idStr + ":uid"
+		keysToDelete[idKey] = struct{}{}
+
+		// Try to get the UID from cache to build the forward key
+		uidStr, err := idGetCmds[i].Result()
+		if err == nil && uidStr != "" {
+			// UID exists in cache, also delete the forward mapping key
+			uidKey := redisPrefix + ":" + uidStr + ":id"
+			keysToDelete[uidKey] = struct{}{}
+		}
+	}
+
+	if len(keysToDelete) == 0 {
+		return nil
+	}
+
+	// Convert map to slice for DEL command
+	keys := make([]string, 0, len(keysToDelete))
+	for key := range keysToDelete {
+		keys = append(keys, key)
+	}
+
+	return redisClient.Del(ctx, keys...).Err()
 }

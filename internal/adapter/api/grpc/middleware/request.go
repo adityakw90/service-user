@@ -247,17 +247,24 @@ func StreamRequestInterceptor(
 
 		// Log the end of the stream
 		if err != nil {
-			code := status.Code(err).String()
+			grpcErr := response.MakeErrorResponse(err)
+			code := status.Code(grpcErr).String()
+
 			span.AddEvent("gRPC Request Failed", trace.WithAttributes(
 				attribute.String("method", info.FullMethod),
 				attribute.String("code", code),
 				attribute.String("error", err.Error()),
+				attribute.String("response.code", code),
+				attribute.String("response.message", grpcErr.Error()),
 			))
 			logger.Info("gRPC Request Failed", map[string]interface{}{
-				"rpc.service":   info.FullMethod,
-				"error.code":    code,
-				"error.message": err.Error(),
+				"rpc.service":      info.FullMethod,
+				"error.code":       code,
+				"error.message":    err.Error(),
+				"response.code":    code,
+				"response.message": grpcErr.Error(),
 			})
+			return grpcErr
 		} else {
 			span.AddEvent("gRPC Request Success", trace.WithAttributes(
 				attribute.String("method", info.FullMethod),
