@@ -35,6 +35,10 @@ func toProtoTimestampPBPtr(t *time.Time) *timestamppb.Timestamp {
 
 // ToProtoUserList converts domain Users to proto ListResponse.
 func ToProtoUserList(users *model.Users, meta *model.Meta) *user.ListResponse {
+	if users == nil {
+		return &user.ListResponse{Meta: ToProtoMeta(meta)}
+	}
+
 	items := make([]*user.User, len(users.Items))
 	for i, u := range users.Items {
 		items[i] = ToProtoUser(&u)

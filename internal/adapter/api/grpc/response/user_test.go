@@ -65,6 +65,27 @@ func TestToProtoUser(t *testing.T) {
 				DeletedAt: timestamppb.New(now),
 			},
 		},
+		{
+			name: "User with deleted timestamp",
+			input: &model.User{
+				UID:       uid.String(),
+				Username:  "deleteduser",
+				Email:     "deleted@example.com",
+				Status:    model.UserStatusActive,
+				CreatedAt: now,
+				UpdatedAt: now,
+				DeletedAt: &now,
+			},
+			want: &userproto.User{
+				Uid:       "00000000-0000-0000-0000-000000000001",
+				Username:  "deleteduser",
+				Email:     "deleted@example.com",
+				Status:    int32(model.UserStatusActive),
+				CreatedAt: timestamppb.New(now),
+				UpdatedAt: timestamppb.New(now),
+				DeletedAt: timestamppb.New(now),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -90,6 +111,15 @@ func TestToProtoUser(t *testing.T) {
 			if got.Status != tt.want.Status {
 				t.Errorf("ToProtoUser().Status = %v, want %v", got.Status, tt.want.Status)
 			}
+			if got.CreatedAt == nil {
+				t.Errorf("ToProtoUser().CreatedAt = nil, want non-nil")
+			}
+			if got.UpdatedAt == nil {
+				t.Errorf("ToProtoUser().UpdatedAt = nil, want non-nil")
+			}
+			if tt.input.DeletedAt != nil && got.DeletedAt == nil {
+				t.Errorf("ToProtoUser().DeletedAt = nil, want non-nil")
+			}
 		})
 	}
 }
@@ -104,6 +134,13 @@ func TestToProtoUserList(t *testing.T) {
 		wantLen  int
 		wantPage int32
 	}{
+		{
+			name:     "Nil users parameter",
+			users:    nil,
+			meta:     &model.Meta{Page: 1, Limit: 10, Total: 0, Pages: 0},
+			wantLen:  0,
+			wantPage: 1,
+		},
 		{
 			name: "Empty list",
 			users: &model.Users{
