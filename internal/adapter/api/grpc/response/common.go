@@ -11,6 +11,8 @@ import (
 )
 
 // ToProtoMeta converts domain meta to proto meta.
+// Note: Page, Limit, and Pages are expected to be within int32 range for pagination.
+// Values exceeding int32 max will overflow, which should be validated at the service layer.
 func ToProtoMeta(m *model.Meta) *common.Meta {
 	if m == nil {
 		return nil
@@ -21,11 +23,6 @@ func ToProtoMeta(m *model.Meta) *common.Meta {
 		Total: m.Total,
 		Pages: int32(m.Pages),
 	}
-}
-
-// toProtoTimestamp converts time.Time to protobuf timestamp.
-func toProtoTimestamp(t time.Time) *time.Time {
-	return &t
 }
 
 // toProtoTimestampPB converts time.Time to protobuf timestamp.
@@ -40,10 +37,15 @@ func toProtoTimestampPB(t time.Time) *timestamppb.Timestamp {
 }
 
 // ToStruct converts map[string]any to protobuf Struct.
+// Returns nil if the input map is nil or if conversion fails (e.g., contains invalid data types).
 func ToStruct(m map[string]any) *structpb.Struct {
 	if m == nil {
 		return nil
 	}
-	s, _ := structpb.NewStruct(m)
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		// Return nil if conversion fails - map contains invalid data
+		return nil
+	}
 	return s
 }
