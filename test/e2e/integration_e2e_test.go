@@ -92,10 +92,10 @@ func TestFullUserLifecycle(t *testing.T) {
 	_, err = grpcClient.UserClient.Delete(ctx, &usergrpc.DeleteRequest{Uid: userUID})
 	require.NoError(t, err)
 
-	// Phase 6: Verify user is deleted
+	// Phase 6: Verify deleted user cannot be retrieved (filtered by deleted_at IS NULL)
 	_, err = grpcClient.UserClient.Get(ctx, &usergrpc.GetRequest{Uid: userUID})
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "user has been deleted")
+	require.Contains(t, err.Error(), "user not found")
 
 	// Phase 7: Verify login fails after deletion
 	_, err = grpcClient.AuthClient.Auth(ctx, authReq)
