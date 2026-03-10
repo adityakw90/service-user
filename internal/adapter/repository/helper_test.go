@@ -1,9 +1,13 @@
 package repository
 
 import (
+	stderrors "errors"
 	"testing"
 
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -213,6 +217,79 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByUserFile)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestHandlePgError(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   error
+		wantErr error
+	}{
+		{
+			name: "email unique constraint violation",
+			input: &pgconn.PgError{
+				Code:           "23505",
+				ConstraintName: "idx_user_email_active",
+			},
+			wantErr: errors.ErrDuplicateEmail,
+		},
+		{
+			name: "username unique constraint violation",
+			input: &pgconn.PgError{
+				Code:           "23505",
+				ConstraintName: "idx_user_username_active",
+			},
+			wantErr: errors.ErrDuplicateUsername,
+		},
+		{
+			name: "unknown unique constraint",
+			input: &pgconn.PgError{
+				Code:           "23505",
+				ConstraintName: "unknown_constraint",
+			},
+			wantErr: errors.ErrResourceConflict,
+		},
+		{
+			name:    "non-pg error",
+			input:   stderrors.New("some other error"),
+			wantErr: nil,
+		},
+		{
+			name:    "nil error",
+			input:   nil,
+			wantErr: nil,
+		},
+		{
+			name:    "pgx no rows error",
+			input:   pgx.ErrNoRows,
+			wantErr: errors.ErrUserNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr := HandlePgError(tt.input)
+			if tt.wantErr == nil {
+				if gotErr != nil {
+					t.Errorf("HandlePgError() = %v, want nil", gotErr)
+				}
+				return
+			}
+			if gotErr == nil {
+				t.Errorf("HandlePgError() = nil, want %v", tt.wantErr)
+				return
+			}
+			var gotCustomErr *errors.CustomError
+			var wantCustomErr *errors.CustomError
+			if !stderrors.As(gotErr, &gotCustomErr) || !stderrors.As(tt.wantErr, &wantCustomErr) {
+				t.Errorf("HandlePgError() error type mismatch")
+				return
+			}
+			if gotCustomErr.Code != wantCustomErr.Code {
+				t.Errorf("HandlePgError() code = %d, want %d", gotCustomErr.Code, wantCustomErr.Code)
+			}
 		})
 	}
 }
