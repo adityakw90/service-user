@@ -35,12 +35,14 @@ func NewUserRepository(db PostgrePool) repository.UserRepository {
 }
 
 // Create adds a new user to the database.
+// Database handles created_at and updated_at via DEFAULT NOW().
+// TODO: Add DB trigger to auto-update updated_at on UPDATE, then remove app-level UpdatedAt
 func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
-	query := `INSERT INTO "user" (uid, username, email, password, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	query := `INSERT INTO "user" (uid, username, email, password, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`
 	err := r.db.QueryRow(ctx, query,
 		user.UID, user.Username, user.Email, user.Password,
-		user.Status, user.CreatedAt, user.UpdatedAt,
-	).Scan(&user.ID)
+		user.Status,
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		return nil, HandlePgError(err)

@@ -24,13 +24,11 @@ func TestUserRepository_Create(t *testing.T) {
 		{
 			name: "Create valid user",
 			user: &model.User{
-				UID:       "test-uid-001",
-				Username:  "testuser1",
-				Email:     "test1@example.com",
-				Password:  "hashedpassword",
-				Status:    model.UserStatusActive,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
+				UID:      "test-uid-001",
+				Username: "testuser1",
+				Email:    "test1@example.com",
+				Password: "hashedpassword",
+				Status:   model.UserStatusActive,
 			},
 			wantErr: false,
 		},
@@ -44,12 +42,14 @@ func TestUserRepository_Create(t *testing.T) {
 
 			repo := NewUserRepository(mockPool)
 
-			// Expect the INSERT query with RETURNING
-			rows := pgxmock.NewRows([]string{"id"}).
-				AddRow(int64(1))
+			// Expect the INSERT query with RETURNING id, created_at, updated_at
+			// Database handles timestamps via DEFAULT NOW()
+			dbTimestamp := time.Now()
+			rows := pgxmock.NewRows([]string{"id", "created_at", "updated_at"}).
+				AddRow(int64(1), dbTimestamp, dbTimestamp)
 
 			mockPool.ExpectQuery(`INSERT INTO "user"`).
-				WithArgs(tt.user.UID, tt.user.Username, tt.user.Email, tt.user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+				WithArgs(tt.user.UID, tt.user.Username, tt.user.Email, tt.user.Password, tt.user.Status).
 				WillReturnRows(rows)
 
 			created, err := repo.Create(context.Background(), tt.user)
@@ -65,6 +65,8 @@ func TestUserRepository_Create(t *testing.T) {
 			assert.Equal(t, tt.user.Username, created.Username)
 			assert.Equal(t, tt.user.Email, created.Email)
 			assert.NotZero(t, created.ID)
+			assert.False(t, created.CreatedAt.IsZero())
+			assert.False(t, created.UpdatedAt.IsZero())
 
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
@@ -559,7 +561,7 @@ func TestUserRepository_Create_DuplicateEmail(t *testing.T) {
 
 	// Mock duplicate email error
 	mock.ExpectQuery(`INSERT INTO "user"`).
-		WithArgs(user.UID, user.Username, user.Email, user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WithArgs(user.UID, user.Username, user.Email, user.Password, user.Status).
 		WillReturnError(&pgconn.PgError{
 			Code:           "23505",
 			ConstraintName: "idx_user_email_active",
@@ -601,7 +603,7 @@ func TestUserRepository_Create_DuplicateUsername(t *testing.T) {
 
 	// Mock duplicate username error
 	mock.ExpectQuery(`INSERT INTO "user"`).
-		WithArgs(user.UID, user.Username, user.Email, user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WithArgs(user.UID, user.Username, user.Email, user.Password, user.Status).
 		WillReturnError(&pgconn.PgError{
 			Code:           "23505",
 			ConstraintName: "idx_user_username_active",
