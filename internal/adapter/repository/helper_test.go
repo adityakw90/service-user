@@ -6,7 +6,6 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 )
@@ -260,11 +259,6 @@ func TestHandlePgError(t *testing.T) {
 			name:    "nil error",
 			input:   nil,
 			wantErr: nil,
-		},
-		{
-			name:    "pgx no rows error",
-			input:   pgx.ErrNoRows,
-			wantErr: errors.ErrUserNotFound,
 		},
 	}
 

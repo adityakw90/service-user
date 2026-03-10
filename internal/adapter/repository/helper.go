@@ -5,7 +5,6 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -22,19 +21,13 @@ func validateOrderBy[T any](
 	return defaultOrderBy
 }
 
-// HandlePgError converts PostgreSQL errors to domain errors.
+// HandlePgError converts PostgreSQL unique constraint errors to domain errors.
 // Returns nil if the error is not a recognized PostgreSQL error.
 func HandlePgError(err error) error {
 	if err == nil {
 		return nil
 	}
 
-	// Handle pgx.ErrNoRows
-	if stderrors.Is(err, pgx.ErrNoRows) {
-		return errors.ErrUserNotFound
-	}
-
-	// Handle PostgreSQL errors via pgconn.PgError
 	var pgErr *pgconn.PgError
 	if stderrors.As(err, &pgErr) {
 		switch pgErr.Code {
@@ -50,6 +43,5 @@ func HandlePgError(err error) error {
 		}
 	}
 
-	// Not a recognized PostgreSQL error, return as-is
 	return nil
 }
