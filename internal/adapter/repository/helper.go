@@ -1,15 +1,15 @@
 package repository
 
 import (
-	stderrors "errors"
+	"errors"
 
-	"github.com/adityakw90/service-user/internal/core/domain/errors"
-	"github.com/adityakw90/service-user/internal/core/domain/param"
+	domainErrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	domainParam "github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func validateOrderBy[T any](
-	pagination *param.PaginationParam,
+	pagination *domainParam.PaginationParam,
 	defaultOrderBy string,
 	allowedOrderBy map[string]T,
 ) string {
@@ -29,16 +29,16 @@ func HandlePgError(err error) error {
 	}
 
 	var pgErr *pgconn.PgError
-	if stderrors.As(err, &pgErr) {
+	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
 		case "23505": // unique_violation
 			switch pgErr.ConstraintName {
 			case "idx_user_email_active":
-				return errors.ErrDuplicateEmail
+				return domainErrors.ErrDuplicateEmail
 			case "idx_user_username_active":
-				return errors.ErrDuplicateUsername
+				return domainErrors.ErrDuplicateUsername
 			default:
-				return errors.ErrResourceConflict
+				return domainErrors.ErrResourceConflict
 			}
 		}
 	}
