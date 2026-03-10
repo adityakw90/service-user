@@ -43,11 +43,7 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.U
 	).Scan(&user.ID)
 
 	if err != nil {
-		// Convert PostgreSQL errors to domain errors
-		if domainErr := HandlePgError(err); domainErr != nil {
-			return nil, domainErr
-		}
-		return nil, err
+		return nil, HandlePgError(err)
 	}
 
 	return user, nil

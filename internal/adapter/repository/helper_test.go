@@ -251,9 +251,9 @@ func TestHandlePgError(t *testing.T) {
 			wantErr: domainErrors.ErrResourceConflict,
 		},
 		{
-			name:    "non-pg error",
+			name:    "non-pg error returns original error",
 			input:   errors.New("some other error"),
-			wantErr: nil,
+			wantErr: errors.New("some other error"),
 		},
 		{
 			name:    "nil error",
@@ -275,14 +275,20 @@ func TestHandlePgError(t *testing.T) {
 				t.Errorf("HandlePgError() = nil, want %v", tt.wantErr)
 				return
 			}
+
+			// For domain errors, check the error code
 			var gotCustomErr *domainErrors.CustomError
 			var wantCustomErr *domainErrors.CustomError
-			if !errors.As(gotErr, &gotCustomErr) || !errors.As(tt.wantErr, &wantCustomErr) {
-				t.Errorf("HandlePgError() error type mismatch")
+			if errors.As(gotErr, &gotCustomErr) && errors.As(tt.wantErr, &wantCustomErr) {
+				if gotCustomErr.Code != wantCustomErr.Code {
+					t.Errorf("HandlePgError() code = %d, want %d", gotCustomErr.Code, wantCustomErr.Code)
+				}
 				return
 			}
-			if gotCustomErr.Code != wantCustomErr.Code {
-				t.Errorf("HandlePgError() code = %d, want %d", gotCustomErr.Code, wantCustomErr.Code)
+
+			// For non-domain errors, check by error message
+			if gotErr.Error() != tt.wantErr.Error() {
+				t.Errorf("HandlePgError() = %v, want %v", gotErr, tt.wantErr)
 			}
 		})
 	}

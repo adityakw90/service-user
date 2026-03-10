@@ -21,8 +21,8 @@ func validateOrderBy[T any](
 	return defaultOrderBy
 }
 
-// HandlePgError converts PostgreSQL unique constraint errors to domain errors.
-// Returns nil if the error is not a recognized PostgreSQL error.
+// HandlePgError converts PostgreSQL unique constraint violations to domain errors.
+// Returns the original error if it's not a recognized unique violation.
 func HandlePgError(err error) error {
 	if err == nil {
 		return nil
@@ -43,5 +43,5 @@ func HandlePgError(err error) error {
 		}
 	}
 
-	return nil
+	return err
 }
