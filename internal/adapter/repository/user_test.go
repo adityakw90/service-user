@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -487,5 +489,89 @@ func TestUserRepository_List(t *testing.T) {
 
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
+	}
+}
+
+func TestUserRepository_Create_DuplicateEmail(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mock.Close()
+
+	repo := NewUserRepository(mock)
+
+	user := &model.User{
+		UID:      "test-uid",
+		Username: "testuser",
+		Email:    "test@example.com",
+		Password: "hashedpassword",
+		Status:   1,
+	}
+
+	// Mock duplicate email error
+	mock.ExpectQuery(`INSERT INTO "user"`).
+		WithArgs(user.UID, user.Username, user.Email, user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnError(&pgconn.PgError{
+			Code:           "23505",
+			ConstraintName: "idx_user_email_active",
+		})
+
+	_, err = repo.Create(context.Background(), user)
+	if err == nil {
+		t.Error("Expected error for duplicate email, got nil")
+		return
+	}
+
+	customErr, ok := err.(*errors.CustomError)
+	if !ok {
+		t.Errorf("Expected CustomError, got %T", err)
+		return
+	}
+
+	if customErr.Code != errors.ErrDuplicateEmail.Code {
+		t.Errorf("Expected code %d, got %d", errors.ErrDuplicateEmail.Code, customErr.Code)
+	}
+}
+
+func TestUserRepository_Create_DuplicateUsername(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mock.Close()
+
+	repo := NewUserRepository(mock)
+
+	user := &model.User{
+		UID:      "test-uid",
+		Username: "testuser",
+		Email:    "test@example.com",
+		Password: "hashedpassword",
+		Status:   1,
+	}
+
+	// Mock duplicate username error
+	mock.ExpectQuery(`INSERT INTO "user"`).
+		WithArgs(user.UID, user.Username, user.Email, user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+		WillReturnError(&pgconn.PgError{
+			Code:           "23505",
+			ConstraintName: "idx_user_username_active",
+		})
+
+	_, err = repo.Create(context.Background(), user)
+	if err == nil {
+		t.Error("Expected error for duplicate username, got nil")
+		return
+	}
+
+	customErr, ok := err.(*errors.CustomError)
+	if !ok {
+		t.Errorf("Expected CustomError, got %T", err)
+		return
+	}
+
+	if customErr.Code != errors.ErrDuplicateUsername.Code {
+		t.Errorf("Expected code %d, got %d", errors.ErrDuplicateUsername.Code, customErr.Code)
 	}
 }
