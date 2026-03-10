@@ -42,12 +42,15 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.U
 		user.Status, user.CreatedAt, user.UpdatedAt,
 	).Scan(&user.ID)
 
-	// Convert PostgreSQL errors to domain errors
-	if domainErr := HandlePgError(err); domainErr != nil {
-		return nil, domainErr
+	if err != nil {
+		// Convert PostgreSQL errors to domain errors
+		if domainErr := HandlePgError(err); domainErr != nil {
+			return nil, domainErr
+		}
+		return nil, err
 	}
 
-	return user, err
+	return user, nil
 }
 
 // GetByID retrieves a user by internal ID.
