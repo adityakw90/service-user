@@ -78,6 +78,8 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*m
 }
 
 // GetByPhone retrieves a user by phone.
+// the phone currently not implemented now
+// TODO : update to support phone
 func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (*model.User, error) {
 	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE phone = $1 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRow(ctx, query, phone))
