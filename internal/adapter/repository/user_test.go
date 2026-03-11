@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,13 +24,11 @@ func TestUserRepository_Create(t *testing.T) {
 		{
 			name: "Create valid user",
 			user: &model.User{
-				UID:       "test-uid-001",
-				Username:  "testuser1",
-				Email:     "test1@example.com",
-				Password:  "hashedpassword",
-				Status:    model.UserStatusActive,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
+				UID:      "test-uid-001",
+				Username: "testuser1",
+				Email:    "test1@example.com",
+				Password: "hashedpassword",
+				Status:   model.UserStatusActive,
 			},
 			wantErr: false,
 		},
@@ -42,12 +42,14 @@ func TestUserRepository_Create(t *testing.T) {
 
 			repo := NewUserRepository(mockPool)
 
-			// Expect the INSERT query with RETURNING
-			rows := pgxmock.NewRows([]string{"id"}).
-				AddRow(int64(1))
+			// Expect the INSERT query with RETURNING id, created_at, updated_at
+			// Database handles timestamps via DEFAULT NOW()
+			dbTimestamp := time.Now()
+			rows := pgxmock.NewRows([]string{"id", "created_at", "updated_at"}).
+				AddRow(int64(1), dbTimestamp, dbTimestamp)
 
 			mockPool.ExpectQuery(`INSERT INTO "user"`).
-				WithArgs(tt.user.UID, tt.user.Username, tt.user.Email, tt.user.Password, pgxmock.AnyArg(), pgxmock.AnyArg(), pgxmock.AnyArg()).
+				WithArgs(tt.user.UID, tt.user.Username, tt.user.Email, tt.user.Password, tt.user.Status).
 				WillReturnRows(rows)
 
 			created, err := repo.Create(context.Background(), tt.user)
@@ -63,6 +65,8 @@ func TestUserRepository_Create(t *testing.T) {
 			assert.Equal(t, tt.user.Username, created.Username)
 			assert.Equal(t, tt.user.Email, created.Email)
 			assert.NotZero(t, created.ID)
+			assert.False(t, created.CreatedAt.IsZero())
+			assert.False(t, created.UpdatedAt.IsZero())
 
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
@@ -78,12 +82,12 @@ func TestUserRepository_GetByID(t *testing.T) {
 		wantUID   string
 	}{
 		{
-			name: "Get existing user by ID",
+			name: "Get existing active user by ID",
 			id:   1,
 			setupMock: func(mock pgxmock.PgxPoolIface, id int64) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(id), "test-uid", "testuser", "test@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1 AND deleted_at IS NULL`).
 					WithArgs(id).
 					WillReturnRows(rows)
 			},
@@ -96,7 +100,18 @@ func TestUserRepository_GetByID(t *testing.T) {
 			wantErr: true,
 			setupMock: func(mock pgxmock.PgxPoolIface, id int64) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1 AND deleted_at IS NULL`).
+					WithArgs(id).
+					WillReturnRows(rows)
+			},
+		},
+		{
+			name:    "ID exists but user is soft-deleted - should not find",
+			id:      1,
+			wantErr: true,
+			setupMock: func(mock pgxmock.PgxPoolIface, id int64) {
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE id = \$1 AND deleted_at IS NULL`).
 					WithArgs(id).
 					WillReturnRows(rows)
 			},
@@ -139,12 +154,12 @@ func TestUserRepository_GetByUID(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name: "Get existing user by UID",
+			name: "Get existing active user by UID",
 			uid:  "test-uid-123",
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(1), uid, "testuser", "test@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1 AND deleted_at IS NULL`).
 					WithArgs(uid).
 					WillReturnRows(rows)
 			},
@@ -155,7 +170,18 @@ func TestUserRepository_GetByUID(t *testing.T) {
 			uid:  "non-existent-uid",
 			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1 AND deleted_at IS NULL`).
+					WithArgs(uid).
+					WillReturnRows(rows)
+			},
+			wantErr: true,
+		},
+		{
+			name: "UID exists but user is soft-deleted - should not find",
+			uid:  "deleted-uid-123",
+			setupMock: func(mock pgxmock.PgxPoolIface, uid string) {
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE uid = \$1 AND deleted_at IS NULL`).
 					WithArgs(uid).
 					WillReturnRows(rows)
 			},
@@ -199,12 +225,12 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:  "Get existing user by email",
+			name:  "Get existing active user by email",
 			email: "test@example.com",
 			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(1), "test-uid", "testuser", email, "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1 AND deleted_at IS NULL`).
 					WithArgs(email).
 					WillReturnRows(rows)
 			},
@@ -215,7 +241,20 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			email: "nobody@example.com",
 			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1 AND deleted_at IS NULL`).
+					WithArgs(email).
+					WillReturnRows(rows)
+			},
+			wantErr: true,
+		},
+		{
+			name:  "Email exists but user is soft-deleted - should not find",
+			email: "deleted@example.com",
+			setupMock: func(mock pgxmock.PgxPoolIface, email string) {
+				// Simulate that the only user with this email is soft-deleted
+				// The query filters by deleted_at IS NULL, so no rows returned
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE email = \$1 AND deleted_at IS NULL`).
 					WithArgs(email).
 					WillReturnRows(rows)
 			},
@@ -259,12 +298,12 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 		wantErr   bool
 	}{
 		{
-			name:     "Get existing user by username",
+			name:     "Get existing active user by username",
 			username: "testuser",
 			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
 					AddRow(int64(1), "test-uid", username, "test@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
 					WithArgs(username).
 					WillReturnRows(rows)
 			},
@@ -275,7 +314,20 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 			username: "nobody",
 			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
 				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
-				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1`).
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
+					WithArgs(username).
+					WillReturnRows(rows)
+			},
+			wantErr: true,
+		},
+		{
+			name:     "Username exists but user is soft-deleted - should not find",
+			username: "deleteduser",
+			setupMock: func(mock pgxmock.PgxPoolIface, username string) {
+				// Simulate that the only user with this username is soft-deleted
+				// The query filters by deleted_at IS NULL, so no rows returned
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"})
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE username = \$1 AND deleted_at IS NULL`).
 					WithArgs(username).
 					WillReturnRows(rows)
 			},
@@ -487,5 +539,89 @@ func TestUserRepository_List(t *testing.T) {
 
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
+	}
+}
+
+func TestUserRepository_Create_DuplicateEmail(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mock.Close()
+
+	repo := NewUserRepository(mock)
+
+	user := &model.User{
+		UID:      "test-uid",
+		Username: "testuser",
+		Email:    "test@example.com",
+		Password: "hashedpassword",
+		Status:   1,
+	}
+
+	// Mock duplicate email error
+	mock.ExpectQuery(`INSERT INTO "user"`).
+		WithArgs(user.UID, user.Username, user.Email, user.Password, user.Status).
+		WillReturnError(&pgconn.PgError{
+			Code:           "23505",
+			ConstraintName: "idx_user_email_active",
+		})
+
+	_, err = repo.Create(context.Background(), user)
+	if err == nil {
+		t.Error("Expected error for duplicate email, got nil")
+		return
+	}
+
+	customErr, ok := err.(*errors.CustomError)
+	if !ok {
+		t.Errorf("Expected CustomError, got %T", err)
+		return
+	}
+
+	if customErr.Code != errors.ErrDuplicateEmail.Code {
+		t.Errorf("Expected code %d, got %d", errors.ErrDuplicateEmail.Code, customErr.Code)
+	}
+}
+
+func TestUserRepository_Create_DuplicateUsername(t *testing.T) {
+	mock, err := pgxmock.NewPool()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mock.Close()
+
+	repo := NewUserRepository(mock)
+
+	user := &model.User{
+		UID:      "test-uid",
+		Username: "testuser",
+		Email:    "test@example.com",
+		Password: "hashedpassword",
+		Status:   1,
+	}
+
+	// Mock duplicate username error
+	mock.ExpectQuery(`INSERT INTO "user"`).
+		WithArgs(user.UID, user.Username, user.Email, user.Password, user.Status).
+		WillReturnError(&pgconn.PgError{
+			Code:           "23505",
+			ConstraintName: "idx_user_username_active",
+		})
+
+	_, err = repo.Create(context.Background(), user)
+	if err == nil {
+		t.Error("Expected error for duplicate username, got nil")
+		return
+	}
+
+	customErr, ok := err.(*errors.CustomError)
+	if !ok {
+		t.Errorf("Expected CustomError, got %T", err)
+		return
+	}
+
+	if customErr.Code != errors.ErrDuplicateUsername.Code {
+		t.Errorf("Expected code %d, got %d", errors.ErrDuplicateUsername.Code, customErr.Code)
 	}
 }

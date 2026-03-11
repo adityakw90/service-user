@@ -36,45 +36,54 @@ func NewUserRepository(db PostgrePool) repository.UserRepository {
 
 // Create adds a new user to the database.
 func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.User, error) {
-	query := `INSERT INTO "user" (uid, username, email, password, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`
+	query := `INSERT INTO "user" (uid, username, email, password, status) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`
 	err := r.db.QueryRow(ctx, query,
 		user.UID, user.Username, user.Email, user.Password,
-		user.Status, user.CreatedAt, user.UpdatedAt,
-	).Scan(&user.ID)
-	return user, err
+		user.Status,
+	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		return nil, HandlePgError(err)
+	}
+
+	return user, nil
 }
 
 // GetByID retrieves a user by internal ID.
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE id = $1`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE id = $1 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRow(ctx, query, id))
 }
 
 // GetByUID retrieves a user by public UID.
 func (r *UserRepository) GetByUID(ctx context.Context, uid string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE uid = $1`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE uid = $1 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRow(ctx, query, uid))
 }
 
 // GetByEmail retrieves a user by email.
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE email = $1`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE email = $1 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRow(ctx, query, email))
 }
 
 // GetByUsername retrieves a user by username.
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE username = $1`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE username = $1 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRow(ctx, query, username))
 }
 
 // GetByPhone retrieves a user by phone.
+// the phone currently not implemented now
+// TODO : update to support phone
 func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (*model.User, error) {
-	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE phone = $1`
+	query := `SELECT id, uid, username, email, password, status, created_at, updated_at, deleted_at FROM "user" WHERE phone = $1 AND deleted_at IS NULL`
 	return r.scanUser(r.db.QueryRow(ctx, query, phone))
 }
 
 // Update modifies an existing user.
+// Database handles updated_at via DEFAULT NOW().
+// TODO: Add DB trigger to auto-update updated_at on UPDATE, then remove app-level UpdatedAt
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	query := `UPDATE "user" SET username = $1, email = $2, password = $3, status = $4, updated_at = $5 WHERE id = $6`
 	_, err := r.db.Exec(ctx, query,

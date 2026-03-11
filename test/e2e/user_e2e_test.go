@@ -44,7 +44,7 @@ func TestUserGet(t *testing.T) {
 				return uid
 			},
 			wantErr: true,
-			errMsg:  "user has been deleted",
+			errMsg:  "user not found",
 		},
 	}
 
