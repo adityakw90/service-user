@@ -32,7 +32,22 @@ var (
 	BuildTime = "unknown"
 )
 
+// handleVersionFlag checks if --version flag is set and prints version info.
+// This must be called before config.Load() to handle version early.
+// Note: os.Exit(0) will skip any defer statements in main().
+func handleVersionFlag() {
+	for _, arg := range os.Args {
+		if arg == "--version=true" || arg == "--version" {
+			fmt.Printf("service-user %s (build: %s)\n", Version, BuildTime)
+			os.Exit(0)
+		}
+	}
+}
+
 func main() {
+	// Handle --version flag early (before loading config)
+	handleVersionFlag()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
