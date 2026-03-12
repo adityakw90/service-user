@@ -61,8 +61,10 @@ func Load() (*Config, error) {
 	} else {
 		vConfig.SetConfigName("config")
 		vConfig.SetConfigType("yaml")
-		vConfig.AddConfigPath("/etc/service-user") // System location
-		vConfig.AddConfigPath(".")                 // Current directory
+		// NOTE: Viper searches paths in REVERSE order of addition.
+		// To search /etc/service-user first, we add it LAST.
+		vConfig.AddConfigPath(".")                 // Current directory (fallback)
+		vConfig.AddConfigPath("/etc/service-user") // System location (primary)
 	}
 
 	// default config
