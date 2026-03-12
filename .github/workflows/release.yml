@@ -134,7 +134,12 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "is_prerelease=${{ contains(VERSION, '-') }}" >> $GITHUB_OUTPUT
+          # Check if version contains '-' for prerelease detection
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
           echo "Version: $VERSION"
 
       - name: Create Release
