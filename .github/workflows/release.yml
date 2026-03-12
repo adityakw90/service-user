@@ -11,12 +11,13 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     services:
       redis:
@@ -56,17 +57,14 @@ jobs:
       kafka:
         image: confluentinc/cp-kafka:8.0.3
         env:
-          # KRaft mode settings (no Zookeeper needed)
           KAFKA_NODE_ID: "1"
           KAFKA_PROCESS_ROLES: "controller,broker"
           KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
-          # Listener configuration
           KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
           KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
           KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
           KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
           KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
-          # Other settings
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
           KAFKA_LOG_RETENTION_HOURS: "1"
           KAFKA_LOG_SEGMENT_BYTES: "1073741824"
@@ -114,7 +112,6 @@ jobs:
           echo "DATABASE_URL=jdbc:postgresql://localhost:5432/service_db" > .env
           echo "DATABASE_USER=postgres" >> .env
           echo "DATABASE_PASSWORD=postgres" >> .env
-          # Patch Makefile to use host network for CI
           sed -i 's/docker run --rm/docker run --rm --network host/g' Makefile
           make build
           make update
@@ -137,6 +134,7 @@ jobs:
             VERSION="${GITHUB_REF#refs/tags/}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=${{ contains(VERSION, '-') }}" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
       - name: Create Release
@@ -146,6 +144,151 @@ jobs:
           name: Release ${{ steps.version.outputs.version }}
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build ${{ matrix.libc }} ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    needs: release
+
+    strategy:
+      matrix:
+        include:
+          # glibc builds (Debian/Ubuntu/Fedora/RHEL)
+          - libc: glibc
+            arch: amd64
+            base_image: debian:bookworm-slim
+            go_cc: gcc
+            go_env_ldflags: ""
+          - libc: glibc
+            arch: arm64
+            base_image: debian:bookworm-slim
+            go_cc: aarch64-linux-gnu-gcc
+            go_env_cc: "CC=aarch64-linux-gnu-gcc"
+            go_env_ldflags: ""
+            qemu_platform: linux/arm64
+            qemu_bin: qemu-aarch64
+
+          # musl builds (Alpine)
+          - libc: musl
+            arch: amd64
+            base_image: alpine:latest
+            go_cc: gcc
+            go_env_ldflags: '-linkmode external -extldflags "-static"'
+          - libc: musl
+            arch: arm64
+            base_image: alpine:latest
+            go_cc: gcc
+            go_env_ldflags: '-linkmode external -extldflags "-static"'
+            qemu_platform: linux/arm64
+            qemu_bin: qemu-aarch64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.7"
+          cache-dependency-path: go.sum
+
+      - name: Install QEMU and cross-compiler for ARM64
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu
+
+      - name: Set up QEMU binfmt registration
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.qemu_platform }}
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build binary
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}
+          CGO_ENABLED: "0"
+          CC: ${{ matrix.go_cc }}
+          VERSION: ${{ github.ref_name }}
+          BUILD_TIME: ${{ github.event.head_commit.timestamp }}
+        run: |
+          BINARY_NAME="service-user-${VERSION#v}-linux-${matrix.libc}-${matrix.arch}"
+          BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+          if [ "${{ matrix.libc }}" == "musl" ]; then
+            # Static build for musl
+            go build -ldflags "-X 'main.Version=${VERSION#v}' -X 'main.BuildTime=$BUILD_TIME' ${{ matrix.go_env_ldflags }}" -o "$BINARY_NAME" cmd/main.go
+          else
+            # Standard build for glibc
+            go build -ldflags "-X 'main.Version=${VERSION#v}' -X 'main.BuildTime=$BUILD_TIME'" -o "$BINARY_NAME" cmd/main.go
+          fi
+
+          chmod +x "$BINARY_NAME"
+          ./"$BINARY_NAME" --version
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-user-${{ github.ref_name }}-linux-${{ matrix.libc }}-${{ matrix.arch }}
+          path: service-user-${{ github.ref_name }}-linux-${{ matrix.libc }}-${{ matrix.arch }}
+
+  package:
+    name: Package Release Assets
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create checksums
+        run: |
+          cd artifacts
+          for dir in */; do
+            cd "$dir"
+            for file in *; do
+              if [ -f "$file" ]; then
+                sha256sum "$file" >> ../checksums.txt
+              fi
+            done
+            cd ..
+          done
+          mv checksums.txt ../checksums.txt
+
+      - name: Create config.yaml.example
+        run: |
+          chmod +x release/scripts/create-config-example.sh
+          ./release/scripts/create-config-example.sh config.yaml config.yaml.example
+
+      - name: Prepare README.md from template
+        run: |
+          VERSION="${{ github.ref_name }}"
+          sed "s/{VERSION}/${VERSION#v}/g" release/templates/README.md.tpl > README.md
+
+      - name: Copy systemd service template
+        run: |
+          cp release/templates/systemd.service service-user.service
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*/service-user-*
+            checksums.txt
+            config.yaml.example
+            README.md
+            service-user.service
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
