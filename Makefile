@@ -42,6 +42,13 @@ build:
 	@echo "Building the application..."
 	@GOOS=linux GOARCH=amd64 go build -o bin/app cmd/main.go
 
+release-build:
+	@echo "Building the application with version injection..."
+	@BUILD_TIME=$$(date -u +'%Y-%m-%dT%H:%M:%SZ') && \
+	go build -ldflags "-X 'main.Version=0.0.1-local' -X 'main.BuildTime=$$BUILD_TIME'" -o bin/service-user cmd/main.go
+	@echo "Build complete. Displaying version:"
+	@./bin/service-user --version
+
 lint:
 	@echo "Linting the application..."
 	@golangci-lint run
@@ -59,5 +66,6 @@ help:
 	@echo "  mocks                - Generate mocks using mockery"
 	@echo "  bench [verbose]      - Run all benchmarks (add verbose for verbose output)"
 	@echo "  build                - Build the application"
+	@echo "  release-build        - Build the application with version injection"
 	@echo "  run                  - Run the application"
 	@echo "  help                 - Show this help message"
