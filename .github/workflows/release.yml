@@ -91,7 +91,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.7"
+          go-version: "1.25.5"
           cache-dependency-path: go.sum
 
       - name: Download dependencies
@@ -165,14 +165,9 @@ jobs:
           - libc: glibc
             arch: amd64
             base_image: debian:bookworm-slim
-            go_cc: gcc
-            go_env_ldflags: ""
           - libc: glibc
             arch: arm64
             base_image: debian:bookworm-slim
-            go_cc: aarch64-linux-gnu-gcc
-            go_env_cc: "CC=aarch64-linux-gnu-gcc"
-            go_env_ldflags: ""
             qemu_platform: linux/arm64
             qemu_bin: qemu-aarch64
 
@@ -180,13 +175,9 @@ jobs:
           - libc: musl
             arch: amd64
             base_image: alpine:latest
-            go_cc: gcc
-            go_env_ldflags: '-linkmode external -extldflags "-static"'
           - libc: musl
             arch: arm64
             base_image: alpine:latest
-            go_cc: gcc
-            go_env_ldflags: '-linkmode external -extldflags "-static"'
             qemu_platform: linux/arm64
             qemu_bin: qemu-aarch64
 
@@ -197,7 +188,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.25.7"
+          go-version: "1.25.5"
           cache-dependency-path: go.sum
 
       - name: Install QEMU and cross-compiler for ARM64
@@ -220,7 +211,6 @@ jobs:
           GOOS: linux
           GOARCH: ${{ matrix.arch == 'amd64' && 'amd64' || 'arm64' }}
           CGO_ENABLED: "0"
-          CC: ${{ matrix.go_cc }}
           VERSION: ${{ github.ref_name }}
           BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           BUILD_LIBC: ${{ matrix.libc }}
@@ -229,13 +219,9 @@ jobs:
           BINARY_NAME="service-user-${VERSION#v}-linux-${BUILD_LIBC}-${BUILD_ARCH}"
           BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
-          if [ "${BUILD_LIBC}" == "musl" ]; then
-            # Static build for musl
-            go build -ldflags "-X 'main.Version=${VERSION#v}' -X 'main.BuildTime=$BUILD_TIME' ${{ matrix.go_env_ldflags }}" -o "$BINARY_NAME" cmd/main.go
-          else
-            # Standard build for glibc
-            go build -ldflags "-X 'main.Version=${VERSION#v}' -X 'main.BuildTime=$BUILD_TIME'" -o "$BINARY_NAME" cmd/main.go
-          fi
+          # Build with CGO_ENABLED=0 for static binary
+          # Go automatically creates static binaries when CGO is disabled
+          go build -ldflags "-s -w -X 'main.Version=${VERSION#v}' -X 'main.BuildTime=$BUILD_TIME'" -o "$BINARY_NAME" cmd/main.go
 
           chmod +x "$BINARY_NAME"
           ./"$BINARY_NAME" --version
