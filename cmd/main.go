@@ -25,6 +25,13 @@ import (
 	"github.com/adityakw90/service-user/internal/infra"
 )
 
+var (
+	// Version is set via ldflags during build (e.g., -X main.Version=1.0.0)
+	Version = "dev"
+	// BuildTime is set via ldflags during build (e.g., -X main.BuildTime=2024-03-12T10:30:00UTC)
+	BuildTime = "unknown"
+)
+
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
