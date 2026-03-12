@@ -250,16 +250,10 @@ jobs:
 
       - name: Create checksums
         run: |
+          # With merge-multiple: true, artifacts are flattened into artifacts/
           cd artifacts
-          for dir in */; do
-            cd "$dir"
-            for file in *; do
-              if [ -f "$file" ]; then
-                sha256sum "$file" >> ../checksums.txt
-              fi
-            done
-            cd ..
-          done
+          sha256sum service-user-* > checksums.txt
+          cat checksums.txt
           mv checksums.txt ../checksums.txt
 
       - name: Create config.yaml.example
@@ -446,7 +440,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/*/service-user-*
+            artifacts/service-user-*
             checksums.txt
             config.yaml.example
             README.md
