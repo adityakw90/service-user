@@ -1,8 +1,6 @@
 module github.com/adityakw90/service-user
 
-go 1.25.5
-
-toolchain go1.25.7
+go 1.25.7
 
 require (
 	github.com/IBM/sarama v1.46.3
