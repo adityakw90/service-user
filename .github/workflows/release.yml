@@ -229,8 +229,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: service-user-${{ github.ref_name }}-linux-${{ matrix.libc }}-${{ matrix.arch }}
-          path: service-user-${{ github.ref_name }}-linux-${{ matrix.libc }}-${{ matrix.arch }}
+          name: service-user-${{ matrix.libc }}-${{ matrix.arch }}
+          path: service-user-*
 
   package:
     name: Package Release Assets
@@ -245,6 +245,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: service-user-*
+          merge-multiple: true
 
       - name: Create checksums
         run: |
