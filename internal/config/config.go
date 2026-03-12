@@ -30,6 +30,7 @@ type Config struct {
 // Load reads configuration from environment variables using Viper.
 func Load() (*Config, error) {
 	// Use pflag (a better command-line flag package compatible with flag)
+	pflag.String("config", "", "Path to configuration file")
 	pflag.String("ip", "0.0.0.0", "Service listening IP")
 	pflag.Int("port", 50051, "Service listening port")
 	pflag.Parse()
@@ -50,10 +51,19 @@ func Load() (*Config, error) {
 	vConfig.BindPFlag("app.ip", pflag.Lookup("ip"))
 	vConfig.BindPFlag("app.port", pflag.Lookup("port"))
 
-	// set config file
-	vConfig.SetConfigName("config")
-	vConfig.SetConfigType("yaml")
-	vConfig.AddConfigPath(".")
+	// Config file search order:
+	// 1. --config flag (highest priority)
+	// 2. /etc/service-user/config.yaml (system location)
+	// 3. ./config.yaml (current directory, fallback)
+	configFlag := pflag.Lookup("config").Value.String()
+	if configFlag != "" {
+		vConfig.SetConfigFile(configFlag)
+	} else {
+		vConfig.SetConfigName("config")
+		vConfig.SetConfigType("yaml")
+		vConfig.AddConfigPath("/etc/service-user") // System location
+		vConfig.AddConfigPath(".")                 // Current directory
+	}
 
 	// default config
 	defaultAppConfig("app", vConfig)
@@ -72,7 +82,7 @@ func Load() (*Config, error) {
 	defaultOauthConfig("oauth", vConfig)
 
 	// test
-	vConfig.SafeWriteConfig()
+	// vConfig.SafeWriteConfig() // Removed - not appropriate for binary deployments
 
 	// Enable environment variable override
 	vConfig.AutomaticEnv()
