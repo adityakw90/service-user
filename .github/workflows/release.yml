@@ -256,10 +256,6 @@ jobs:
           cat checksums.txt
           mv checksums.txt ../checksums.txt
 
-      - name: Copy systemd service template
-        run: |
-          cp release/templates/systemd.service service-user.service
-
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
