@@ -115,15 +115,19 @@ Dynamically linked against glibc, built in specific distribution containers:
 
 ### Compatibility Matrix
 
-| Binary | Min Glibc | Compatible Distributions |
-|--------|-----------|--------------------------|
-| `glibc228` | 2.28 | Debian 10+, CentOS 7+, Fedora 28+ |
-| `glibc231` | 2.31 | Debian 10+, 11+, Ubuntu 20.04+, CentOS 8+, Fedora 32+ |
-| `glibc236` | 2.36 | Debian 10+, 11+, 12+, RHEL 9+, Fedora 37+ |
-| `glibc239` | 2.39 | Debian 10+, 11+, 12+, 13+, Ubuntu 24.04+, Fedora 40+ |
+| Binary | Min Glibc | Runs On Systems With glibc ≥ |
+|--------|-----------|-----------------------------|
+| `glibc228` | 2.28 | Debian 10+, Ubuntu 20.04+, CentOS 8+, Fedora 32+ |
+| `glibc231` | 2.31 | Debian 11+, Ubuntu 20.04+, CentOS 8+, Rocky 9+ |
+| `glibc236` | 2.36 | Debian 12+, Ubuntu 22.04+, RHEL 9+, Fedora 37+ |
+| `glibc239` | 2.39 | Debian 13+, Ubuntu 24.04+, Fedora 40+ |
 | `static` | N/A | **All distributions including Alpine** |
 
-**Note:** For Ubuntu 18.04 users (glibc 2.27), use the static binary which works everywhere.
+**Key points:**
+- Each binary requires AT LEAST the minimum glibc version shown
+- Forward compatible: glibc228 binary runs on systems with glibc 2.28, 2.31, 2.36, 2.39+
+- Backward incompatible: glibc236 binary will NOT run on Debian 10 (glibc 2.28)
+- For Ubuntu 18.04 (glibc 2.27), use the static binary
 
 ### Release Artifacts
 
@@ -244,30 +248,34 @@ This means they require a compatible glibc version on the host system.
 
 ### glibc228 (Debian 10)
 - **Minimum required:** glibc 2.28 or higher
+- **Runs on systems with:** glibc ≥2.28 (forward compatible)
 - **Compatible distributions:**
-  - Debian 10, 11, 12, 13 (forward compatible)
-  - CentOS 7, 8, Stream 9
-  - Fedora 28 and later
+  - Debian 10, 11, 12, 13+
+  - Ubuntu 20.04, 22.04, 24.04+
+  - CentOS 8, Stream 9
+  - Fedora 32+
 - **Build platform:** Debian 10 (buster)
-- **Use when:** You need to support Debian 10 or CentOS 7
+- **Use when:** You need to support Debian 10 or want widest compatibility
 
 ### glibc231 (Debian 11)
 - **Minimum required:** glibc 2.31 or higher
+- **Runs on systems with:** glibc ≥2.31 (forward compatible)
 - **Compatible distributions:**
-  - Debian 11, 12, 13 (forward compatible)
-  - Ubuntu 20.04 LTS, 22.04 LTS, 24.04 LTS
+  - Debian 11, 12, 13+
+  - Ubuntu 20.04, 22.04, 24.04+
   - CentOS 8, Stream 9
-  - Fedora 32 and later
+  - Fedora 32+
 - **Build platform:** Debian 11 (bullseye)
-- **Use when:** You're on 2020+ distributions
+- **Use when:** You're on 2020+ distributions (but not Debian 10)
 
 ### glibc236 (Debian 12)
 - **Minimum required:** glibc 2.36 or higher
+- **Runs on systems with:** glibc ≥2.36 (forward compatible)
 - **Compatible distributions:**
-  - Debian 12, 13 (forward compatible)
-  - Ubuntu 22.04 LTS, 24.04 LTS
-  - RHEL 9, Rocky Linux 9, AlmaLinux 9
-  - Fedora 37 and later
+  - Debian 12, 13+
+  - Ubuntu 22.04, 24.04+
+  - RHEL 9, Rocky 9, Alma 9
+  - Fedora 37+
 - **Build platform:** Debian 12 (bookworm)
 - **Use when:** You're on 2023+ distributions
 
@@ -376,6 +384,7 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
+    - cp DYNAMIC_NOTES.md . || echo "DYNAMIC_NOTES.md not found, skipping"
 
 builds:
   # ═══════════════════════════════════════════════════════════
@@ -433,8 +442,11 @@ builds:
   # ═══════════════════════════════════════════════════════════
   # DYNAMIC BUILDS (glibc-specific)
   # ═══════════════════════════════════════════════════════════
+  # Note: Dynamic builds require CGO_ENABLED=1 and appropriate build environment
+  # These builds should be run in CI/CD with the target distribution containers
+  # The configurations below assume the build host has the required toolchains
 
-  # glibc 2.28 (Debian 10 Buster)
+  # glibc 2.28 (Debian 10 Buster) - Build on Debian 10 or equivalent
   - id: dynamic-glibc228
     main: ./cmd/main.go
     binary: service-user
@@ -449,16 +461,8 @@ builds:
       - -s -w
     flags:
       - -trimpath
-    dir: ./build_dynamic/glibc228
-    command: |
-      docker run --rm \
-        -v "$(pwd):/app" \
-        -w /app \
-        -e CGO_ENABLED=1 \
-        debian:10-slim \
-        bash -c "apt-get update -qq && apt-get install -y -qq golang-go && go build -ldflags '-s -w' -o /app/dist/service-user ./cmd/main.go && mv /app/dist/service-user /app/"
 
-  # glibc 2.31 (Debian 11 Bullseye)
+  # glibc 2.31 (Debian 11 Bullseye) - Build on Debian 11 or equivalent
   - id: dynamic-glibc231
     main: ./cmd/main.go
     binary: service-user
@@ -473,16 +477,8 @@ builds:
       - -s -w
     flags:
       - -trimpath
-    dir: ./build_dynamic/glibc231
-    command: |
-      docker run --rm \
-        -v "$(pwd):/app" \
-        -w /app \
-        -e CGO_ENABLED=1 \
-        debian:11-slim \
-        bash -c "apt-get update -qq && apt-get install -y -qq golang-go && go build -ldflags '-s -w' -o /app/dist/service-user ./cmd/main.go && mv /app/dist/service-user /app/"
 
-  # glibc 2.36 (Debian 12 Bookworm)
+  # glibc 2.36 (Debian 12 Bookworm) - Build on Debian 12 or equivalent
   - id: dynamic-glibc236
     main: ./cmd/main.go
     binary: service-user
@@ -497,16 +493,8 @@ builds:
       - -s -w
     flags:
       - -trimpath
-    dir: ./build_dynamic/glibc236
-    command: |
-      docker run --rm \
-        -v "$(pwd):/app" \
-        -w /app \
-        -e CGO_ENABLED=1 \
-        debian:12-slim \
-        bash -c "apt-get update -qq && apt-get install -y -qq golang-go && go build -ldflags '-s -w' -o /app/dist/service-user ./cmd/main.go && mv /app/dist/service-user /app/"
 
-  # glibc 2.39 (Ubuntu 24.04)
+  # glibc 2.39 (Ubuntu 24.04) - Build on Ubuntu 24.04 or equivalent
   - id: dynamic-glibc239
     main: ./cmd/main.go
     binary: service-user
@@ -521,14 +509,6 @@ builds:
       - -s -w
     flags:
       - -trimpath
-    dir: ./build_dynamic/glibc239
-    command: |
-      docker run --rm \
-        -v "$(pwd):/app" \
-        -w /app \
-        -e CGO_ENABLED=1 \
-        ubuntu:24.04 \
-        bash -c "apt-get update -qq && apt-get install -y -qq golang-go && go build -ldflags '-s -w' -o /app/dist/service-user ./cmd/main.go && mv /app/dist/service-user /app/"
 
 archives:
   # Static archives - simple naming
@@ -540,9 +520,12 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format: tar.gz
     files:
-      - config.yaml.example
-      - LICENSE
-      - README.md
+      - src: config.yaml.example
+        dst: .
+      - src: LICENSE
+        dst: .
+      - src: README.md
+        dst: .
 
   # Dynamic archives - glibc version in filename
   - id: dynamic-glibc228
@@ -551,10 +534,14 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc228_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format: tar.gz
     files:
-      - config.yaml.example
-      - LICENSE
-      - README.md
-      - DYNAMIC_NOTES.md
+      - src: config.yaml.example
+        dst: .
+      - src: LICENSE
+        dst: .
+      - src: README.md
+        dst: .
+      - src: DYNAMIC_NOTES.md
+        dst: .
 
   - id: dynamic-glibc231
     builds:
@@ -562,10 +549,14 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc231_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format: tar.gz
     files:
-      - config.yaml.example
-      - LICENSE
-      - README.md
-      - DYNAMIC_NOTES.md
+      - src: config.yaml.example
+        dst: .
+      - src: LICENSE
+        dst: .
+      - src: README.md
+        dst: .
+      - src: DYNAMIC_NOTES.md
+        dst: .
 
   - id: dynamic-glibc236
     builds:
@@ -573,10 +564,14 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc236_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format: tar.gz
     files:
-      - config.yaml.example
-      - LICENSE
-      - README.md
-      - DYNAMIC_NOTES.md
+      - src: config.yaml.example
+        dst: .
+      - src: LICENSE
+        dst: .
+      - src: README.md
+        dst: .
+      - src: DYNAMIC_NOTES.md
+        dst: .
 
   - id: dynamic-glibc239
     builds:
@@ -584,10 +579,14 @@ archives:
     name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc239_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     format: tar.gz
     files:
-      - config.yaml.example
-      - LICENSE
-      - README.md
-      - DYNAMIC_NOTES.md
+      - src: config.yaml.example
+        dst: .
+      - src: LICENSE
+        dst: .
+      - src: README.md
+        dst: .
+      - src: DYNAMIC_NOTES.md
+        dst: .
 
 checksum:
   name_template: 'checksums.txt'
@@ -602,7 +601,65 @@ signs:
     - "${signature}"
     - "--detach-sig"
     - "${artifact}"
+
+release:
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Release {{ .Tag }} ({{ .Date }})
+  footer: |
+    ## What's Changed
+    Full Changelog: https://github.com/{{ .Env.GITHUB_REPOSITORY }}/compare/{{ .PreviousTag }}...{{ .Tag }}
+  extra_files:
+    - glob: ./config.yaml.example
+
+changelog:
+  disable: false
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - '^build:'
+      - '^chore:'
+      - '^refactor:'
+
+dist: dist
 ```
+
+**Important Implementation Notes:**
+
+1. **Dynamic builds require proper build environment:**
+   - The configuration above assumes builds run in appropriate distribution containers
+   - For CI/CD, use matrix builds with different Docker images:
+     ```yaml
+     # Example GitHub Actions matrix
+     strategy:
+       matrix:
+         include:
+           - build: static-linux
+             image: ubuntu:22.04
+           - build: dynamic-glibc228
+             image: debian:10-slim
+           - build: dynamic-glibc231
+             image: debian:11-slim
+           - build: dynamic-glibc236
+             image: debian:12-slim
+           - build: dynamic-glibc239
+             image: ubuntu:24.04
+     ```
+
+2. **Cross-architecture support:**
+   - Use QEMU/binfmt_misc for cross-architecture builds:
+     ```bash
+     docker run --privileged --rm tonistiigi/binfmt --install all
+     ```
+
+3. **Build verification:**
+   - Verify dynamic linking with `ldd ./service-user`
+   - Check glibc requirement with `readelf -V ./service-user | grep GLIBC`
 
 ## References
 
