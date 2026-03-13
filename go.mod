@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/IBM/sarama v1.46.3
 	github.com/adityakw90/go-monitoring v0.3.3
-	github.com/adityakw90/service-user-proto v0.1.2
+	github.com/adityakw90/service-user-proto v0.1.3
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/alicebob/miniredis/v2 v2.36.1
 	github.com/go-playground/validator/v10 v10.30.1
