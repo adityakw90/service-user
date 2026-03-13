@@ -1,0 +1,197 @@
+name: Goreleaser Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g., v1.0.0)"
+        required: true
+        type: string
+      snapshot:
+        description: "Create snapshot (test) release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU for cross-platform builds
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache-dependency-path: go.sum
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          install-only: true
+
+      - name: Run GoReleaser (snapshot)
+        if: github.event.inputs.snapshot == 'true' || github.event_name != 'push'
+        run: |
+          # Build static variants only for snapshot testing
+          ~/go/bin/goreleaser release --snapshot --clean --ids static-linux,static-darwin,static-windows
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GoReleaser (release)
+        if: github.event.inputs.snapshot != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          # Full release with all variants
+          # Note: Dynamic builds require appropriate build environments
+          # For this initial implementation, we build static variants in CI
+          ~/go/bin/goreleaser release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GPG signing (optional - configure GPG key in GitHub Secrets to enable)
+          # GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
+
+  # Dynamic builds run separately in specific containers
+  # These jobs only run for actual releases (not snapshots)
+  dynamic-release:
+    name: Dynamic Build (${{ matrix.glibc }})
+    runs-on: ubuntu-latest
+    if: github.event.inputs.snapshot != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      matrix:
+        include:
+          - glibc: "2.28"
+            image: debian:10-slim
+            build_id: dynamic-glibc228
+          - glibc: "2.31"
+            image: debian:11-slim
+            build_id: dynamic-glibc231
+          - glibc: "2.36"
+            image: debian:12-slim
+            build_id: dynamic-glibc236
+          - glibc: "2.39"
+            image: ubuntu:24.04
+            build_id: dynamic-glibc239
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache-dependency-path: go.sum
+
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y gcc libc-dev wget
+
+      - name: Set up QEMU for ARM builds
+        run: |
+          apt-get update
+          apt-get install -y qemu-user-static binfmt-support
+          # Verify QEMU is working
+          qemu-aarch64-static --version || echo "QEMU aarch64 not available, ARM builds may fail"
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          install-only: true
+
+      - name: Build dynamic variant (amd64)
+        run: |
+          ~/go/bin/goreleaser build --clean --ids ${{ matrix.build_id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: 1
+          GOOS: linux
+          GOARCH: amd64
+
+      - name: Build dynamic variant (arm64)
+        run: |
+          # Only attempt ARM64 if QEMU is available
+          if [ -f /usr/bin/qemu-aarch64-static ] || [ -f /usr/bin/qemu-aarch64 ]; then
+            ~/go/bin/goreleaser build --clean --ids ${{ matrix.build_id }}
+          else
+            echo "ARM64 QEMU not available in container, skipping ARM64 build"
+            exit 0
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: 1
+          GOOS: linux
+          GOARCH: arm64
+          CC: aarch64-linux-gnu-gcc
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dynamic-${{ matrix.glibc }}
+          path: dist/
+          if-no-files-found: warn
+
+  merge-artifacts:
+    name: Merge Release Artifacts
+    runs-on: ubuntu-latest
+    needs: [release, dynamic-release]
+    if: github.event.inputs.snapshot != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.5"
+          cache-dependency-path: go.sum
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: Merge artifacts and create archives
+        run: |
+          # Copy static artifacts from main release job
+          mkdir -p dist
+
+          # Copy all artifacts to dist directory
+          cp -r artifacts/* dist/ || true
+
+          # Generate final checksums
+          cd dist
+          find . -name "service-user*" -type f | sort | xargs sha256sum > checksums.txt
+          cat checksums.txt
+          cd ..
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
