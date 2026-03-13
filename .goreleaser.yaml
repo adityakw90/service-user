@@ -5,7 +5,7 @@ before:
   hooks:
     - go mod tidy
     - go generate ./...
-    - cp DYNAMIC_NOTES.md . || echo "DYNAMIC_NOTES.md not found, skipping"
+    - test -f DYNAMIC_NOTES.md || echo "DYNAMIC_NOTES.md not found, skipping"
 
 builds:
   # ═══════════════════════════════════════════════════════════
@@ -142,9 +142,7 @@ archives:
     format: tar.gz
     files:
       - src: config.yaml.example
-        dst: .
       - src: README.md
-        dst: .
 
   # Dynamic archives - glibc version in filename
   - id: dynamic-glibc228
@@ -154,11 +152,8 @@ archives:
     format: tar.gz
     files:
       - src: config.yaml.example
-        dst: .
       - src: README.md
-        dst: .
       - src: DYNAMIC_NOTES.md
-        dst: .
 
   - id: dynamic-glibc231
     builds:
@@ -167,11 +162,8 @@ archives:
     format: tar.gz
     files:
       - src: config.yaml.example
-        dst: .
       - src: README.md
-        dst: .
       - src: DYNAMIC_NOTES.md
-        dst: .
 
   - id: dynamic-glibc236
     builds:
@@ -180,11 +172,8 @@ archives:
     format: tar.gz
     files:
       - src: config.yaml.example
-        dst: .
       - src: README.md
-        dst: .
       - src: DYNAMIC_NOTES.md
-        dst: .
 
   - id: dynamic-glibc239
     builds:
@@ -193,11 +182,8 @@ archives:
     format: tar.gz
     files:
       - src: config.yaml.example
-        dst: .
       - src: README.md
-        dst: .
       - src: DYNAMIC_NOTES.md
-        dst: .
 
 checksum:
   name_template: 'checksums.txt'
