@@ -263,6 +263,5 @@ jobs:
             artifacts/service-user-*
             checksums.txt
             config.yaml.example
-            service-user.service
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
