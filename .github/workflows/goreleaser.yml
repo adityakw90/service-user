@@ -50,7 +50,7 @@ jobs:
         if: github.event.inputs.snapshot == 'true' || github.event_name != 'push'
         run: |
           # Build static variants only for snapshot testing
-          ~/go/bin/goreleaser release --snapshot --clean --ids static-linux,static-darwin,static-windows
+          goreleaser release --snapshot --clean --ids static-linux,static-darwin,static-windows
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -60,7 +60,7 @@ jobs:
           # Full release with all variants
           # Note: Dynamic builds require appropriate build environments
           # For this initial implementation, we build static variants in CI
-          ~/go/bin/goreleaser release --clean
+          goreleaser release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GPG signing (optional - configure GPG key in GitHub Secrets to enable)
@@ -122,7 +122,7 @@ jobs:
 
       - name: Build dynamic variant (amd64)
         run: |
-          ~/go/bin/goreleaser build --clean --ids ${{ matrix.build_id }}
+          goreleaser build --clean --ids ${{ matrix.build_id }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CGO_ENABLED: 1
@@ -133,7 +133,7 @@ jobs:
         run: |
           # Only attempt ARM64 if QEMU is available
           if [ -f /usr/bin/qemu-aarch64-static ] || [ -f /usr/bin/qemu-aarch64 ]; then
-            ~/go/bin/goreleaser build --clean --ids ${{ matrix.build_id }}
+            goreleaser build --clean --ids ${{ matrix.build_id }}
           else
             echo "ARM64 QEMU not available in container, skipping ARM64 build"
             exit 0
