@@ -50,20 +50,18 @@ jobs:
         if: github.event.inputs.snapshot == 'true' || github.event_name != 'push'
         run: |
           # Build static variants only for snapshot testing
-          goreleaser release --snapshot --clean --ids static-linux,static-darwin,static-windows
+          goreleaser build --snapshot --clean --ids static-darwin,static-windows
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run GoReleaser (release)
         if: github.event.inputs.snapshot != 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
-          # Build static amd64 + darwin + windows variants in main job
+          # Build static darwin + windows variants in main job
           # Linux ARM64 and all dynamic variants are built in separate container jobs
-          goreleaser release --clean --ids static-darwin,static-windows
+          goreleaser build --clean --ids static-darwin,static-windows
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # GPG signing (optional - configure GPG key in GitHub Secrets to enable)
-          # GPG_FINGERPRINT: ${{ secrets.GPG_FINGERPRINT }}
 
   # Static Linux ARM64 build with cross-compilation
   static-linux-arm64:
