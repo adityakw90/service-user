@@ -1,12 +1,6 @@
 # .goreleaser.yaml
 project_name: service-user
 
-before:
-  hooks:
-    - go mod tidy
-    - go generate ./...
-    - test -f DYNAMIC_NOTES.md || echo "DYNAMIC_NOTES.md not found, skipping"
-
 builds:
   # ═══════════════════════════════════════════════════════════
   # STATIC BUILDS (Portability focus)
@@ -134,12 +128,17 @@ builds:
 archives:
   # Static archives - simple naming
   - id: static
-    builds:
+    ids:
       - static-linux
       - static-darwin
       - static-windows
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
-    format: tar.gz
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - "zip"
     files:
       - src: config.yaml.example
       - src: README.md
@@ -186,7 +185,7 @@ archives:
       - src: DYNAMIC_NOTES.md
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
   algorithm: sha256
 
 signs:
@@ -221,11 +220,11 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^ci:'
-      - '^build:'
-      - '^chore:'
-      - '^refactor:'
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^build:"
+      - "^chore:"
+      - "^refactor:"
 
 dist: dist
