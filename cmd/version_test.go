@@ -10,10 +10,10 @@ import (
 
 func TestVersionFlag(t *testing.T) {
 	tests := []struct {
-		name          string
-		args          []string
-		wantContains  []string
-		wantExitZero  bool
+		name         string
+		args         []string
+		wantContains []string
+		wantExitZero bool
 	}{
 		{
 			name:         "version flag displays version and build time",
@@ -37,7 +37,7 @@ func TestVersionFlag(t *testing.T) {
 
 			// Build test binary from repo root
 			repoRoot := ".."
-			buildCmd := exec.Command("go", "build", "-o", "/tmp/test-service-user", "./cmd/main.go")
+			buildCmd := exec.Command("go", "build", "-o", "/tmp/test-service-user", "./cmd")
 			buildCmd.Dir = repoRoot
 			var buildErr bytes.Buffer
 			buildCmd.Stderr = &buildErr
