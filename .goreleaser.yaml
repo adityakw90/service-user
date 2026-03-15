@@ -7,10 +7,6 @@ before:
     - go mod tidy
 
 builds:
-  # ═══════════════════════════════════════════════════════════
-  # STATIC BUILDS (Portability focus)
-  # ═══════════════════════════════════════════════════════════
-
   - id: static-linux
     main: ./cmd/main.go
     binary: service-user
@@ -83,20 +79,20 @@ checksum:
   name_template: "checksums.txt"
   algorithm: sha256
 
-signs:
-  # Note: GPG signing is optional. If GPG is not configured, goreleaser will skip signing.
-  # To enable GPG signing, configure a GPG key and ensure GITHUB_TOKEN has access.
-  - artifacts: all
-    signature: "${artifact}.sig"
-    cmd: gpg
-    args:
-      - "--output"
-      - "${signature}"
-      - "--detach-sig"
-      - "${artifact}"
-  # Environment variables (optional, for CI/CD):
-  # GPG_FINGERPRINT: The fingerprint of the signing key
-  # GPG_PASSWORD: The password for the signing key (use GitHub Secrets)
+# signs:
+#   # GPG signing disabled - can be enabled later when needed
+#   # To enable: generate GPG keys, set GPG_FINGERPRINT and GPG_PASSWORD env vars
+#   - artifacts: all
+#     signature: "${artifact}.sig"
+#     cmd: gpg
+#     args:
+#       - "--batch"
+#       - "--local-user"
+#       - "{{ .Env.GPG_FINGERPRINT }}"
+#       - "--output"
+#       - "${signature}"
+#       - "--detach-sig"
+#       - "${artifact}"
 
 release:
   draft: false
