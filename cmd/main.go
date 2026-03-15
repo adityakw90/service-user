@@ -26,6 +26,9 @@ import (
 )
 
 func main() {
+	// Handle --version flag early (before loading config)
+	handleVersionFlag()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

@@ -45,6 +45,9 @@ logs/
 *.tmp
 *.temp
 
+# Git worktrees
+.worktrees/
+
 # project
 config.yaml
 docker-compose.yml
