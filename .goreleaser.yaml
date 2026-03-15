@@ -1,5 +1,10 @@
 # .goreleaser.yaml
+version: 2
 project_name: service-user
+
+before:
+  hooks:
+    - go mod tidy
 
 builds:
   # ═══════════════════════════════════════════════════════════
@@ -17,7 +22,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w
+      - -s -w -X main.Version={{.Version}}
       - -extldflags '-static'
     tags:
       - netgo
@@ -36,7 +41,8 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w
+      - -s -w -X main.Version={{.Version}}
+      - -extldflags '-static'
     flags:
       - -trimpath
 
@@ -50,78 +56,8 @@ builds:
     goarch:
       - amd64
     ldflags:
-      - -s -w
-    flags:
-      - -trimpath
-
-  # ═══════════════════════════════════════════════════════════
-  # DYNAMIC BUILDS (glibc-specific)
-  # ═══════════════════════════════════════════════════════════
-  # Note: Dynamic builds require CGO_ENABLED=1 and appropriate build environment
-  # These builds should be run in CI/CD with the target distribution containers
-  # The configurations below assume the build host has the required toolchains
-
-  # glibc 2.28 (Debian 10 Buster) - Build on Debian 10 or equivalent
-  - id: dynamic-glibc228
-    main: ./cmd/main.go
-    binary: service-user
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
-    flags:
-      - -trimpath
-
-  # glibc 2.31 (Debian 11 Bullseye) - Build on Debian 11 or equivalent
-  - id: dynamic-glibc231
-    main: ./cmd/main.go
-    binary: service-user
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
-    flags:
-      - -trimpath
-
-  # glibc 2.36 (Debian 12 Bookworm) - Build on Debian 12 or equivalent
-  - id: dynamic-glibc236
-    main: ./cmd/main.go
-    binary: service-user
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
-    flags:
-      - -trimpath
-
-  # glibc 2.39 (Ubuntu 24.04) - Build on Ubuntu 24.04 or equivalent
-  - id: dynamic-glibc239
-    main: ./cmd/main.go
-    binary: service-user
-    env:
-      - CGO_ENABLED=1
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
+      - -s -w -X main.Version={{.Version}}
+      - -extldflags '-static'
     flags:
       - -trimpath
 
@@ -142,47 +78,6 @@ archives:
     files:
       - src: config.yaml.example
       - src: README.md
-
-  # Dynamic archives - glibc version in filename
-  - id: dynamic-glibc228
-    builds:
-      - dynamic-glibc228
-    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc228_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
-    format: tar.gz
-    files:
-      - src: config.yaml.example
-      - src: README.md
-      - src: DYNAMIC_NOTES.md
-
-  - id: dynamic-glibc231
-    builds:
-      - dynamic-glibc231
-    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc231_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
-    format: tar.gz
-    files:
-      - src: config.yaml.example
-      - src: README.md
-      - src: DYNAMIC_NOTES.md
-
-  - id: dynamic-glibc236
-    builds:
-      - dynamic-glibc236
-    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc236_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
-    format: tar.gz
-    files:
-      - src: config.yaml.example
-      - src: README.md
-      - src: DYNAMIC_NOTES.md
-
-  - id: dynamic-glibc239
-    builds:
-      - dynamic-glibc239
-    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc239_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
-    format: tar.gz
-    files:
-      - src: config.yaml.example
-      - src: README.md
-      - src: DYNAMIC_NOTES.md
 
 checksum:
   name_template: "checksums.txt"
