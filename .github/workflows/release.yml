@@ -10,10 +10,6 @@ on:
         description: "Version tag (e.g., v1.0.0)"
         required: true
         type: string
-      snapshot:
-        description: "Create snapshot (test) release"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
