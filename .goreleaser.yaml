@@ -57,23 +57,6 @@ builds:
     flags:
       - -trimpath
 
-  # glibc 2.28 (Debian 10 Buster) - Build on Debian 10 or equivalent
-  - id: linux-glibc228
-    main: ./cmd/main.go
-    binary: service-user
-    env:
-      - CGO_ENABLED=1
-      - CC=x86_64-linux-gnu.2.28
-      - CXX=x86_64-linux-gnu.2.28
-    goos:
-      - linux
-    goarch:
-      - amd64
-    ldflags:
-      - -s -w -X main.Version={{.Version}} -X main.BuildTime={{.Date}}
-    flags:
-      - -trimpath
-
 archives:
   # Static archives - simple naming
   - id: static
@@ -82,20 +65,6 @@ archives:
       - static-darwin
       - static-windows
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
-    formats:
-      - tar.gz
-    format_overrides:
-      - goos: windows
-        formats:
-          - "zip"
-    files:
-      - src: config.yaml.example
-
-  # Dynamic archives - glibc version in filename
-  - id: linux-glibc228
-    builds:
-      - linux-glibc228
-    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_glibc228_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     formats:
       - tar.gz
     format_overrides:
