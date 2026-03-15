@@ -83,9 +83,6 @@ func Load() (*Config, error) {
 	defaultEventPublisherConfig("event_publisher", vConfig)
 	defaultOauthConfig("oauth", vConfig)
 
-	// test
-	// vConfig.SafeWriteConfig() // Removed - not appropriate for binary deployments
-
 	// Enable environment variable override
 	vConfig.AutomaticEnv()
 
