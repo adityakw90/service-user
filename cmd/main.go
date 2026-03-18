@@ -88,7 +88,10 @@ func main() {
 		})
 	}
 	defer dbPool.Close()
-	logger.Info("connected to database", nil)
+	logger.Info("connected to database", map[string]interface{}{
+		"host": cfg.Database.Host,
+		"port": cfg.Database.Port,
+	})
 
 	// Connect to Redis using infra layer
 	redisClient, err := infra.NewRedisConnection(context.Background(), &infra.RedisConfig{
@@ -107,7 +110,10 @@ func main() {
 		})
 	}
 	defer redisClient.Close()
-	logger.Info("connected to redis", nil)
+	logger.Info("connected to redis", map[string]interface{}{
+		"host": cfg.Redis.Host,
+		"port": cfg.Redis.Port,
+	})
 
 	// Connect to RabbitMQ using infra layer (if enabled)
 	var rabbitmqConn *infra.RabbitMQConnection
