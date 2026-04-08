@@ -10,8 +10,8 @@ packages:
   # Repository ports - test/mocks/repository/
   github.com/adityakw90/service-user/internal/core/port/repository:
     config:
-      with-expecter: true    # Enable expecter pattern for fluent API
-      outpkg: mocks          # All mocks use package name "mocks"
+      with-expecter: true # Enable expecter pattern for fluent API
+      outpkg: mocks # All mocks use package name "mocks"
       filename: "mock_{{.InterfaceName}}.go"
     interfaces:
       UserRepository:
@@ -60,6 +60,9 @@ packages:
       outpkg: mocks
       filename: "mock_{{.InterfaceName}}.go"
     interfaces:
+      ResolverProvider:
+        config:
+          dir: test/mocks/resolver
       UserResolver:
         config:
           dir: test/mocks/resolver
