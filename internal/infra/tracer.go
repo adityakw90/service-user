@@ -41,11 +41,11 @@ func (t *NoopTracer) SpanFromContext(ctx context.Context) trace.Span {
 	return trace.SpanFromContext(ctx)
 }
 
-func (t *NoopTracer) ExtractContext(ctx context.Context, md metadata.MD) context.Context {
+func (t *NoopTracer) ExtractContext(ctx context.Context, md map[string][]string) context.Context {
 	// no-op for noop tracer
 	return ctx
 }
 
-func (t *NoopTracer) InjectContext(ctx context.Context) metadata.MD {
+func (t *NoopTracer) InjectContext(ctx context.Context) map[string][]string {
 	return metadata.MD{}
 }
