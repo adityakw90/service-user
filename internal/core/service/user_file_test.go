@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
-	repomocks "github.com/adityakw90/service-user/test/mocks/repository"
-	resolvermocks "github.com/adityakw90/service-user/test/mocks/resolver"
-	securitymocks "github.com/adityakw90/service-user/test/mocks/security"
-	eventmocks "github.com/adityakw90/service-user/test/mocks/event"
-	observermocks "github.com/adityakw90/service-user/test/mocks/observer"
+	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	eventmocks "github.com/adityakw90/service-user/mocks/event"
+	observermocks "github.com/adityakw90/service-user/mocks/observer"
+	repomocks "github.com/adityakw90/service-user/mocks/repository"
+	resolvermocks "github.com/adityakw90/service-user/mocks/resolver"
+	securitymocks "github.com/adityakw90/service-user/mocks/security"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -79,10 +79,10 @@ func TestUserFileService_Get(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
-				setupUserFileObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+					setupUserFileObserverAny(t, obs)
+					return obs
+				}(),
 				eventmocks.NewMockEventPublisher(t),
 			)
 
@@ -198,10 +198,10 @@ func TestUserFileService_List(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
-				setupUserFileObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+					setupUserFileObserverAny(t, obs)
+					return obs
+				}(),
 				eventmocks.NewMockEventPublisher(t),
 			)
 
@@ -319,10 +319,10 @@ func TestUserFileService_Add(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
-				setupUserFileObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+					setupUserFileObserverAny(t, obs)
+					return obs
+				}(),
 				mockEventPublisher,
 			)
 
@@ -412,10 +412,10 @@ func TestUserFileService_Update(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
-				setupUserFileObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+					setupUserFileObserverAny(t, obs)
+					return obs
+				}(),
 				mockEventPublisher,
 			)
 
@@ -481,10 +481,10 @@ func TestUserFileService_Delete(t *testing.T) {
 				mockUserResolver,
 				mockUIDGen,
 				func() *observermocks.MockServiceObserver[signal.UserFileSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
-				setupUserFileObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.UserFileSignal](t)
+					setupUserFileObserverAny(t, obs)
+					return obs
+				}(),
 				mockEventPublisher,
 			)
 

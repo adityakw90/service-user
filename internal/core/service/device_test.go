@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
-	"github.com/adityakw90/service-user/internal/adapter/publisher"
-	repomocks "github.com/adityakw90/service-user/test/mocks/repository"
-	observermocks "github.com/adityakw90/service-user/test/mocks/observer"
+	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	observermocks "github.com/adityakw90/service-user/mocks/observer"
+	repomocks "github.com/adityakw90/service-user/mocks/repository"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -67,10 +67,10 @@ func TestDeviceService_Get(t *testing.T) {
 				mockDeviceRepo,
 				mockUserDeviceRepo,
 				func() *observermocks.MockServiceObserver[signal.DeviceSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
-				setupDeviceObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
+					setupDeviceObserverAny(t, obs)
+					return obs
+				}(),
 				publisher.NewNoOpPublisher(),
 			)
 
@@ -178,10 +178,10 @@ func TestDeviceService_List(t *testing.T) {
 				mockDeviceRepo,
 				mockUserDeviceRepo,
 				func() *observermocks.MockServiceObserver[signal.DeviceSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
-				setupDeviceObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
+					setupDeviceObserverAny(t, obs)
+					return obs
+				}(),
 				publisher.NewNoOpPublisher(),
 			)
 
@@ -248,10 +248,10 @@ func TestDeviceService_Delete(t *testing.T) {
 				mockDeviceRepo,
 				mockUserDeviceRepo,
 				func() *observermocks.MockServiceObserver[signal.DeviceSignal] {
-				obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
-				setupDeviceObserverAny(t, obs)
-				return obs
-			}(),
+					obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
+					setupDeviceObserverAny(t, obs)
+					return obs
+				}(),
 				publisher.NewNoOpPublisher(),
 			)
 

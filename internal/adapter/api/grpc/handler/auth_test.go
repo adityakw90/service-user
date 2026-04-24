@@ -8,7 +8,7 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
-	servicemocks "github.com/adityakw90/service-user/test/mocks/service"
+	servicemocks "github.com/adityakw90/service-user/mocks/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -114,8 +114,8 @@ func TestAuthHandler_GoogleOAuth(t *testing.T) {
 			input: &authpb.GoogleOAuthRequest{
 				RedirectUri: "http://localhost:8080/callback",
 			},
-			wantErr:     true,
-			wantCode:    codes.Canceled,
+			wantErr:  true,
+			wantCode: codes.Canceled,
 		},
 	}
 
@@ -176,7 +176,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-auth-code-abc",
-				State:        "test-state-abc",
+				State:       "test-state-abc",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			want: &authpb.Token{
@@ -196,7 +196,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "code-for-custom-redirect",
-				State:        "test-state-custom",
+				State:       "test-state-custom",
 				RedirectUri: "https://example.com/oauth/callback",
 			},
 			want: &authpb.Token{
@@ -213,7 +213,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "invalid-code",
-				State:        "test-state-error",
+				State:       "test-state-error",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
@@ -225,7 +225,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *servicemocks.MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "",
-				State:        "",
+				State:       "",
 				RedirectUri: "http://localhost:8080/callback",
 			},
 			wantErr:     true,
@@ -237,7 +237,7 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *servicemocks.MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-code",
-				State:        "test-state",
+				State:       "test-state",
 				RedirectUri: "",
 			},
 			wantErr:     true,
@@ -249,18 +249,18 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			setupMocks: func(m *servicemocks.MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "",
-				State:        "",
+				State:       "",
 				RedirectUri: "",
 			},
-			wantErr:     true,
-			wantCode:    codes.InvalidArgument,
+			wantErr:  true,
+			wantCode: codes.InvalidArgument,
 		},
 		{
 			name:       "Invalid Input - invalid URI format",
 			setupMocks: func(m *servicemocks.MockAuthService) {},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-code",
-				State:        "test-state",
+				State:       "test-state",
 				RedirectUri: "not-a-valid-uri",
 			},
 			wantErr:     true,
@@ -275,11 +275,11 @@ func TestAuthHandler_HandleGoogleOAuth(t *testing.T) {
 			},
 			input: &authpb.HandleGoogleOAuthRequest{
 				Code:        "valid-code",
-				State:        "test-state",
+				State:       "test-state",
 				RedirectUri: "http://localhost:8080/callback",
 			},
-			wantErr:     true,
-			wantCode:    codes.Canceled,
+			wantErr:  true,
+			wantCode: codes.Canceled,
 		},
 	}
 
@@ -421,7 +421,7 @@ func TestAuthHandler_HandleGoogleOAuth_ValidURIVariations(t *testing.T) {
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
-				State:        tt.state,
+				State:       tt.state,
 				RedirectUri: tt.redirectURI,
 			}
 
@@ -442,24 +442,24 @@ func TestAuthHandler_GoogleOAuth_InvalidInputVariations(t *testing.T) {
 		errField    string
 	}{
 		{
-			name:     "Empty string",
+			name:        "Empty string",
 			redirectURI: "",
-			errField: "RedirectUri",
+			errField:    "RedirectUri",
 		},
 		{
-			name:     "Not a URI - plain text",
+			name:        "Not a URI - plain text",
 			redirectURI: "just-text",
-			errField: "RedirectUri",
+			errField:    "RedirectUri",
 		},
 		{
-			name:     "Not a URI - missing scheme",
+			name:        "Not a URI - missing scheme",
 			redirectURI: "example.com/callback",
-			errField: "RedirectUri",
+			errField:    "RedirectUri",
 		},
 		{
-			name:     "Whitespace only",
+			name:        "Whitespace only",
 			redirectURI: "   ",
-			errField: "RedirectUri",
+			errField:    "RedirectUri",
 		},
 	}
 
@@ -491,42 +491,42 @@ func TestAuthHandler_HandleGoogleOAuth_InvalidInputVariations(t *testing.T) {
 	tests := []struct {
 		name        string
 		code        string
-		state        string
+		state       string
 		redirectURI string
 		errField    string
 	}{
 		{
 			name:        "Empty code",
 			code:        "",
-			state:        "",
+			state:       "",
 			redirectURI: "http://localhost:8080/callback",
 			errField:    "Code",
 		},
 		{
 			name:        "Whitespace code",
 			code:        "   ",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "http://localhost:8080/callback",
 			errField:    "Code",
 		},
 		{
 			name:        "Empty redirect URI",
 			code:        "valid-code",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "",
 			errField:    "RedirectUri",
 		},
 		{
 			name:        "Both empty",
 			code:        "",
-			state:        "",
+			state:       "",
 			redirectURI: "",
 			errField:    "",
 		},
 		{
 			name:        "Invalid redirect URI",
 			code:        "valid-code",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "not-a-uri",
 			errField:    "RedirectUri",
 		},
@@ -540,7 +540,7 @@ func TestAuthHandler_HandleGoogleOAuth_InvalidInputVariations(t *testing.T) {
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
-				State:        tt.state,
+				State:       tt.state,
 				RedirectUri: tt.redirectURI,
 			}
 
@@ -614,25 +614,25 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 		{
 			name:        "Code with leading whitespace - validator accepts it",
 			code:        "  auth-code-123",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "http://localhost:8080/callback",
 		},
 		{
 			name:        "Code with trailing whitespace - validator accepts it",
 			code:        "auth-code-456  ",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "http://localhost:8080/callback",
 		},
 		{
 			name:        "Redirect URI with leading whitespace - validator accepts it",
 			code:        "auth-code-789",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "  http://localhost:8080/callback",
 		},
 		{
 			name:        "Valid code and redirect URI - passes",
 			code:        "valid-code",
-			state:        "test-state",
+			state:       "test-state",
 			redirectURI: "http://localhost:8080/callback",
 		},
 	}
@@ -651,7 +651,7 @@ func TestAuthHandler_HandleGoogleOAuth_WhitespaceHandling(t *testing.T) {
 
 			req := &authpb.HandleGoogleOAuthRequest{
 				Code:        tt.code,
-				State:        tt.state,
+				State:       tt.state,
 				RedirectUri: tt.redirectURI,
 			}
 
