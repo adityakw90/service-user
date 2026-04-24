@@ -397,11 +397,6 @@ func (r *Rabbit) PublishWithConfirm(
 	)
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		r.logger.Debug("rabbitmq publishWithConfirm", map[string]any{
-			"attempt":     attempt + 1,
-			"exchange":    exchange,
-			"routing_key": routingKey,
-		})
 		if attempt > 0 {
 			// Exponential backoff (capped at 5x)
 			backoffDuration := retryInterval * time.Duration(min(attempt, 5))
@@ -421,9 +416,6 @@ func (r *Rabbit) PublishWithConfirm(
 		}
 
 		// Try to get channel
-		r.logger.Debug("rabbitmq get channel", map[string]any{
-			"attempt": attempt + 1,
-		})
 		ch, err := r.getChannel()
 		if err != nil {
 			lastErr = fmt.Errorf("failed to publish (attempt %d): %w", attempt+1, err)
@@ -437,9 +429,6 @@ func (r *Rabbit) PublishWithConfirm(
 		}
 
 		// Enable publisher confirms
-		r.logger.Debug("rabbitmq enable publisher confirms", map[string]any{
-			"attempt": attempt + 1,
-		})
 		if err := ch.Confirm(false); err != nil {
 			ch.Close()
 			lastErr = fmt.Errorf("failed to enable confirm mode (attempt %d): %w", attempt+1, err)
@@ -490,12 +479,6 @@ func (r *Rabbit) PublishWithConfirm(
 						"delivery_tag": confirm.DeliveryTag,
 					})
 				}
-				r.logger.Debug("rabbitmq publish success", map[string]any{
-					"attempt":      attempt + 1,
-					"exchange":     exchange,
-					"routing_key":  routingKey,
-					"delivery_tag": confirm.DeliveryTag,
-				})
 				return nil
 			}
 			// NACK - broker rejected the message
