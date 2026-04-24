@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -166,6 +167,87 @@ func (r *Rabbit) triggerReconnect() {
 	}
 }
 
+// get connection
+func (r *Rabbit) getConnection() (*amqp.Connection, error) {
+	// get connection with read lock
+	r.connMu.RLock()
+	conn := r.conn
+	r.connMu.RUnlock()
+
+	// check connection is not nil or closed
+	if conn == nil || conn.IsClosed() {
+		return nil, fmt.Errorf("no active connection")
+	}
+
+	return conn, nil
+}
+
+// Get channel connection from rabbitmq connection
+func (r *Rabbit) getChannel() (*amqp.Channel, error) {
+	conn, err := r.getConnection()
+	if err != nil {
+		return nil, err
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		// triger reconnect, because connection might be unhealthy
+		r.triggerReconnect()
+		return nil, fmt.Errorf("failed to open channel: %w", err)
+	}
+
+	return ch, nil
+}
+
+// Build amqp publishing message
+func (r *Rabbit) buildAmqpPublishing(
+	contentType string,
+	headers map[string]string,
+	body []byte,
+	deliveryMode *uint8,
+	priority *uint8,
+	timestamp *time.Time,
+	expiration *time.Duration,
+) amqp.Publishing {
+	amqpTimestamp := time.Now()
+	if timestamp != nil {
+		amqpTimestamp = *timestamp
+	}
+
+	publishing := amqp.Publishing{
+		ContentType: contentType,
+		Body:        body,
+		Timestamp:   amqpTimestamp,
+	}
+
+	if headers != nil {
+		amqpHeaders := make(amqp.Table, len(headers))
+		for k, v := range headers {
+			amqpHeaders[k] = v
+		}
+		publishing.Headers = amqpHeaders
+	}
+
+	if deliveryMode != nil {
+		switch *deliveryMode {
+		case amqp.Transient:
+			publishing.DeliveryMode = amqp.Transient
+		case amqp.Persistent:
+			publishing.DeliveryMode = amqp.Persistent
+		}
+	}
+
+	if priority != nil {
+		publishing.Priority = *priority
+	}
+
+	if expiration != nil {
+		publishing.Expiration = strconv.FormatInt(expiration.Milliseconds(), 10)
+	}
+
+	return publishing
+}
+
 // DeclareExchange declares an exchange on the RabbitMQ server.
 // This is typically called by the adapter layer during initialization.
 func (r *Rabbit) DeclareExchange(exchange string, exchangeType string, durable bool) error {
@@ -173,15 +255,7 @@ func (r *Rabbit) DeclareExchange(exchange string, exchangeType string, durable b
 		return fmt.Errorf("connection is closed")
 	}
 
-	r.connMu.RLock()
-	conn := r.conn
-	r.connMu.RUnlock()
-
-	if conn == nil || conn.IsClosed() {
-		return fmt.Errorf("no active connection")
-	}
-
-	ch, err := conn.Channel()
+	ch, err := r.getChannel()
 	if err != nil {
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
@@ -221,30 +295,21 @@ func (r *Rabbit) Publish(
 	deliveryMode *uint8,
 	priority *uint8,
 	timestamp *time.Time,
+	expiration *time.Duration,
 ) error {
 	if r.closed.Load() {
 		return fmt.Errorf("connection is closed")
 	}
 
-	// Get connection with read lock
-	r.connMu.RLock()
-	conn := r.conn
-	r.connMu.RUnlock()
-
-	if conn == nil || conn.IsClosed() {
-		return fmt.Errorf("no active connection")
-	}
-
 	// Create a new channel for this publish
-	ch, err := conn.Channel()
+	ch, err := r.getChannel()
 	if err != nil {
-		r.logger.Error("failed to open channel for publish", map[string]any{
+		r.logger.Error("failed to publish", map[string]any{
 			"error":       err.Error(),
 			"exchange":    exchange,
 			"routing_key": routingKey,
 		})
-		r.triggerReconnect()
-		return fmt.Errorf("failed to open channel: %w", err)
+		return fmt.Errorf("failed to publish: %w", err)
 	}
 
 	// Ensure channel is closed when done
@@ -270,6 +335,7 @@ func (r *Rabbit) Publish(
 			deliveryMode,
 			priority,
 			timestamp,
+			expiration,
 		),
 	)
 
@@ -297,6 +363,7 @@ func (r *Rabbit) PublishWithConfirm(
 	deliveryMode *uint8,
 	priority *uint8,
 	timestamp *time.Time,
+	expiration *time.Duration,
 	maxRetries int,
 	retryInterval time.Duration,
 	confirmTimeout time.Duration,
@@ -326,6 +393,7 @@ func (r *Rabbit) PublishWithConfirm(
 		deliveryMode,
 		priority,
 		timestamp,
+		expiration,
 	)
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
@@ -352,34 +420,19 @@ func (r *Rabbit) PublishWithConfirm(
 			}
 		}
 
-		r.logger.Debug("rabbitmq get connection", map[string]any{
-			"attempt": attempt + 1,
-		})
-
-		r.connMu.RLock()
-		conn := r.conn
-		r.connMu.RUnlock()
-
-		if conn == nil || conn.IsClosed() {
-			lastErr = fmt.Errorf("no active connection")
-			r.triggerReconnect()
-			continue // Retry
-		}
-
 		// Try to get channel
 		r.logger.Debug("rabbitmq get channel", map[string]any{
 			"attempt": attempt + 1,
 		})
-		ch, err := conn.Channel()
+		ch, err := r.getChannel()
 		if err != nil {
-			lastErr = fmt.Errorf("failed to open channel (attempt %d): %w", attempt+1, err)
-			r.logger.Error("failed to open channel for publish with confirm", map[string]any{
+			lastErr = fmt.Errorf("failed to publish (attempt %d): %w", attempt+1, err)
+			r.logger.Error("failed to publish", map[string]any{
 				"attempt":     attempt + 1,
 				"error":       err.Error(),
 				"exchange":    exchange,
 				"routing_key": routingKey,
 			})
-			r.triggerReconnect()
 			continue // Retry
 		}
 
@@ -501,47 +554,4 @@ func (r *Rabbit) Close() error {
 
 	r.logger.Info("rabbitmq connection closed", nil)
 	return nil
-}
-
-func (r *Rabbit) buildAmqpPublishing(
-	contentType string,
-	headers map[string]string,
-	body []byte,
-	deliveryMode *uint8,
-	priority *uint8,
-	timestamp *time.Time,
-) amqp.Publishing {
-	amqpTimestamp := time.Now()
-	if timestamp != nil {
-		amqpTimestamp = *timestamp
-	}
-
-	publishing := amqp.Publishing{
-		ContentType: contentType,
-		Body:        body,
-		Timestamp:   amqpTimestamp,
-	}
-
-	if headers != nil {
-		amqpHeaders := make(amqp.Table, len(headers))
-		for k, v := range headers {
-			amqpHeaders[k] = v
-		}
-		publishing.Headers = amqpHeaders
-	}
-
-	if deliveryMode != nil {
-		switch *deliveryMode {
-		case amqp.Transient:
-			publishing.DeliveryMode = amqp.Transient
-		case amqp.Persistent:
-			publishing.DeliveryMode = amqp.Persistent
-		}
-	}
-
-	if priority != nil {
-		publishing.Priority = *priority
-	}
-
-	return publishing
 }
