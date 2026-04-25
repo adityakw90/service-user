@@ -6,6 +6,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	eventmocks "github.com/adityakw90/service-user/mocks/event"
+	executormocks "github.com/adityakw90/service-user/mocks/executor"
 	oauthmocks "github.com/adityakw90/service-user/mocks/oauth"
 	observermocks "github.com/adityakw90/service-user/mocks/observer"
 	repomocks "github.com/adityakw90/service-user/mocks/repository"
@@ -80,6 +81,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 			mockTokenGen := securitymocks.NewMockTokenGenerator(t)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockTokenBlacklist := securitymocks.NewMockTokenStore(t)
+			mockExecutor := executormocks.NewMockExecutor(t)
 			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
 			mockAuthObserver := observermocks.NewMockServiceObserver[signal.AuthSignal](t)
 			setupAuthObserverAny(t, mockAuthObserver) // Keep custom observer mock
@@ -100,6 +102,7 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				mockOAuthProvider,
 				mockTokenWhitelist,
 				mockTokenBlacklist,
+				mockExecutor,
 				mockEventPublisher,
 				mockAuthObserver,
 				nil, // attemptTracker

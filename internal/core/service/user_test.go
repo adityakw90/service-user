@@ -5,11 +5,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	eventMocks "github.com/adityakw90/service-user/mocks/event"
 	observermocks "github.com/adityakw90/service-user/mocks/observer"
 	repomocks "github.com/adityakw90/service-user/mocks/repository"
 	resolvermocks "github.com/adityakw90/service-user/mocks/resolver"
@@ -130,7 +130,11 @@ func TestUserService_Get(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -267,7 +271,11 @@ func TestUserService_List(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -384,7 +392,11 @@ func TestUserService_Create(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -527,7 +539,11 @@ func TestUserService_Update(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -606,7 +622,11 @@ func TestUserService_Delete(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -696,7 +716,11 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -812,7 +836,11 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -916,7 +944,11 @@ func TestUserService_SetPin(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -1006,7 +1038,11 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 
@@ -1106,7 +1142,11 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockUIDGen,
 				mockTokenWhitelist,
 				mockObserver,
-				publisher.NewNoOpPublisher(),
+				func() *eventMocks.MockEventPublisher {
+					ep := eventMocks.NewMockEventPublisher(t)
+					setupEventPublisherAny(t, ep)
+					return ep
+				}(),
 				mockResolverProvider,
 			)
 

@@ -68,6 +68,51 @@ func (_c *MockEventPublisher_Close_Call) RunAndReturn(run func() error) *MockEve
 	return _c
 }
 
+// Name provides a mock function with no fields
+func (_m *MockEventPublisher) Name() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Name")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockEventPublisher_Name_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Name'
+type MockEventPublisher_Name_Call struct {
+	*mock.Call
+}
+
+// Name is a helper method to define mock.On call
+func (_e *MockEventPublisher_Expecter) Name() *MockEventPublisher_Name_Call {
+	return &MockEventPublisher_Name_Call{Call: _e.mock.On("Name")}
+}
+
+func (_c *MockEventPublisher_Name_Call) Run(run func()) *MockEventPublisher_Name_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockEventPublisher_Name_Call) Return(_a0 string) *MockEventPublisher_Name_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEventPublisher_Name_Call) RunAndReturn(run func() string) *MockEventPublisher_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Publish provides a mock function with given fields: ctx, eventType, eventData
 func (_m *MockEventPublisher) Publish(ctx context.Context, eventType domainevent.EventType, eventData interface{}) error {
 	ret := _m.Called(ctx, eventType, eventData)

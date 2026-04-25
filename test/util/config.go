@@ -124,16 +124,10 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 				URL:     "http://localhost:8080",
 				Timeout: 5 * time.Second,
 			},
-			Redis: config.PublisherRedisConfig{
-				Enabled: true,
-				Name:    "test_service_user",
-			},
 			RabbitMQ: config.PublisherRabbitMQConfig{
 				Enabled:          true,
 				Exchange:         "test_service_user",
-				ExchangeType:     "topic",
 				RoutingKeyPrefix: "test_service_user.",
-				Durable:          true,
 			},
 		},
 		OAuth: config.OauthConfig{

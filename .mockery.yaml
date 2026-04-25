@@ -110,6 +110,17 @@ packages:
         config:
           dir: mocks/event
 
+  # Executor ports - mocks/executor/
+  github.com/adityakw90/service-user/internal/core/port/executor:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      Executor:
+        config:
+          dir: mocks/executor
+
   # Cache ports - mocks/cache/
   github.com/adityakw90/service-user/internal/core/port/cache:
     config:

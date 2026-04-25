@@ -1,4 +1,4 @@
-package publisher
+package event
 
 import (
 	"context"
@@ -13,6 +13,10 @@ type NoOpPublisher struct{}
 // NewNoOpPublisher creates a no-op publisher.
 func NewNoOpPublisher() portEvent.EventPublisher {
 	return &NoOpPublisher{}
+}
+
+func (p *NoOpPublisher) Name() string {
+	return "NoOpPublisher"
 }
 
 // Publish is a no-op.

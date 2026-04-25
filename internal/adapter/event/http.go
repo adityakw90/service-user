@@ -1,4 +1,4 @@
-package publisher
+package event
 
 import (
 	"bytes"
@@ -9,44 +9,64 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // HTTPPublisher publishes events via HTTP to a CloudEvents endpoint.
 type HTTPPublisher struct {
 	client *http.Client
-	config HttpPublisherConfig
-}
-
-// HttpPublisherConfig holds configuration for the HTTP event publisher.
-type HttpPublisherConfig struct {
-	Endpoint string
-	Source   string
-	Timeout  time.Duration
+	url    string
+	logger monitoring.Logger
+	tracer monitoring.Tracer
 }
 
 // NewHTTPPublisher creates a new HTTP event publisher.
-func NewHTTPPublisher(config HttpPublisherConfig) portEvent.EventPublisher {
+func NewHTTPPublisher(
+	url string,
+	timeout time.Duration,
+	logger monitoring.Logger,
+	tracer monitoring.Tracer,
+) portEvent.EventPublisher {
 	return &HTTPPublisher{
 		client: &http.Client{
-			Timeout: config.Timeout,
+			Timeout: timeout,
 		},
-		config: config,
+		url:    url,
+		logger: logger,
+		tracer: tracer,
 	}
+}
+
+func (p *HTTPPublisher) Name() string {
+	return "HTTPPublisher"
 }
 
 // Publish publishes an event via HTTP.
 func (p *HTTPPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
-	// Convert to CloudEvent format
-	ce := toCloudEventData(eventType, eventData, p.config.Source)
+	newCtx, span := p.tracer.StartSpan(ctx, "HTTPPublisher.Publish")
+	defer span.End()
 
-	body, err := json.Marshal(ce)
+	// Convert to CloudEvent format
+	ce := NewCloudEvent(ctx, eventType, eventData)
+	span.AddEvent(string(eventType),
+		trace.WithAttributes(
+			attribute.String("type", ce.Type),
+			attribute.String("source", ce.Source),
+			attribute.String("specversion", ce.SpecVersion),
+			attribute.String("id", ce.ID),
+		),
+	)
+
+	body, err := json.Marshal(ce.Data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", p.config.Endpoint, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(newCtx, "POST", p.url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -55,6 +75,12 @@ func (p *HTTPPublisher) Publish(ctx context.Context, eventType event.EventType, 
 	req.Header.Set("Ce-Source", ce.Source)
 	req.Header.Set("Ce-Specversion", ce.SpecVersion)
 	req.Header.Set("Ce-ID", ce.ID)
+
+	// inject trace header
+	md := p.tracer.InjectContext(newCtx)
+	for k, v := range md {
+		req.Header.Set(k, v[0])
+	}
 
 	resp, err := p.client.Do(req)
 	if err != nil {
