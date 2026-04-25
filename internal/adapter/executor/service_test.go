@@ -385,20 +385,24 @@ func TestServiceExecutor_DoAsync_Concurrent(t *testing.T) {
 	executor := NewServiceExecutor(mockLogger, mockTracer)
 	ctx := context.Background()
 
-	var wg sync.WaitGroup
 	numGoroutines := 10
+	done := make(chan struct{}, numGoroutines)
 
 	for i := 0; i < numGoroutines; i++ {
-		wg.Add(1)
 		go func(index int) {
-			defer wg.Done()
 			executor.DoAsync(ctx, fmt.Sprintf("concurrent-operation-%d", index), func(innerCtx context.Context) {
-				// Simulate work
+				done <- struct{}{}
 			})
 		}(i)
 	}
 
-	wg.Wait()
+	for i := 0; i < numGoroutines; i++ {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Fatal("test timed out waiting for goroutines")
+		}
+	}
 
 	debugLogs := mockLogger.getDebugMessages()
 	assert.GreaterOrEqual(t, len(debugLogs), numGoroutines, "should have logs for all concurrent operations")
