@@ -44,9 +44,9 @@ func UnaryRequestInterceptor(
 		var resp any
 
 		// Extract metadata from incoming request
-		clientName := "Unknown"
-		actorId := "Unknown"
-		actorType := "Unknown"
+		clientName := "unknown"
+		actorId := "unknown"
+		actorType := "unknown"
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = m.Tracer.ExtractContext(ctx, md)
 

@@ -28,12 +28,13 @@ func SetActor(ctx context.Context, actorId string, actorType string) context.Con
 	)
 }
 
-func GetActor(ctx context.Context) (string, string) {
-	actorId, ok := ctx.Value(actorIdKey).(string)
+func GetActor(ctx context.Context) (actorId string, actorType string) {
+	var ok bool
+	actorId, ok = ctx.Value(actorIdKey).(string)
 	if !ok {
 		actorId = "unknown"
 	}
-	actorType, ok := ctx.Value(actorTypeKey).(string)
+	actorType, ok = ctx.Value(actorTypeKey).(string)
 	if !ok {
 		actorType = "unknown"
 	}
