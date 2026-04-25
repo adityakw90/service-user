@@ -80,13 +80,3 @@ func (o *serviceObserver[T]) OnSignal(
 
 	l.Debug("service signal", fields)
 }
-
-func (o *serviceObserver[T]) DetachContext(ctx context.Context) context.Context {
-	parentSpan := o.tracer.SpanFromContext(ctx)
-	newCtx, _ := o.tracer.StartChildSpan(
-		context.Background(),
-		"observer.background",
-		parentSpan,
-	)
-	return newCtx
-}

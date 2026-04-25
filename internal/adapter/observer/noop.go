@@ -19,7 +19,3 @@ func NewNoopObserver[T any]() observer.ServiceObserver[T] {
 func (o *NoopObserver[T]) OnSignal(ctx context.Context, sig signal.SignalType, data T, err error) {
 	// No-op - does nothing
 }
-
-func (o *NoopObserver[T]) DetachContext(ctx context.Context) context.Context {
-	return context.Background()
-}
