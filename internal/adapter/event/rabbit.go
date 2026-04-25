@@ -9,15 +9,35 @@ import (
 	"github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
-	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
 
+// RabbitConn defines the interface for RabbitMQ connection operations.
+// This interface allows for mocking in tests while maintaining compatibility with *infra.Rabbit.
+type RabbitConn interface {
+	PublishWithConfirm(
+		ctx context.Context,
+		exchange string,
+		routingKey string,
+		contentType string,
+		headers map[string]string,
+		body []byte,
+		deliveryMode *uint8,
+		priority *uint8,
+		timestamp *time.Time,
+		expiration *time.Duration,
+		maxRetries int,
+		retryInterval time.Duration,
+		confirmTimeout time.Duration,
+	) error
+	Close() error
+}
+
 // RabbitmqPublisher publishes events via RabbitMQ.
 type RabbitmqPublisher struct {
-	conn             *infra.Rabbit
+	conn             RabbitConn
 	exchange         string
 	routingKeyPrefix string
 	confirmTimeout   time.Duration
@@ -37,7 +57,7 @@ type RabbitmqPublisherConfig struct {
 }
 
 func NewRabbitmqPublisher(
-	conn *infra.Rabbit,
+	conn RabbitConn,
 	config RabbitmqPublisherConfig,
 	logger monitoring.Logger,
 	tracer monitoring.Tracer,
