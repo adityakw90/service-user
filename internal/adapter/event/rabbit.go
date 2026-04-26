@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/adityakw90/go-monitoring"
@@ -62,10 +63,14 @@ func NewRabbitmqPublisher(
 	logger monitoring.Logger,
 	tracer monitoring.Tracer,
 ) portEvent.EventPublisher {
+	routingKeyPrefix := config.RoutingKeyPrefix
+	if routingKeyPrefix != "" && !strings.HasSuffix(routingKeyPrefix, ".") {
+		routingKeyPrefix += "."
+	}
 	return &RabbitmqPublisher{
 		conn:             conn,
 		exchange:         config.Exchange,
-		routingKeyPrefix: config.RoutingKeyPrefix,
+		routingKeyPrefix: routingKeyPrefix,
 		confirmTimeout:   config.ConfirmTimeout,
 		maxRetries:       config.MaxRetries,
 		retryInterval:    config.RetryInterval,
@@ -140,5 +145,5 @@ func (p *RabbitmqPublisher) Close() error {
 
 // getRoutingKey returns the full routing key for an event type.
 func (p *RabbitmqPublisher) getRoutingKey(eventType string) string {
-	return p.routingKeyPrefix + "." + eventType
+	return p.routingKeyPrefix + strings.TrimPrefix(eventType, ".")
 }

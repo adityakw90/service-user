@@ -6,29 +6,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/adityakw90/service-user/internal/core/domain/event"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockRabbitConn struct {
-	publishWithConfirmCalled bool
-	publishWithConfirmArgCtx context.Context
-	publishWithConfirmArgExchange string
-	publishWithConfirmArgRoutingKey string
-	publishWithConfirmArgContentType string
-	publishWithConfirmArgHeaders map[string]string
-	publishWithConfirmArgBody []byte
-	publishWithConfirmArgDeliveryMode *uint8
-	publishWithConfirmArgPriority *uint8
-	publishWithConfirmArgTimestamp *time.Time
-	publishWithConfirmArgExpiration *time.Duration
-	publishWithConfirmArgMaxRetries int
-	publishWithConfirmArgRetryInterval time.Duration
+	publishWithConfirmCalled            bool
+	publishWithConfirmArgCtx            context.Context
+	publishWithConfirmArgExchange       string
+	publishWithConfirmArgRoutingKey     string
+	publishWithConfirmArgContentType    string
+	publishWithConfirmArgHeaders        map[string]string
+	publishWithConfirmArgBody           []byte
+	publishWithConfirmArgDeliveryMode   *uint8
+	publishWithConfirmArgPriority       *uint8
+	publishWithConfirmArgTimestamp      *time.Time
+	publishWithConfirmArgExpiration     *time.Duration
+	publishWithConfirmArgMaxRetries     int
+	publishWithConfirmArgRetryInterval  time.Duration
 	publishWithConfirmArgConfirmTimeout time.Duration
-	publishWithConfirmReturnErr error
-	publishWithConfirmCheckContext bool
+	publishWithConfirmReturnErr         error
+	publishWithConfirmCheckContext      bool
 
-	closeCalled bool
+	closeCalled    bool
 	closeReturnErr error
 }
 
@@ -90,7 +90,7 @@ func TestNewRabbitmqPublisher(t *testing.T) {
 	assert.True(t, ok, "Publisher should be *RabbitmqPublisher type")
 	assert.Equal(t, mockConn, rabbitPub.conn)
 	assert.Equal(t, "test-exchange", rabbitPub.exchange)
-	assert.Equal(t, "user.service", rabbitPub.routingKeyPrefix)
+	assert.Equal(t, "user.service.", rabbitPub.routingKeyPrefix)
 	assert.Equal(t, 5*time.Second, rabbitPub.confirmTimeout)
 	assert.Equal(t, 3, rabbitPub.maxRetries)
 	assert.Equal(t, 500*time.Millisecond, rabbitPub.retryInterval)
@@ -222,7 +222,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			wantErr: false,
 			validate: func(t *testing.T, m *mockRabbitConn) {
 				assert.True(t, m.publishWithConfirmCalled)
-				assert.Equal(t, ".user.deleted", m.publishWithConfirmArgRoutingKey)
+				assert.Equal(t, "user.deleted", m.publishWithConfirmArgRoutingKey)
 			},
 		},
 		{
@@ -493,7 +493,7 @@ func TestRabbitmqPublisher_getRoutingKey(t *testing.T) {
 	}{
 		{
 			name:            "Standard prefix with event type",
-			prefix:          "user.service",
+			prefix:          "user.service.",
 			eventType:       "auth.login",
 			expectedRouting: "user.service.auth.login",
 		},
@@ -501,29 +501,29 @@ func TestRabbitmqPublisher_getRoutingKey(t *testing.T) {
 			name:            "Empty prefix",
 			prefix:          "",
 			eventType:       "user.created",
-			expectedRouting: ".user.created",
+			expectedRouting: "user.created",
 		},
 		{
 			name:            "Empty event type",
 			prefix:          "events",
 			eventType:       "",
-			expectedRouting: "events.",
+			expectedRouting: "events",
 		},
 		{
 			name:            "Empty both",
 			prefix:          "",
 			eventType:       "",
-			expectedRouting: ".",
+			expectedRouting: "",
 		},
 		{
 			name:            "Single word prefix",
-			prefix:          "auth",
+			prefix:          "auth.",
 			eventType:       "login",
 			expectedRouting: "auth.login",
 		},
 		{
 			name:            "Multi-level event type",
-			prefix:          "user",
+			prefix:          "user.",
 			eventType:       "file.upload.complete",
 			expectedRouting: "user.file.upload.complete",
 		},

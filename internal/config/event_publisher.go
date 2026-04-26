@@ -45,7 +45,7 @@ func defaultEventPublisherConfig(key string, v *viper.Viper) {
 	// RabbitMQ defaults
 	v.SetDefault(key+".rabbitmq.enabled", false)
 	v.SetDefault(key+".rabbitmq.exchange", "user-service")
-	v.SetDefault(key+".rabbitmq.routing_key_prefix", "user.service.")
+	v.SetDefault(key+".rabbitmq.routing_key_prefix", "user.service")
 	v.SetDefault(key+".rabbitmq.confirm_timeout", 30*time.Second)
 	v.SetDefault(key+".rabbitmq.max_retries", 5)
 	v.SetDefault(key+".rabbitmq.retry_interval", 1*time.Second)
