@@ -1,11 +1,14 @@
 package service
 
 import (
+	"testing"
 	"time"
 
+	eventMocks "github.com/adityakw90/service-user/mocks/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/pkg/util"
+	"github.com/stretchr/testify/mock"
 )
 
 // Helper function to create a test user
@@ -135,4 +138,9 @@ func createDeletedUser(id int64, uid, username, email string) *model.User {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
+}
+
+// setupEventPublisherAny allows any Publish calls (useful when not testing event behavior)
+func setupEventPublisherAny(t *testing.T, ep *eventMocks.MockEventPublisher) {
+	ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Maybe().Return(nil)
 }

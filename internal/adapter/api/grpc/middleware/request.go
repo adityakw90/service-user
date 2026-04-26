@@ -44,9 +44,9 @@ func UnaryRequestInterceptor(
 		var resp any
 
 		// Extract metadata from incoming request
-		clientName := "Unknown"
-		actorId := "Unknown"
-		actorType := "Unknown"
+		clientName := "unknown"
+		actorId := "unknown"
+		actorType := "unknown"
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = m.Tracer.ExtractContext(ctx, md)
 
@@ -183,12 +183,20 @@ func StreamRequestInterceptor(
 		ctx := ss.Context()
 
 		// Extract metadata from incoming request
-		clientName := "Unknown"
+		clientName := "unknown"
+		actorId := "unknown"
+		actorType := "unknown"
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = m.Tracer.ExtractContext(ctx, md)
 
 			if mdClient, exists := md["client"]; exists && len(mdClient) > 0 {
 				clientName = mdClient[0]
+			}
+			if mdActorId, exists := md["actor-id"]; exists && len(mdActorId) > 0 {
+				actorId = mdActorId[0]
+			}
+			if mdActorType, exists := md["actor-type"]; exists && len(mdActorType) > 0 {
+				actorType = mdActorType[0]
 			}
 		}
 
@@ -202,6 +210,10 @@ func StreamRequestInterceptor(
 		// Extract traceID from the span context
 		traceID := span.SpanContext().TraceID().String()
 
+		// Store client name in context
+		ctx = util.SetClientName(ctx, clientName)
+		ctx = util.SetActor(ctx, actorId, actorType)
+
 		// Add useful attributes to the span
 		span.SetAttributes(
 			attribute.String("service.type", "gRPC"),
@@ -210,6 +222,8 @@ func StreamRequestInterceptor(
 			attribute.String("rpc.service", info.FullMethod),
 			attribute.String("trace.id", traceID),
 			attribute.String("client.name", clientName),
+			attribute.String("actor.id", actorId),
+			attribute.String("actor.type", actorType),
 		)
 
 		// start trace request
@@ -250,20 +264,42 @@ func StreamRequestInterceptor(
 			grpcErr := response.MakeErrorResponse(err)
 			code := status.Code(grpcErr).String()
 
-			span.AddEvent("gRPC Request Failed", trace.WithAttributes(
-				attribute.String("method", info.FullMethod),
-				attribute.String("code", code),
-				attribute.String("error", err.Error()),
-				attribute.String("response.code", code),
-				attribute.String("response.message", grpcErr.Error()),
-			))
-			logger.Info("gRPC Request Failed", map[string]interface{}{
-				"rpc.service":      info.FullMethod,
-				"error.code":       code,
-				"error.message":    err.Error(),
-				"response.code":    code,
-				"response.message": grpcErr.Error(),
-			})
+			logData := map[string]interface{}{
+				"rpc.Method":       info.FullMethod,
+				"error.Type":       fmt.Sprintf("%T", err), // Captures Go's error type
+				"error.Message":    err.Error(),            // original error message
+				"response.Code":    code,
+				"response.Message": grpcErr.Error(),
+			}
+			logAttr := []attribute.KeyValue{
+				attribute.String("rpc.Method", info.FullMethod),
+				attribute.String("error.Type", fmt.Sprintf("%T", err)),
+				attribute.String("error.Message", err.Error()),
+				attribute.String("response.Code", code),
+				attribute.String("response.Message", grpcErr.Error()),
+			}
+
+			// Check if it's an unmapped error code (internal server error)
+			if code == codes.Internal.String() {
+				// Check for specific CustomError codes
+				var customErr *domainErrors.CustomError
+				if errors.As(err, &customErr) {
+					switch customErr {
+					case domainErrors.ErrInternalServerError:
+						logData["Warning"] = "Unmapped API Error"
+						logAttr = append(logAttr, attribute.String("Warning", "Unmapped API Error"))
+					case domainErrors.ErrTraceInformationMissing:
+						logData["Warning"] = "Trace information missing in request"
+						logAttr = append(logAttr, attribute.String("Warning", "Trace information missing in request"))
+					}
+				} else {
+					logData["Error"] = "Unhandled Build Response"
+					logAttr = append(logAttr, attribute.String("Error", "Unhandled Build Response"))
+				}
+			}
+			span.AddEvent("gRPC Request Failed", trace.WithAttributes(logAttr...))
+			logger.Info("gRPC Request Failed", logData)
+
 			return grpcErr
 		} else {
 			span.AddEvent("gRPC Request Success", trace.WithAttributes(

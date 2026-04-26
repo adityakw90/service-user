@@ -11,7 +11,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
-	port "github.com/adityakw90/service-user/internal/core/port/oauth"
+	portExecutor "github.com/adityakw90/service-user/internal/core/port/executor"
 	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
 	"github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
@@ -32,6 +32,7 @@ type authService struct {
 	oauthProvider  portOAuth.OAuthProvider
 	tokenWhitelist portSec.TokenStore
 	tokenBlacklist portSec.TokenStore
+	executor       portExecutor.Executor
 	eventPublisher portEvent.EventPublisher
 	authObserver   observer.ServiceObserver[domainSignal.AuthSignal]
 	attemptTracker portSec.AttemptTracker
@@ -47,9 +48,10 @@ func NewAuthService(
 	pinHasher portSec.Hasher,
 	tokenGen portSec.TokenGenerator,
 	uidGen portSec.UIDGenerator,
-	oauthProvider port.OAuthProvider,
+	oauthProvider portOAuth.OAuthProvider,
 	tokenWhitelist portSec.TokenStore,
 	tokenBlacklist portSec.TokenStore,
+	executor portExecutor.Executor,
 	eventPublisher portEvent.EventPublisher,
 	authObserver observer.ServiceObserver[domainSignal.AuthSignal],
 	attemptTracker portSec.AttemptTracker,
@@ -67,6 +69,7 @@ func NewAuthService(
 		oauthProvider:  oauthProvider,
 		tokenWhitelist: tokenWhitelist,
 		tokenBlacklist: tokenBlacklist,
+		executor:       executor,
 		eventPublisher: eventPublisher,
 		authObserver:   authObserver,
 		attemptTracker: attemptTracker,
@@ -323,10 +326,33 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		Extra:          payload.Extra,
 	}, nil)
 
-	// Publish login event
-	s.eventPublisher.Publish(ctx, event.EventLogin, event.EventLoginData{
-		Identifier:     payload.Identifier,
-		IdentifierType: payload.IdentifierType,
+	s.executor.DoAsync(ctx, "auth.publish", func(newCtx context.Context) {
+		// Publish login event
+		loginEventData := event.EventLoginData{
+			Identifier:     payload.Identifier,
+			IdentifierType: payload.IdentifierType,
+			UserUID:        user.UID,
+			UserName:       user.Username,
+		}
+		if device != nil {
+			loginEventData.DeviceUID = device.UID
+			loginEventData.DeviceName = device.DeviceName
+		}
+		if userDevice != nil {
+			loginEventData.IPAddress = userDevice.IPAddress
+		}
+		err := s.eventPublisher.Publish(newCtx, event.EventLogin, loginEventData)
+		if err != nil {
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:      &user.UID,
+				Email:    &user.Email,
+				Username: &user.Username,
+				Extra: &map[string]any{
+					"context": "auth.publish",
+					"event":   event.EventLogin,
+				},
+			}, err)
+		}
 	})
 
 	return &model.Token{

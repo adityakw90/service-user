@@ -7,7 +7,6 @@ import (
 	"github.com/adityakw90/go-monitoring"
 	"go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
-	"google.golang.org/grpc/metadata"
 )
 
 // mockLogger captures log calls for testing
@@ -97,12 +96,12 @@ func (t *mockTracer) StartSpan(ctx context.Context, name string, opts ...trace.S
 
 func (t *mockTracer) EndSpan(span trace.Span) {}
 
-func (t *mockTracer) ExtractContext(ctx context.Context, md metadata.MD) context.Context {
+func (t *mockTracer) ExtractContext(ctx context.Context, md map[string][]string) context.Context {
 	return ctx
 }
 
-func (t *mockTracer) InjectContext(ctx context.Context) metadata.MD {
-	return metadata.MD{}
+func (t *mockTracer) InjectContext(ctx context.Context) map[string][]string {
+	return map[string][]string{}
 }
 
 func (t *mockTracer) Shutdown(ctx context.Context) error {

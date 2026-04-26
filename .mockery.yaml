@@ -1,5 +1,5 @@
 # Mockery configuration for generating test mocks
-# This file configures mockery to generate all port mocks into test/mocks/ directory
+# This file configures mockery to generate all port mocks into mocks/ directory
 # with a mirrored subdirectory structure matching the port organization.
 
 # Use the packages configuration format (required for mockery v3+)
@@ -7,33 +7,33 @@
 # We use config section at interface level to customize output directory per interface
 
 packages:
-  # Repository ports - test/mocks/repository/
+  # Repository ports - mocks/repository/
   github.com/adityakw90/service-user/internal/core/port/repository:
     config:
-      with-expecter: true    # Enable expecter pattern for fluent API
-      outpkg: mocks          # All mocks use package name "mocks"
+      with-expecter: true # Enable expecter pattern for fluent API
+      outpkg: mocks # All mocks use package name "mocks"
       filename: "mock_{{.InterfaceName}}.go"
     interfaces:
       UserRepository:
         config:
-          dir: test/mocks/repository
+          dir: mocks/repository
       UserProfileRepository:
         config:
-          dir: test/mocks/repository
+          dir: mocks/repository
       UserPinRepository:
         config:
-          dir: test/mocks/repository
+          dir: mocks/repository
       DeviceRepository:
         config:
-          dir: test/mocks/repository
+          dir: mocks/repository
       UserFileRepository:
         config:
-          dir: test/mocks/repository
+          dir: mocks/repository
       UserDeviceRepository:
         config:
-          dir: test/mocks/repository
+          dir: mocks/repository
 
-  # Service ports - test/mocks/service/
+  # Service ports - mocks/service/
   github.com/adityakw90/service-user/internal/core/port/service:
     config:
       with-expecter: true
@@ -42,35 +42,38 @@ packages:
     interfaces:
       UserService:
         config:
-          dir: test/mocks/service
+          dir: mocks/service
       AuthService:
         config:
-          dir: test/mocks/service
+          dir: mocks/service
       DeviceService:
         config:
-          dir: test/mocks/service
+          dir: mocks/service
       UserFileService:
         config:
-          dir: test/mocks/service
+          dir: mocks/service
 
-  # Resolver ports - test/mocks/resolver/
+  # Resolver ports - mocks/resolver/
   github.com/adityakw90/service-user/internal/core/port/resolver:
     config:
       with-expecter: true
       outpkg: mocks
       filename: "mock_{{.InterfaceName}}.go"
     interfaces:
+      ResolverProvider:
+        config:
+          dir: mocks/resolver
       UserResolver:
         config:
-          dir: test/mocks/resolver
+          dir: mocks/resolver
       DeviceResolver:
         config:
-          dir: test/mocks/resolver
+          dir: mocks/resolver
       UserFileResolver:
         config:
-          dir: test/mocks/resolver
+          dir: mocks/resolver
 
-  # Security ports - test/mocks/security/
+  # Security ports - mocks/security/
   github.com/adityakw90/service-user/internal/core/port/security:
     config:
       with-expecter: true
@@ -79,24 +82,24 @@ packages:
     interfaces:
       Hasher:
         config:
-          dir: test/mocks/security
+          dir: mocks/security
       UIDGenerator:
         config:
-          dir: test/mocks/security
+          dir: mocks/security
       TokenGenerator:
         config:
-          dir: test/mocks/security
+          dir: mocks/security
       TokenStore:
         config:
-          dir: test/mocks/security
+          dir: mocks/security
       RateLimiter:
         config:
-          dir: test/mocks/security
+          dir: mocks/security
       AttemptTracker:
         config:
-          dir: test/mocks/security
+          dir: mocks/security
 
-  # Event ports - test/mocks/event/
+  # Event ports - mocks/event/
   github.com/adityakw90/service-user/internal/core/port/event:
     config:
       with-expecter: true
@@ -105,9 +108,20 @@ packages:
     interfaces:
       EventPublisher:
         config:
-          dir: test/mocks/event
+          dir: mocks/event
 
-  # Cache ports - test/mocks/cache/
+  # Executor ports - mocks/executor/
+  github.com/adityakw90/service-user/internal/core/port/executor:
+    config:
+      with-expecter: true
+      outpkg: mocks
+      filename: "mock_{{.InterfaceName}}.go"
+    interfaces:
+      Executor:
+        config:
+          dir: mocks/executor
+
+  # Cache ports - mocks/cache/
   github.com/adityakw90/service-user/internal/core/port/cache:
     config:
       with-expecter: true
@@ -116,9 +130,9 @@ packages:
     interfaces:
       UserCache:
         config:
-          dir: test/mocks/cache
+          dir: mocks/cache
 
-  # OAuth ports - test/mocks/oauth/
+  # OAuth ports - mocks/oauth/
   github.com/adityakw90/service-user/internal/core/port/oauth:
     config:
       with-expecter: true
@@ -127,9 +141,9 @@ packages:
     interfaces:
       OAuthProvider:
         config:
-          dir: test/mocks/oauth
+          dir: mocks/oauth
 
-  # Observer ports - test/mocks/observer/
+  # Observer ports - mocks/observer/
   github.com/adityakw90/service-user/internal/core/port/observer:
     config:
       with-expecter: true
@@ -138,4 +152,4 @@ packages:
     interfaces:
       ServiceObserver:
         config:
-          dir: test/mocks/observer
+          dir: mocks/observer

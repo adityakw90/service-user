@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/adapter/event"
+	"github.com/adityakw90/service-user/internal/adapter/executor"
 	"github.com/adityakw90/service-user/internal/adapter/oauth"
 	"github.com/adityakw90/service-user/internal/adapter/observer"
-	"github.com/adityakw90/service-user/internal/adapter/publisher"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
@@ -140,7 +141,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "test-token-whitelist:", 15*time.Minute)
 
 	// Create event publishers (no-op for tests)
-	eventPublisher := publisher.NewNoOpPublisher()
+	eventPublisher := event.NewNoOpPublisher()
 
 	// Initialize UID generator
 	uidGen := security.NewUIDGenerator()
@@ -150,6 +151,9 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	userObserver := observer.NewUserObserver(monitoring.Logger, monitoring.Tracer)
 	deviceObserver := observer.NewDeviceObserver(monitoring.Logger, monitoring.Tracer)
 	userFileObserver := observer.NewUserFileObserver(monitoring.Logger, monitoring.Tracer)
+
+	// Initialize Executor
+	serviceExecutor := executor.NewServiceExecutor(monitoring.Logger, monitoring.Tracer)
 
 	// Initialize services
 	userService := svc.NewUserService(
@@ -213,6 +217,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		oauthProvider,
 		tokenWhitelist,
 		tokenBlacklist,
+		serviceExecutor,
 		eventPublisher,
 		authObserver,
 		security.NewNoopAttemptTracker(),

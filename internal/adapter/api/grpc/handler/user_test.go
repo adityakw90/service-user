@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
-	servicemocks "github.com/adityakw90/service-user/test/mocks/service"
+	servicemocks "github.com/adityakw90/service-user/mocks/service"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,4 +41,3 @@ func TestNewUserHandler_ValidatorNil(t *testing.T) {
 	assert.Equal(t, mockService, h.service)
 	assert.Nil(t, h.validator)
 }
-

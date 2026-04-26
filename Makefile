@@ -36,6 +36,7 @@ test-clean:
 # Generate mocks using mockery
 mocks:
 	@echo "Generating mocks..."
+	@rm -rf ./mocks
 	@mockery --config .mockery.yaml
 
 build:

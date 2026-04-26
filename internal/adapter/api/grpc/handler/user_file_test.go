@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/validator"
-	servicemocks "github.com/adityakw90/service-user/test/mocks/service"
+	servicemocks "github.com/adityakw90/service-user/mocks/service"
 	"github.com/stretchr/testify/assert"
 )
 
