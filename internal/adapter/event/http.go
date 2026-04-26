@@ -75,6 +75,9 @@ func (p *HTTPPublisher) Publish(ctx context.Context, eventType event.EventType, 
 	req.Header.Set("Ce-Source", ce.Source)
 	req.Header.Set("Ce-Specversion", ce.SpecVersion)
 	req.Header.Set("Ce-ID", ce.ID)
+	req.Header.Set("Client", ce.Data.Client)
+	req.Header.Set("Actor-Id", ce.Data.ActorId)
+	req.Header.Set("Actor-Type", ce.Data.ActorType)
 
 	// inject trace header
 	md := p.tracer.InjectContext(newCtx)

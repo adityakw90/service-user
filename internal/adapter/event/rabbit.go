@@ -109,6 +109,9 @@ func (p *RabbitmqPublisher) Publish(ctx context.Context, eventType event.EventTy
 		"ce_source":      ce.Source,
 		"ce_id":          ce.ID,
 		"ce_specversion": ce.SpecVersion,
+		"client":         ce.Data.Client,
+		"actor_id":       ce.Data.ActorId,
+		"actor_type":     ce.Data.ActorType,
 	}
 
 	// inject trace header

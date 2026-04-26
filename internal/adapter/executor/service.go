@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/adityakw90/go-monitoring"
 )
@@ -36,8 +37,12 @@ func (s *serviceExecutor) Do(ctx context.Context, name string, fn func(ctx conte
 }
 
 func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx context.Context)) {
+	detached, cancel := context.WithTimeout(
+		context.WithoutCancel(ctx),
+		30*time.Second,
+	)
 	newCtx, span := s.tracer.StartChildSpan(
-		context.Background(),
+		detached,
 		name,
 		s.tracer.SpanFromContext(ctx),
 	)
@@ -50,9 +55,10 @@ func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx 
 					"name": name,
 					"msg":  r,
 				})
-				span.RecordError(fmt.Errorf("%v", r))
+				span.RecordError(fmt.Errorf("panic: %v", r))
 			}
 			span.End()
+			cancel()
 		}()
 		logger.Debug("start doing something", map[string]any{
 			"name": name,
