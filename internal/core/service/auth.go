@@ -343,7 +343,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		}
 		err := s.eventPublisher.Publish(newCtx, event.EventLogin, loginEventData)
 		if err != nil {
-			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
 				UID:      &user.UID,
 				Email:    &user.Email,
 				Username: &user.Username,
