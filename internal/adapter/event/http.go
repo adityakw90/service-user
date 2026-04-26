@@ -81,8 +81,10 @@ func (p *HTTPPublisher) Publish(ctx context.Context, eventType event.EventType, 
 
 	// inject trace header
 	md := p.tracer.InjectContext(newCtx)
-	for k, v := range md {
-		req.Header.Set(k, v[0])
+	for k, vs := range md {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
 	}
 
 	resp, err := p.client.Do(req)

@@ -117,7 +117,9 @@ func (p *RabbitmqPublisher) Publish(ctx context.Context, eventType event.EventTy
 	// inject trace header
 	md := p.tracer.InjectContext(newCtx)
 	for k, v := range md {
-		headers[k] = v[0]
+		if len(v) > 0 {
+			headers[k] = v[0]
+		}
 	}
 
 	err = p.conn.PublishWithConfirm(
