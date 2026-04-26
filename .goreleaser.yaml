@@ -1,0 +1,120 @@
+# .goreleaser.yaml
+version: 2
+project_name: service-user
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: static-linux
+    main: ./cmd
+    binary: service-user
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.BuildTime={{.Date}}
+      - -extldflags '-static'
+    tags:
+      - netgo
+      - osusergo
+    flags:
+      - -trimpath
+
+  - id: static-darwin
+    main: ./cmd
+    binary: service-user
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.BuildTime={{.Date}}
+      - -extldflags '-static'
+    flags:
+      - -trimpath
+
+  - id: static-windows
+    main: ./cmd
+    binary: service-user
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w -X main.Version={{.Version}} -X main.BuildTime={{.Date}}
+      - -extldflags '-static'
+    flags:
+      - -trimpath
+
+archives:
+  # Static archives - simple naming
+  - id: static
+    ids:
+      - static-linux
+      - static-darwin
+      - static-windows
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - "zip"
+    files:
+      - src: config.yaml.example
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# signs:
+#   # GPG signing disabled - can be enabled later when needed
+#   # To enable: generate GPG keys, set GPG_FINGERPRINT and GPG_PASSWORD env vars
+#   - artifacts: all
+#     signature: "${artifact}.sig"
+#     cmd: gpg
+#     args:
+#       - "--batch"
+#       - "--local-user"
+#       - "{{ .Env.GPG_FINGERPRINT }}"
+#       - "--output"
+#       - "${signature}"
+#       - "--detach-sig"
+#       - "${artifact}"
+
+release:
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Release {{ .Tag }} ({{ .Date }})
+  footer: |
+    ## What's Changed
+    Full Changelog: https://github.com/{{ .Env.GITHUB_REPOSITORY }}/compare/{{ .PreviousTag }}...{{ .Tag }}
+  extra_files:
+    - glob: ./config.yaml.example
+
+changelog:
+  disable: false
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^build:"
+      - "^chore:"
+      - "^refactor:"
+
+dist: dist

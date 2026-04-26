@@ -1,0 +1,55 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+*.coverprofile
+
+# Go workspace
+go.work
+go.work.sum
+
+# Binary output directory
+bin/
+dist/
+
+# IDE
+.idea/
+.vscode/
+.claude/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary
+*.tmp
+*.temp
+
+# Git worktrees
+.worktrees/
+
+# project
+config.yaml
+docker-compose.yml
+/docs
+/backup
