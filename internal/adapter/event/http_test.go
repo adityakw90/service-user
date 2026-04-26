@@ -3,6 +3,7 @@ package event
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -271,10 +272,11 @@ func TestHTTPPublisher_Publish_ContextValues(t *testing.T) {
 }
 
 func TestHTTPPublisher_Publish_TraceContextInjection(t *testing.T) {
+	var traceParent string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		traceParent := r.Header.Get("Traceparent")
+		traceParent = r.Header.Get("Traceparent")
 		w.WriteHeader(http.StatusOK)
-		assert.NotNil(t, traceParent)
+		log.Printf("traceParent received: `%s`", traceParent)
 	}))
 	defer server.Close()
 
@@ -286,4 +288,5 @@ func TestHTTPPublisher_Publish_TraceContextInjection(t *testing.T) {
 	err := publisher.Publish(ctx, event.EventUserCreated, testEventData{UserID: "123"})
 
 	assert.NoError(t, err)
+	assert.NotEmpty(t, traceParent, "Traceparent header should be injected by tracer")
 }

@@ -98,7 +98,9 @@ func (t *mockTracer) ExtractContext(ctx context.Context, md map[string][]string)
 }
 
 func (t *mockTracer) InjectContext(ctx context.Context) map[string][]string {
-	return map[string][]string{}
+	return map[string][]string{
+		"traceparent": []string{"00-1234567890abcdef-1234567890abcdef-01"},
+	}
 }
 
 func (t *mockTracer) Shutdown(ctx context.Context) error {
