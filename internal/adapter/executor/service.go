@@ -23,17 +23,7 @@ func NewServiceExecutor(logger monitoring.Logger, tracer monitoring.Tracer) *ser
 func (s *serviceExecutor) Do(ctx context.Context, name string, fn func(ctx context.Context)) {
 	newCtx, span := s.tracer.StartChildSpan(ctx, name, s.tracer.SpanFromContext(ctx))
 	defer span.End()
-	logger := s.logger.WithSpanContext(span.SpanContext())
-
-	logger.Debug("start doing something", map[string]any{
-		"name": name,
-	})
-
 	fn(newCtx)
-
-	logger.Debug("finish doing something", map[string]any{
-		"name": name,
-	})
 }
 
 func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx context.Context)) {
@@ -60,12 +50,6 @@ func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx 
 			span.End()
 			cancel()
 		}()
-		logger.Debug("start doing something", map[string]any{
-			"name": name,
-		})
 		fn(newCtx)
-		logger.Debug("finish doing something", map[string]any{
-			"name": name,
-		})
 	}()
 }
