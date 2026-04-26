@@ -107,13 +107,17 @@ func (m *mockLogger) hasErrorMessage(msg string) bool {
 func (m *mockLogger) getDebugMessages() []logEntry {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.debugMessages
+	out := make([]logEntry, len(m.debugMessages))
+	copy(out, m.debugMessages)
+	return out
 }
 
 func (m *mockLogger) getErrorMessages() []logEntry {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.errorMessages
+	out := make([]logEntry, len(m.errorMessages))
+	copy(out, m.errorMessages)
+	return out
 }
 
 type mockTracer struct {
@@ -167,13 +171,13 @@ func (t *mockTracer) StartChildSpan(ctx context.Context, name string, parent tra
 
 func TestServiceExecutor_Do(t *testing.T) {
 	tests := []struct {
-		name           string
-		operationName  string
-		fn             func(ctx context.Context)
-		wantStartLog   bool
-		wantFinishLog  bool
-		wantSpanCall   bool
-		validateFunc   func(*testing.T, *mockLogger, *mockTracer)
+		name          string
+		operationName string
+		fn            func(ctx context.Context)
+		wantStartLog  bool
+		wantFinishLog bool
+		wantSpanCall  bool
+		validateFunc  func(*testing.T, *mockLogger, *mockTracer)
 	}{
 		{
 			name:          "Happy Path - function executes successfully",
@@ -222,7 +226,7 @@ func TestServiceExecutor_Do(t *testing.T) {
 		{
 			name:          "Empty Function Name - logs empty name",
 			operationName: "",
-			fn: func(ctx context.Context) {},
+			fn:            func(ctx context.Context) {},
 			wantStartLog:  true,
 			wantFinishLog: true,
 			wantSpanCall:  true,
@@ -255,14 +259,14 @@ func TestServiceExecutor_Do(t *testing.T) {
 
 func TestServiceExecutor_DoAsync(t *testing.T) {
 	tests := []struct {
-		name           string
-		operationName  string
-		fn             func(context.Context)
-		wantStartLog   bool
-		wantFinishLog  bool
-		wantErrorLog   bool
-		validateFunc   func(*testing.T, *mockLogger, *mockTracer)
-		setupCancel    func(context.Context) (context.Context, context.CancelFunc)
+		name          string
+		operationName string
+		fn            func(context.Context)
+		wantStartLog  bool
+		wantFinishLog bool
+		wantErrorLog  bool
+		validateFunc  func(*testing.T, *mockLogger, *mockTracer)
+		setupCancel   func(context.Context) (context.Context, context.CancelFunc)
 	}{
 		{
 			name:          "Happy Path - function executes in goroutine",
