@@ -59,37 +59,18 @@ rabbitmq:
   reconnect_max_attempts: 0
 
 event_publisher:
-  enabled: true
-  batch_size: 50
-  batch_timeout: 5s
-  queue_size: 1000
-  worker_count: 2
-  max_retries: 3
-  retry_interval: 2s
+  enabled: false
   http:
     enabled: false
     url: ""
     timeout: 5s
-  redis:
-    enabled: false
-    name: "user-service.events"
-  kafka:
-    enabled: false
-    topic: user-service-events
   rabbitmq:
-    enabled: true
-    durable: true
+    enabled: false
     exchange: user-service
-    exchange_type: topic
     routing_key_prefix: user.service.
     confirm_timeout: 30s
     max_retries: 5
     retry_interval: 1s
-    queue_enabled: true
-    queue_name: "user-service.queue"
-    queue_durable: true
-    queue_auto_delete: false
-    queue_exclusive: false
 
 monitoring:
   service_name: service-user
