@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"net"
 	"sync"
 
@@ -80,10 +81,11 @@ func (s *Server) RegisterServices() {
 	})
 }
 
-func (s *Server) Start(address string) error {
+func (s *Server) Start(ctx context.Context, address string) error {
 	var err error
 	s.listenerMu.Lock()
-	s.listener, err = net.Listen("tcp", address)
+	lc := net.ListenConfig{}
+	s.listener, err = lc.Listen(ctx, "tcp", address)
 	s.listenerMu.Unlock()
 	if err != nil {
 		return err
