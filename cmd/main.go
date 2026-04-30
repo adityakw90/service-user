@@ -370,7 +370,7 @@ func main() {
 		srv.Stop()
 	}()
 
-	if err := srv.Start(addr); err != nil {
+	if err := srv.Start(ctx, addr); err != nil {
 		logger.Fatal("failed to serve", map[string]interface{}{
 			"error": err.Error(),
 		})

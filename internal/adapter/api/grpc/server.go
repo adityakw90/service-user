@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"net"
 	"sync"
 
@@ -21,6 +22,7 @@ import (
 type Server struct {
 	server          *grpc.Server
 	listener        net.Listener
+	listenerMu      sync.RWMutex
 	authHandler     *handler.AuthHandler
 	userHandler     *handler.UserHandler
 	deviceHandler   *handler.DeviceHandler
@@ -79,9 +81,12 @@ func (s *Server) RegisterServices() {
 	})
 }
 
-func (s *Server) Start(address string) error {
+func (s *Server) Start(ctx context.Context, address string) error {
 	var err error
-	s.listener, err = net.Listen("tcp", address)
+	s.listenerMu.Lock()
+	lc := net.ListenConfig{}
+	s.listener, err = lc.Listen(ctx, "tcp", address)
+	s.listenerMu.Unlock()
 	if err != nil {
 		return err
 	}
@@ -97,17 +102,29 @@ func (s *Server) Start(address string) error {
 	return s.server.Serve(s.listener)
 }
 
-func (s *Server) Stop() {
+func (s *Server) Stop() error {
 	if s.server != nil {
 		s.server.GracefulStop()
 	}
+	s.listenerMu.Lock()
+	defer s.listenerMu.Unlock()
 	if s.listener != nil {
-		s.listener.Close()
+		err := s.listener.Close()
+		if err != nil {
+			s.m.Logger.Error("failed to close listener", map[string]interface{}{
+				"error": err.Error(),
+			})
+			return err
+		}
+		s.listener = nil
 	}
+	return nil
 }
 
 // Addr returns the server address.
 func (s *Server) Addr() string {
+	s.listenerMu.RLock()
+	defer s.listenerMu.RUnlock()
 	if s.listener != nil {
 		return s.listener.Addr().String()
 	}

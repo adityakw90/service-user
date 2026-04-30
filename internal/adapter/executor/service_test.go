@@ -120,20 +120,17 @@ func TestServiceExecutor_DoAsync(t *testing.T) {
 			}
 
 			done := make(chan struct{})
-			go func() {
-				executor.DoAsync(ctx, tt.operationName, tt.fn)
-				close(done)
-			}()
-
+			wrappedFn := func(inner context.Context) {
+				defer close(done)
+				tt.fn(inner)
+			}
+			executor.DoAsync(ctx, tt.operationName, wrappedFn)
 			select {
 			case <-done:
-				// Goroutine completed
+				// async callback completed
 			case <-time.After(5 * time.Second):
-				t.Fatal("test timed out waiting for goroutine")
+				t.Fatal("test timed out waiting for async callback")
 			}
-
-			// Wait a bit for all goroutines to finish
-			time.Sleep(10 * time.Millisecond)
 		})
 	}
 }

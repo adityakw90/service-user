@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"errors"
+	"regexp"
+	"strings"
 	"time"
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
@@ -428,12 +430,28 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	user, err := s.userRepo.GetByEmail(ctx, userInfo.Email)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
+			// generate password
+			randPass, err := util.GenerateRandomPassword(8)
+			if err != nil {
+				s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					Email:          &userInfo.Email,
+					IdentifierType: "oauth",
+				}, err)
+				return nil, err
+			}
+			hashedPassword, err := s.passwordHasher.Hash(randPass)
+			if err != nil {
+				s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					Email:          &userInfo.Email,
+					IdentifierType: "oauth",
+				}, err)
+				return nil, err
+			}
 			// Create new user from OAuth info
-			randPass, _ := util.GenerateRandomPassword(8)
 			user = &model.User{
 				UID:      s.uidGen.New(),
-				Username: userInfo.DisplayName(),
-				Password: randPass,
+				Username: s.generateUsername(ctx, userInfo),
+				Password: hashedPassword,
 				Email:    userInfo.Email,
 				Status:   model.UserStatusActive,
 			}
@@ -950,4 +968,25 @@ func (s *authService) findOrCreateUserDevice(ctx context.Context, user *model.Us
 		return nil, err
 	}
 	return userDevice, nil
+}
+
+func (s *authService) generateUsername(ctx context.Context, userInfo *model.OAuthUserInfo) string {
+	local := strings.SplitN(userInfo.Email, "@", 2)[0]
+	re := regexp.MustCompile(`[^a-zA-Z0-9_.]+`)
+	username := re.ReplaceAllString(local, "_")
+	if len(username) < 3 {
+		username = "user_" + username
+	}
+	// Check uniqueness
+	for {
+		existing, err := s.userRepo.GetByUsername(ctx, username)
+		if err == nil && existing != nil {
+			// Collision: append 4-digit random suffix
+			randSuffix := s.uidGen.New()
+			username = username + "_" + randSuffix[len(randSuffix)-4:]
+			continue
+		}
+		break
+	}
+	return username
 }

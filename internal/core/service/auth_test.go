@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	eventmocks "github.com/adityakw90/service-user/mocks/event"
 	executormocks "github.com/adityakw90/service-user/mocks/executor"
@@ -121,6 +123,177 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 			if tt.state != "" {
 				assert.Equal(t, tt.state, state)
 			}
+		})
+	}
+}
+
+func TestAuthService_generateUsername(t *testing.T) {
+	tests := []struct {
+		name        string
+		userInfo    *model.OAuthUserInfo
+		setupMocks  func(*repomocks.MockUserRepository, *securitymocks.MockUIDGenerator)
+		want        string
+	}{
+		{
+			name: "Happy Path - Simple Email",
+			userInfo: &model.OAuthUserInfo{
+				Email: "john.doe@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john.doe").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "john.doe",
+		},
+		{
+			name: "Happy Path - Email with Numbers",
+			userInfo: &model.OAuthUserInfo{
+				Email: "user123@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user123").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user123",
+		},
+		{
+			name: "Special Characters Normalization - Hyphens and Plus",
+			userInfo: &model.OAuthUserInfo{
+				Email: "john-doe+test@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john_doe_test").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "john_doe_test",
+		},
+		{
+			name: "Special Characters Normalization - Exclamation Mark",
+			userInfo: &model.OAuthUserInfo{
+				Email: "user!test@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_test").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user_test",
+		},
+		{
+			name: "Special Characters Normalization - Multiple Special Chars Sequence",
+			userInfo: &model.OAuthUserInfo{
+				Email: "user#$%test@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_test").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user_test",
+		},
+		{
+			name: "Minimum Length Handling - Two Characters",
+			userInfo: &model.OAuthUserInfo{
+				Email: "ab@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_ab").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user_ab",
+		},
+		{
+			name: "Minimum Length Handling - Single Character",
+			userInfo: &model.OAuthUserInfo{
+				Email: "x@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_x").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user_x",
+		},
+		{
+			name: "Underscores and Dots Preserved",
+			userInfo: &model.OAuthUserInfo{
+				Email: "user_name.test@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_name.test").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user_name.test",
+		},
+		{
+			name: "Single Collision - Adds Suffix",
+			userInfo: &model.OAuthUserInfo{
+				Email: "john.doe@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				// First call returns existing user
+				existingUser := &model.User{Username: "john.doe"}
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john.doe").Return(existingUser, nil)
+				// Generate suffix
+				mockUIDGen.EXPECT().New().Return("uid123456789")
+				// Second call with suffix finds no user
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john.doe_6789").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "john.doe_6789",
+		},
+		{
+			name: "Multiple Collisions - Keeps Adding Suffixes",
+			userInfo: &model.OAuthUserInfo{
+				Email: "john@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				existingUser := &model.User{Username: "john"}
+				// First collision
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john").Return(existingUser, nil).Once()
+				mockUIDGen.EXPECT().New().Return("uid1111222333").Once()
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john_2333").Return(existingUser, nil).Once()
+				// Second collision - username is now "john_2333", suffix appends to it
+				mockUIDGen.EXPECT().New().Return("uid4444555666").Once()
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john_2333_5666").Return(nil, domainerrors.ErrUserNotFound).Once()
+			},
+			want: "john_2333_5666",
+		},
+		{
+			name: "Short Username with Collision",
+			userInfo: &model.OAuthUserInfo{
+				Email: "ab@example.com",
+			},
+			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
+				existingUser := &model.User{Username: "user_ab"}
+				// First collision after adding prefix
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_ab").Return(existingUser, nil)
+				mockUIDGen.EXPECT().New().Return("uid9876543210")
+				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_ab_3210").Return(nil, domainerrors.ErrUserNotFound)
+			},
+			want: "user_ab_3210",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup mocks
+			mockUserRepo := repomocks.NewMockUserRepository(t)
+			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
+
+			if tt.setupMocks != nil {
+				tt.setupMocks(mockUserRepo, mockUIDGen)
+			}
+
+			svc := NewAuthService(
+				mockUserRepo,
+				nil, // deviceRepo
+				nil, // userDeviceRepo
+				nil, // pinRepo
+				nil, // passwordHasher
+				nil, // pinHasher
+				nil, // tokenGen
+				mockUIDGen,
+				nil, // oauthProvider
+				nil, // tokenWhitelist
+				nil, // tokenBlacklist
+				nil, // executor
+				nil, // eventPublisher
+				nil, // authObserver
+				nil, // attemptTracker
+				nil, // rateLimiter
+			)
+
+			got := svc.(*authService).generateUsername(context.Background(), tt.userInfo)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

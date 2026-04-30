@@ -1,4 +1,4 @@
-.PHONY: test test-cover test-clean mocks build run help verbose
+.PHONY: test test-cover test-clean mocks build release-build lint fmt run help verbose
 
 # Default target
 .DEFAULT_GOAL := help
@@ -53,6 +53,10 @@ release-build:
 lint:
 	@echo "Linting the application..."
 	@golangci-lint run
+
+fmt:
+	@echo "Formatting the application..."
+	@golangci-lint fmt
 
 run:
 	@echo "Running the application..."
