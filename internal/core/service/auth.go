@@ -432,7 +432,7 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 			randPass, _ := util.GenerateRandomPassword(8)
 			user = &model.User{
 				UID:      s.uidGen.New(),
-				Username: userInfo.DisplayName(),
+				Username: userInfo.Email,
 				Password: randPass,
 				Email:    userInfo.Email,
 				Status:   model.UserStatusActive,
