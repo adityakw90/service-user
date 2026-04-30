@@ -14,6 +14,12 @@ type serviceExecutor struct {
 }
 
 func NewServiceExecutor(logger monitoring.Logger, tracer monitoring.Tracer) *serviceExecutor {
+	if logger == nil {
+		panic("executor logger must not be nil")
+	}
+	if tracer == nil {
+		panic("executor tracer must not be nil")
+	}
 	return &serviceExecutor{
 		logger: logger,
 		tracer: tracer,
