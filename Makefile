@@ -1,4 +1,4 @@
-.PHONY: test test-cover test-clean mocks build run help verbose
+.PHONY: test test-cover test-clean mocks build release-build lint fmt run help verbose
 
 # Default target
 .DEFAULT_GOAL := help
