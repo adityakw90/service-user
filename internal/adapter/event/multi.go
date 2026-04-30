@@ -22,10 +22,18 @@ func NewMultiEventPublisher(
 	tracer monitoring.Tracer,
 	publishers ...portEvent.EventPublisher,
 ) *MultiEventPublisher {
+	// Defensively copy and sanitize publishers.
+	safePublishers := make([]portEvent.EventPublisher, 0, len(publishers))
+	for _, publisher := range publishers {
+		if publisher == nil {
+			continue
+		}
+		safePublishers = append(safePublishers, publisher)
+	}
 	return &MultiEventPublisher{
 		logger:     logger,
 		tracer:     tracer,
-		publishers: publishers,
+		publishers: safePublishers,
 	}
 }
 
