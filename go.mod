@@ -7,7 +7,7 @@ toolchain go1.25.7
 require (
 	github.com/IBM/sarama v1.46.3
 	github.com/adityakw90/go-monitoring v0.3.4
-	github.com/adityakw90/service-user-proto v0.1.3
+	github.com/adityakw90/service-user-proto v0.1.5
 	github.com/alexedwards/argon2id v1.0.0
 	github.com/alicebob/miniredis/v2 v2.36.1
 	github.com/go-playground/validator/v10 v10.30.1
@@ -27,7 +27,7 @@ require (
 	golang.org/x/crypto v0.48.0
 	golang.org/x/oauth2 v0.35.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260128011058-8636f8732409
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 )
 
