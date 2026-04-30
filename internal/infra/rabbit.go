@@ -259,7 +259,15 @@ func (r *Rabbit) DeclareExchange(exchange string, exchangeType string, durable b
 	if err != nil {
 		return fmt.Errorf("failed to open channel: %w", err)
 	}
-	defer ch.Close()
+
+	// Ensure channel is closed when done
+	defer func() {
+		if closeErr := ch.Close(); closeErr != nil {
+			r.logger.Warn("error closing channel after declare exchange", map[string]any{
+				"error": closeErr.Error(),
+			})
+		}
+	}()
 
 	err = ch.ExchangeDeclare(
 		exchange,
