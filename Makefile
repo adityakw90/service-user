@@ -54,6 +54,10 @@ lint:
 	@echo "Linting the application..."
 	@golangci-lint run
 
+fmt:
+	@echo "Formatting the application..."
+	@golangci-lint fmt
+
 run:
 	@echo "Running the application..."
 	@go run ./cmd
