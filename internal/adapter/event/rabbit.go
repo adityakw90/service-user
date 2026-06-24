@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -109,6 +110,7 @@ func (p *RabbitmqPublisher) Publish(ctx context.Context, eventType event.EventTy
 		"ce_source":      ce.Source,
 		"ce_id":          ce.ID,
 		"ce_specversion": ce.SpecVersion,
+		"ce_timestamp":   strconv.FormatInt(ce.Time.UnixMilli(), 10),
 		"client":         ce.Data.Client,
 		"actor_id":       ce.Data.ActorId,
 		"actor_type":     ce.Data.ActorType,

@@ -16,11 +16,6 @@ func isValidUUID(id string) bool {
 	return pattern.MatchString(id)
 }
 
-func isValidRFC3339(timestamp string) bool {
-	_, err := time.Parse(time.RFC3339, timestamp)
-	return err == nil
-}
-
 func setupContext(ctx context.Context, clientName, actorId, actorType string) context.Context {
 	ctx = util.SetClientName(ctx, clientName)
 	ctx = util.SetActor(ctx, actorId, actorType)
@@ -42,7 +37,7 @@ func TestNewCloudEvent(t *testing.T) {
 			setupCtx: func() context.Context {
 				return setupContext(context.Background(), "test-client", "user-123", "user")
 			},
-			eventType:   event.EventLogin,
+			eventType: event.EventLogin,
 			eventData: event.EventLoginData{
 				Identifier:     "test@example.com",
 				IdentifierType: "email",
@@ -69,9 +64,6 @@ func TestNewCloudEvent(t *testing.T) {
 				}
 				if !isValidUUID(ce.ID) {
 					t.Errorf("ID = %v is not a valid UUID", ce.ID)
-				}
-				if !isValidRFC3339(ce.Time) {
-					t.Errorf("Time = %v is not valid RFC3339", ce.Time)
 				}
 				var loginData event.EventLoginData
 				if err := json.Unmarshal(ce.Data.MetaData, &loginData); err != nil {
@@ -212,9 +204,9 @@ func TestNewCloudEvent(t *testing.T) {
 			setupCtx: func() context.Context {
 				return setupContext(context.Background(), "test", "actor-1", "system")
 			},
-			eventType: event.EventLogin,
-			eventData: make(chan int),
-			wantSource: Source,
+			eventType:   event.EventLogin,
+			eventData:   make(chan int),
+			wantSource:  Source,
 			wantSpecVer: SpecVersion,
 			validate: func(t *testing.T, ce CloudEvent) {
 				var errData map[string]any
@@ -332,16 +324,12 @@ func TestNewCloudEvent_TimeFormat(t *testing.T) {
 
 	ce := NewCloudEvent(ctx, event.EventLogin, event.EventLoginData{})
 
-	parsedTime, err := time.Parse(time.RFC3339, ce.Time)
-	if err != nil {
-		t.Fatalf("Failed to parse Time: %v", err)
-	}
-
 	now := time.Now().UTC()
-	if parsedTime.After(now.Add(5 * time.Second)) {
+	eventTime := ce.Time.UTC()
+	if eventTime.After(now.Add(5 * time.Second)) {
 		t.Errorf("Time = %v is too far in the future", ce.Time)
 	}
-	if parsedTime.Before(now.Add(-5 * time.Second)) {
+	if eventTime.Before(now.Add(-5 * time.Second)) {
 		t.Errorf("Time = %v is too far in the past", ce.Time)
 	}
 }
