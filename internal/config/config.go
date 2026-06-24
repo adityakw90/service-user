@@ -29,12 +29,6 @@ type Config struct {
 
 // Load reads configuration from environment variables using Viper.
 func Load() (*Config, error) {
-	// Use pflag (a better command-line flag package compatible with flag)
-	pflag.String("config", "", "Path to configuration file")
-	pflag.String("ip", "0.0.0.0", "Service listening IP")
-	pflag.Int("port", 50051, "Service listening port")
-	pflag.Parse()
-
 	// prepare decoder
 	// Create a DecoderConfigOption with the custom hook
 	decodeOption := viper.DecoderConfigOption(func(dc *mapstructure.DecoderConfig) {

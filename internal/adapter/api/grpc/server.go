@@ -108,16 +108,7 @@ func (s *Server) Stop() error {
 	}
 	s.listenerMu.Lock()
 	defer s.listenerMu.Unlock()
-	if s.listener != nil {
-		err := s.listener.Close()
-		if err != nil {
-			s.m.Logger.Error("failed to close listener", map[string]interface{}{
-				"error": err.Error(),
-			})
-			return err
-		}
-		s.listener = nil
-	}
+	s.listener = nil
 	return nil
 }
 

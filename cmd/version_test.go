@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestVersionFlag(t *testing.T) {
@@ -36,18 +39,25 @@ func TestVersionFlag(t *testing.T) {
 			}
 
 			// Build test binary from repo root
+			tempDir := t.TempDir()
+			binaryPath := filepath.Join(tempDir, "test-service-user")
 			repoRoot := ".."
-			buildCmd := exec.Command("go", "build", "-o", "/tmp/test-service-user", "./cmd")
+
+			buildCtx, buildCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer buildCancel()
+			buildCmd := exec.CommandContext(buildCtx, "go", "build", "-o", binaryPath, "./cmd")
 			buildCmd.Dir = repoRoot
 			var buildErr bytes.Buffer
 			buildCmd.Stderr = &buildErr
 			if err := buildCmd.Run(); err != nil {
 				t.Fatalf("failed to build: %v\nstderr: %s", err, buildErr.String())
 			}
-			defer os.Remove("/tmp/test-service-user")
+			defer os.Remove(binaryPath)
 
 			// Run with args
-			cmd := exec.Command("/tmp/test-service-user", tt.args...)
+			runCtx, runCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer runCancel()
+			cmd := exec.CommandContext(runCtx, binaryPath, tt.args...)
 			var out bytes.Buffer
 			cmd.Stdout = &out
 			cmd.Stderr = &out

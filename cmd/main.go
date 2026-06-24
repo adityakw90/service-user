@@ -27,6 +27,9 @@ import (
 )
 
 func main() {
+	// Define all command-line flags
+	config.InitFlags()
+
 	// Handle --version flag early (before loading config)
 	handleVersionFlag()
 
