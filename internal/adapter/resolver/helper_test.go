@@ -24,8 +24,8 @@ type testIdentity struct {
 	uid string
 }
 
-// TestMapperID_CacheHit tests mapperID when all items are in cache
-func TestMapperID_CacheHit(t *testing.T) {
+// TestMapperIDs_CacheHit tests mapperID when all items are in cache
+func TestMapperIDs_CacheHit(t *testing.T) {
 	tests := []struct {
 		name    string
 		uids    []string
@@ -81,7 +81,7 @@ func TestMapperID_CacheHit(t *testing.T) {
 			logger := infra.NewNoopLogger()
 
 			// Execute
-			got, err := mapperID(
+			got, err := mapperIDs(
 				ctx,
 				logger,
 				redisClient,
@@ -115,8 +115,8 @@ func TestMapperID_CacheHit(t *testing.T) {
 	}
 }
 
-// TestMapperID_CacheMiss tests mapperID when items need to be fetched from DB
-func TestMapperID_CacheMiss(t *testing.T) {
+// TestMapperIDs_CacheMiss tests mapperID when items need to be fetched from DB
+func TestMapperIDs_CacheMiss(t *testing.T) {
 	tests := []struct {
 		name    string
 		uids    []string
@@ -165,7 +165,7 @@ func TestMapperID_CacheMiss(t *testing.T) {
 					WillReturnRows(rows)
 			},
 			wantErr: true,
-			errMsg: "user not found",
+			errMsg:  "user not found",
 		},
 	}
 
@@ -193,7 +193,7 @@ func TestMapperID_CacheMiss(t *testing.T) {
 			logger := infra.NewNoopLogger()
 
 			// Execute
-			got, err := mapperID(
+			got, err := mapperIDs(
 				ctx,
 				logger,
 				redisClient,
@@ -243,8 +243,8 @@ func TestMapperID_CacheMiss(t *testing.T) {
 	}
 }
 
-// TestMapperID_DatabaseError tests error handling when database fails
-func TestMapperID_DatabaseError(t *testing.T) {
+// TestMapperIDs_DatabaseError tests error handling when database fails
+func TestMapperIDs_DatabaseError(t *testing.T) {
 	tests := []struct {
 		name    string
 		uids    []string
@@ -287,7 +287,7 @@ func TestMapperID_DatabaseError(t *testing.T) {
 			logger := infra.NewNoopLogger()
 
 			// Execute
-			got, err := mapperID(
+			got, err := mapperIDs(
 				ctx,
 				logger,
 				redisClient,
@@ -333,8 +333,8 @@ func TestMapperID_DatabaseError(t *testing.T) {
 	}
 }
 
-// TestMapperID_IDToUID tests mapperID for ID to UID mapping
-func TestMapperID_IDToUID(t *testing.T) {
+// TestMapperIDs_IDToUID tests mapperID for ID to UID mapping
+func TestMapperIDs_IDToUID(t *testing.T) {
 	tests := []struct {
 		name    string
 		ids     []int64
@@ -398,7 +398,7 @@ func TestMapperID_IDToUID(t *testing.T) {
 			logger := infra.NewNoopLogger()
 
 			// Execute
-			got, err := mapperID(
+			got, err := mapperIDs(
 				ctx,
 				logger,
 				redisClient,
@@ -453,7 +453,7 @@ func TestInvalidate(t *testing.T) {
 		verify  func(s *miniredis.Miniredis)
 	}{
 		{
-			name: "Happy Path - invalidate single UID with bidirectional mapping",
+			name:   "Happy Path - invalidate single UID with bidirectional mapping",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("device-uid-1"),
@@ -471,7 +471,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate multiple UIDs",
+			name:   "Happy Path - invalidate multiple UIDs",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("device-uid-1", "device-uid-2", "device-uid-3"),
@@ -501,7 +501,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate single ID with bidirectional mapping",
+			name:   "Happy Path - invalidate single ID with bidirectional mapping",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithIDs(100),
@@ -519,7 +519,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate multiple IDs",
+			name:   "Happy Path - invalidate multiple IDs",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithIDs(100, 200, 300),
@@ -549,7 +549,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate mixed UIDs and IDs",
+			name:   "Happy Path - invalidate mixed UIDs and IDs",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("device-uid-1", "device-uid-2"),
@@ -580,7 +580,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - duplicate UID and ID pair (deduplication)",
+			name:   "Happy Path - duplicate UID and ID pair (deduplication)",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("device-uid-1"),
@@ -599,7 +599,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate UID when reverse mapping doesn't exist",
+			name:   "Happy Path - invalidate UID when reverse mapping doesn't exist",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("device-uid-1"),
@@ -615,7 +615,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate ID when forward mapping doesn't exist",
+			name:   "Happy Path - invalidate ID when forward mapping doesn't exist",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithIDs(100),
@@ -630,9 +630,9 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - empty options (no-op)",
+			name:   "Happy Path - empty options (no-op)",
 			prefix: "device",
-			opts: []param.InvalidateOpt{},
+			opts:   []param.InvalidateOpt{},
 			setup: func(s *miniredis.Miniredis) {
 				s.Set("device:device-uid-1:id", "100")
 				s.Set("device:id:100:uid", "device-uid-1")
@@ -647,7 +647,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate non-existent keys (no-op)",
+			name:   "Happy Path - invalidate non-existent keys (no-op)",
 			prefix: "device",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("non-existent-uid"),
@@ -661,7 +661,7 @@ func TestInvalidate(t *testing.T) {
 			},
 		},
 		{
-			name: "Happy Path - invalidate with different prefix",
+			name:   "Happy Path - invalidate with different prefix",
 			prefix: "user",
 			opts: []param.InvalidateOpt{
 				param.WithUIDs("user-uid-1"),
