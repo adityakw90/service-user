@@ -126,7 +126,10 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *param.Pagin
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserDevice)
+	orderByValue, err := validateOrderBy(pagination, "created_at", allowedOrderByUserDevice)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue

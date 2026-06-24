@@ -28,6 +28,7 @@ func TestValidateOrderBy(t *testing.T) {
 		defaultOrd string
 		allowed    map[string]domainParam.UserOrderBy
 		want       string
+		wantErr    bool
 	}{
 		{
 			name: "Valid OrderBy - username",
@@ -37,6 +38,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "username",
+			wantErr:    false,
 		},
 		{
 			name: "Valid OrderBy - email",
@@ -46,6 +48,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "email",
+			wantErr:    false,
 		},
 		{
 			name: "Valid OrderBy - id",
@@ -55,6 +58,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "id",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid OrderBy - SQL injection attempt",
@@ -63,7 +67,7 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
-			want:       "created_at", // fallback to default
+			wantErr:    true,
 		},
 		{
 			name: "Invalid OrderBy - non-existent column",
@@ -72,7 +76,7 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
-			want:       "created_at", // fallback to default
+			wantErr:    true,
 		},
 		{
 			name:       "Nil pagination",
@@ -80,6 +84,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "created_at",
+			wantErr:    false,
 		},
 		{
 			name: "Nil OrderBy",
@@ -89,6 +94,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "created_at",
+			wantErr:    false,
 		},
 		{
 			name: "Empty OrderBy string",
@@ -97,7 +103,8 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
-			want:       "created_at", // empty string is not in map
+			want:       "created_at",
+			wantErr:    false,
 		},
 		{
 			name: "Valid OrderBy with different default",
@@ -107,6 +114,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "id",
 			allowed:    testAllowedOrderBy,
 			want:       "status",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid OrderBy with custom default",
@@ -115,7 +123,7 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "updated_at",
 			allowed:    testAllowedOrderBy,
-			want:       "updated_at",
+			wantErr:    true,
 		},
 		{
 			name: "Empty allowed map",
@@ -124,14 +132,20 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    map[string]domainParam.UserOrderBy{},
-			want:       "created_at", // fallback to default since map is empty
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validateOrderBy(tt.pagination, tt.defaultOrd, tt.allowed)
-			assert.Equal(t, tt.want, got)
+			got, err := validateOrderBy(tt.pagination, tt.defaultOrd, tt.allowed)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -143,6 +157,7 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 		pagination *domainParam.PaginationParam
 		defaultOrd string
 		want       string
+		wantErr    bool
 	}{
 		{
 			name: "Valid Device OrderBy - device_name",
@@ -151,6 +166,7 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "device_name",
+			wantErr:    false,
 		},
 		{
 			name: "Valid Device OrderBy - device_fingerprint",
@@ -159,6 +175,7 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "device_fingerprint",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid Device OrderBy",
@@ -166,14 +183,20 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 				OrderBy: func() *string { s := "invalid_column"; return &s }(),
 			},
 			defaultOrd: "created_at",
-			want:       "created_at",
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByDevice)
-			assert.Equal(t, tt.want, got)
+			got, err := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByDevice)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -185,6 +208,7 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 		pagination *domainParam.PaginationParam
 		defaultOrd string
 		want       string
+		wantErr    bool
 	}{
 		{
 			name: "Valid UserFile OrderBy - file_type",
@@ -193,6 +217,7 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "file_type",
+			wantErr:    false,
 		},
 		{
 			name: "Valid UserFile OrderBy - file_name",
@@ -201,6 +226,7 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "file_name",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid UserFile OrderBy",
@@ -208,14 +234,20 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 				OrderBy: func() *string { s := "invalid_column"; return &s }(),
 			},
 			defaultOrd: "created_at",
-			want:       "created_at",
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByUserFile)
-			assert.Equal(t, tt.want, got)
+			got, err := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByUserFile)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }

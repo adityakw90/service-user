@@ -96,7 +96,10 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserProfile)
+	orderByValue, err := validateOrderBy(pagination, "created_at", allowedOrderByUserProfile)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue

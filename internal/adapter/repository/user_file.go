@@ -180,7 +180,10 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserFile)
+	orderByValue, err := validateOrderBy(pagination, "created_at", allowedOrderByUserFile)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue
