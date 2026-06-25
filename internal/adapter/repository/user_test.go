@@ -512,6 +512,166 @@ func TestUserRepository_List(t *testing.T) {
 			wantCount: 1,
 			wantErr:   false,
 		},
+		{
+			name:       "Valid OrderBy - id",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "id"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY id DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - uid",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "uid"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY uid DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - username",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "username"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY username DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - email",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "email"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY email DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - status",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "status"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY status DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - created_at",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "created_at"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - updated_at",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "updated_at"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Invalid OrderBy - SQL injection attempt",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "id; DROP TABLE user; --"; return &s }()},
+			filter:     nil,
+			setupMock:  nil,
+			wantCount:  0,
+			wantErr:    true,
+		},
+		{
+			name:       "Invalid OrderBy - non-existent column",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "nonexistent"; return &s }()},
+			filter:     nil,
+			setupMock:  nil,
+			wantCount:  0,
+			wantErr:    true,
+		},
+		{
+			name:       "Nil OrderBy - should use default",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: nil},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "username", "email", "password", "status", "created_at", "updated_at", "deleted_at"}).
+					AddRow(int64(1), "uid1", "user1", "user1@example.com", "hash", model.UserStatusActive, time.Now(), time.Now(), nil)
+				mock.ExpectQuery(`SELECT .+ FROM "user" WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
 	}
 
 	for _, tt := range tests {
