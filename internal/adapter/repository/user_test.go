@@ -644,7 +644,7 @@ func TestUserRepository_List(t *testing.T) {
 			filter:     nil,
 			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
-				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).WillReturnRows(countRows)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user.*`).WillReturnRows(countRows)
 			},
 			wantCount:  0,
 			wantErr:    true,
@@ -655,7 +655,7 @@ func TestUserRepository_List(t *testing.T) {
 			filter:     nil,
 			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserListFilterParam) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
-				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM "user" WHERE deleted_at IS NULL`).WillReturnRows(countRows)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user.*`).WillReturnRows(countRows)
 			},
 			wantCount:  0,
 			wantErr:    true,
