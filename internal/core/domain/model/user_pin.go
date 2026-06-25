@@ -18,5 +18,5 @@ func (p *UserPin) IsSet() bool {
 
 type UserPins struct {
 	Items []UserPin
-	Meta  Meta
+	Meta  *Meta
 }

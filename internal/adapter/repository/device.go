@@ -156,19 +156,9 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 		deviceItems[i] = *d
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.Devices{
 		Items: deviceItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }
 
@@ -271,19 +261,9 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 		deviceItems[i] = *d
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.Devices{
 		Items: deviceItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }
 

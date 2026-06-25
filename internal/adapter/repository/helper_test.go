@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	domainErrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	domainModel "github.com/adityakw90/service-user/internal/core/domain/model"
 	domainParam "github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -322,6 +323,136 @@ func TestHandlePgError(t *testing.T) {
 			if gotErr.Error() != tt.wantErr.Error() {
 				t.Errorf("HandlePgError() = %v, want %v", gotErr, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestBuildMeta(t *testing.T) {
+	tests := []struct {
+		name     string
+		total    int64
+		page     int
+		limit    int
+		wantMeta *domainModel.Meta
+	}{
+		{
+			name:   "Happy Path - First page",
+			total:  100,
+			page:   1,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 100,
+				Page:  1,
+				Limit: 10,
+				Pages: 10,
+			},
+		},
+		{
+			name:   "Happy Path - Middle page",
+			total:  100,
+			page:   3,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 100,
+				Page:  3,
+				Limit: 10,
+				Pages: 10,
+			},
+		},
+		{
+			name:   "Happy Path - Last page",
+			total:  95,
+			page:   10,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 95,
+				Page:  10,
+				Limit: 10,
+				Pages: 10,
+			},
+		},
+		{
+			name:   "Empty result set",
+			total:  0,
+			page:   1,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 0,
+				Page:  1,
+				Limit: 10,
+				Pages: 1,
+			},
+		},
+		{
+			name:   "Total less than limit",
+			total:  5,
+			page:   1,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 5,
+				Page:  1,
+				Limit: 10,
+				Pages: 1,
+			},
+		},
+		{
+			name:   "Exact multiple of limit",
+			total:  100,
+			page:   1,
+			limit:  25,
+			wantMeta: &domainModel.Meta{
+				Total: 100,
+				Page:  1,
+				Limit: 25,
+				Pages: 4,
+			},
+		},
+		{
+			name:   "Page beyond total",
+			total:  50,
+			page:   11,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 50,
+				Page:  11,
+				Limit: 10,
+				Pages: 5,
+			},
+		},
+		{
+			name:   "Limit of 1",
+			total:  5,
+			page:   1,
+			limit:  1,
+			wantMeta: &domainModel.Meta{
+				Total: 5,
+				Page:  1,
+				Limit: 1,
+				Pages: 5,
+			},
+		},
+		{
+			name:   "Large total",
+			total:  10000,
+			page:   3,
+			limit:  50,
+			wantMeta: &domainModel.Meta{
+				Total: 10000,
+				Page:  3,
+				Limit: 50,
+				Pages: 200,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMeta := buildMeta(tt.total, tt.page, tt.limit)
+
+			assert.Equal(t, tt.wantMeta.Total, gotMeta.Total)
+			assert.Equal(t, tt.wantMeta.Page, gotMeta.Page)
+			assert.Equal(t, tt.wantMeta.Limit, gotMeta.Limit)
+			assert.Equal(t, tt.wantMeta.Pages, gotMeta.Pages)
 		})
 	}
 }

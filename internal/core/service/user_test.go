@@ -175,7 +175,7 @@ func TestUserService_List(t *testing.T) {
 							*createTestUser(1, "uid1", "user1", "user1@example.com", "pass", model.UserStatusActive),
 							*createTestUser(2, "uid2", "user2", "user2@example.com", "pass", model.UserStatusActive),
 						},
-						Meta: model.Meta{
+						Meta: &model.Meta{
 							Page:  1,
 							Limit: 10,
 							Total: 2,
@@ -200,7 +200,7 @@ func TestUserService_List(t *testing.T) {
 					List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.UserListFilterParam")).
 					Return(&model.Users{
 						Items: []model.User{},
-						Meta:  model.Meta{Page: 2, Limit: 20},
+						Meta:  &model.Meta{Page: 2, Limit: 20},
 					}, nil).
 					Once()
 			},

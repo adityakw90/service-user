@@ -193,19 +193,9 @@ func (r *UserRepository) List(ctx context.Context, pagination *param.PaginationP
 		userItems[i] = *u
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.Users{
 		Items: userItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }
 

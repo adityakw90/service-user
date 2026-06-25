@@ -112,7 +112,7 @@ func TestDeviceService_List(t *testing.T) {
 						*createTestDevice(1, "device1", "iPhone", "fp1"),
 						*createTestDevice(2, "device2", "Android", "fp2"),
 					},
-					Meta: model.Meta{
+					Meta: &model.Meta{
 						Page:  1,
 						Limit: 10,
 						Total: 2,
@@ -134,7 +134,7 @@ func TestDeviceService_List(t *testing.T) {
 			setupMocks: func(dr *repomocks.MockDeviceRepository) {
 				dr.EXPECT().List(mock.Anything, mock.AnythingOfType("*param.PaginationParam"), mock.AnythingOfType("*param.DeviceListFilterParam")).Return(&model.Devices{
 					Items: []model.Device{},
-					Meta:  model.Meta{Page: 2, Limit: 20},
+					Meta:  &model.Meta{Page: 2, Limit: 20},
 				}, nil).Once()
 			},
 			pagination: &param.PaginationParam{

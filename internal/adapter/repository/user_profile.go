@@ -140,19 +140,9 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 		profileItems[i] = *p
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.UserProfiles{
 		Items: profileItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }
 
