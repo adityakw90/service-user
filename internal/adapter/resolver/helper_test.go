@@ -442,6 +442,479 @@ func TestMapperIDs_IDToUID(t *testing.T) {
 	}
 }
 
+// TestMapperID_CacheHit tests mapperID when the item is in cache
+func TestMapperID_CacheHit(t *testing.T) {
+	tests := []struct {
+		name    string
+		uid     string
+		setup   func(s *miniredis.Miniredis)
+		want    int64
+		wantErr bool
+	}{
+		{
+			name: "Happy Path - single item in cache",
+			uid:  "user-uid-1",
+			setup: func(s *miniredis.Miniredis) {
+				s.Set("user:uid:user-uid-1", "100")
+			},
+			want:    100,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			// Setup cache
+			if tt.setup != nil {
+				tt.setup(s)
+			}
+
+			ctx := context.Background()
+			logger := infra.NewNoopLogger()
+
+			// Execute
+			got, err := mapperID(
+				ctx,
+				logger,
+				redisClient,
+				tt.uid,
+				func(s string) int64 {
+					id, _ := strconv.ParseInt(s, 10, 64)
+					return id
+				},
+				func(uid string) string {
+					return "user:uid:" + uid
+				},
+				func(uid string) (*testIdentity, error) {
+					// Should not be called on cache hit
+					return nil, errors.New("fetchFunc should not be called")
+				},
+				func(user *testIdentity) int64 {
+					return user.id
+				},
+				time.Hour,
+			)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestMapperID_CacheMiss tests mapperID when the item is NOT in cache
+func TestMapperID_CacheMiss(t *testing.T) {
+	tests := []struct {
+		name    string
+		uid     string
+		setup   func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface)
+		want    int64
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "Happy Path - single item not in cache",
+			uid:  "user-uid-1",
+			setup: func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface) {
+				rows := pgxmock.NewRows([]string{"id", "uid"}).
+					AddRow(int64(100), "user-uid-1")
+				mockPool.ExpectQuery(`SELECT id, uid FROM "user" WHERE uid=$1`).
+					WithArgs("user-uid-1").
+					WillReturnRows(rows)
+			},
+			want:    100,
+			wantErr: false,
+		},
+		{
+			name: "Error - user not found",
+			uid:  "nonexistent-uid",
+			setup: func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface) {
+				rows := pgxmock.NewRows([]string{"id", "uid"})
+				mockPool.ExpectQuery(`SELECT id, uid FROM "user" WHERE uid=$1`).
+					WithArgs("nonexistent-uid").
+					WillReturnRows(rows)
+			},
+			wantErr: true,
+			errMsg:  "user not found",
+		},
+		{
+			name: "Error - database query fails",
+			uid:  "user-uid-1",
+			setup: func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface) {
+				mockPool.ExpectQuery(`SELECT id, uid FROM "user" WHERE uid=$1`).
+					WithArgs("user-uid-1").
+					WillReturnError(errors.New("database connection failed"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis and pgxmock
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			mockPool, err := pgxmock.NewPool(
+				pgxmock.QueryMatcherOption(pgxmock.QueryMatcherEqual),
+			)
+			require.NoError(t, err)
+			defer mockPool.Close()
+
+			// Setup mocks
+			if tt.setup != nil {
+				tt.setup(s, mockPool)
+			}
+
+			ctx := context.Background()
+			logger := infra.NewNoopLogger()
+
+			// Execute
+			got, err := mapperID(
+				ctx,
+				logger,
+				redisClient,
+				tt.uid,
+				func(s string) int64 {
+					id, _ := strconv.ParseInt(s, 10, 64)
+					return id
+				},
+				func(uid string) string {
+					return "user:uid:" + uid
+				},
+				func(uid string) (*testIdentity, error) {
+					rows, err := mockPool.Query(context.Background(), `SELECT id, uid FROM "user" WHERE uid=$1`, uid)
+					if err != nil {
+						return nil, err
+					}
+					defer rows.Close()
+
+					var id int64
+					var u string
+					if rows.Next() {
+						if err := rows.Scan(&id, &u); err != nil {
+							return nil, err
+						}
+						return &testIdentity{id: id, uid: u}, nil
+					}
+					return nil, domainerrors.ErrUserNotFound
+				},
+				func(id *testIdentity) int64 {
+					return id.id
+				},
+				time.Hour,
+			)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// TestMapperID_RedisError tests mapperID when Redis GET returns an error (not Nil)
+func TestMapperID_RedisError(t *testing.T) {
+	tests := []struct {
+		name    string
+		uid     string
+		setup   func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface)
+		want    int64
+		wantErr bool
+	}{
+		{
+			name: "Happy Path - Redis GET error falls through to DB",
+			uid:  "user-uid-1",
+			setup: func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface) {
+				rows := pgxmock.NewRows([]string{"id", "uid"}).
+					AddRow(int64(100), "user-uid-1")
+				mockPool.ExpectQuery(`SELECT id, uid FROM "user" WHERE uid=$1`).
+					WithArgs("user-uid-1").
+					WillReturnRows(rows)
+			},
+			want:    100,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis and pgxmock
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			mockPool, err := pgxmock.NewPool(
+				pgxmock.QueryMatcherOption(pgxmock.QueryMatcherEqual),
+			)
+			require.NoError(t, err)
+			defer mockPool.Close()
+
+			// Setup mocks
+			if tt.setup != nil {
+				tt.setup(s, mockPool)
+			}
+
+			ctx := context.Background()
+			logger := infra.NewNoopLogger()
+
+			// Execute
+			got, err := mapperID(
+				ctx,
+				logger,
+				redisClient,
+				tt.uid,
+				func(s string) int64 {
+					id, _ := strconv.ParseInt(s, 10, 64)
+					return id
+				},
+				func(uid string) string {
+					return "user:uid:" + uid
+				},
+				func(uid string) (*testIdentity, error) {
+					rows, err := mockPool.Query(context.Background(), `SELECT id, uid FROM "user" WHERE uid=$1`, uid)
+					if err != nil {
+						return nil, err
+					}
+					defer rows.Close()
+
+					var id int64
+					var u string
+					if rows.Next() {
+						if err := rows.Scan(&id, &u); err != nil {
+							return nil, err
+						}
+						return &testIdentity{id: id, uid: u}, nil
+					}
+					return nil, domainerrors.ErrUserNotFound
+				},
+				func(id *testIdentity) int64 {
+					return id.id
+				},
+				time.Hour,
+			)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+// TestMapperID_CacheSetError tests mapperID when Redis SET fails after DB fetch
+func TestMapperID_CacheSetError(t *testing.T) {
+	tests := []struct {
+		name    string
+		uid     string
+		setup   func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface)
+		want    int64
+		wantErr bool
+	}{
+		{
+			name: "Happy Path - Redis SET error logged but value returned",
+			uid:  "user-uid-1",
+			setup: func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface) {
+				rows := pgxmock.NewRows([]string{"id", "uid"}).
+					AddRow(int64(100), "user-uid-1")
+				mockPool.ExpectQuery(`SELECT id, uid FROM "user" WHERE uid=$1`).
+					WithArgs("user-uid-1").
+					WillReturnRows(rows)
+			},
+			want:    100,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis and pgxmock
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			mockPool, err := pgxmock.NewPool(
+				pgxmock.QueryMatcherOption(pgxmock.QueryMatcherEqual),
+			)
+			require.NoError(t, err)
+			defer mockPool.Close()
+
+			// Setup mocks
+			if tt.setup != nil {
+				tt.setup(s, mockPool)
+			}
+
+			ctx := context.Background()
+			logger := infra.NewNoopLogger()
+
+			// Execute
+			got, err := mapperID(
+				ctx,
+				logger,
+				redisClient,
+				tt.uid,
+				func(s string) int64 {
+					id, _ := strconv.ParseInt(s, 10, 64)
+					return id
+				},
+				func(uid string) string {
+					return "user:uid:" + uid
+				},
+				func(uid string) (*testIdentity, error) {
+					rows, err := mockPool.Query(context.Background(), `SELECT id, uid FROM "user" WHERE uid=$1`, uid)
+					if err != nil {
+						return nil, err
+					}
+					defer rows.Close()
+
+					var id int64
+					var u string
+					if rows.Next() {
+						if err := rows.Scan(&id, &u); err != nil {
+							return nil, err
+						}
+						return &testIdentity{id: id, uid: u}, nil
+					}
+					return nil, domainerrors.ErrUserNotFound
+				},
+				func(id *testIdentity) int64 {
+					return id.id
+				},
+				time.Hour,
+			)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+// TestMapperID_IDToUID tests mapperID for ID to UID mapping
+func TestMapperID_IDToUID(t *testing.T) {
+	tests := []struct {
+		name    string
+		id      int64
+		setup   func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface)
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "Happy Path - single item not in cache",
+			id:   100,
+			setup: func(s *miniredis.Miniredis, mockPool pgxmock.PgxPoolIface) {
+				rows := pgxmock.NewRows([]string{"id", "uid"}).
+					AddRow(int64(100), "user-uid-1")
+				mockPool.ExpectQuery(`SELECT id, uid FROM "user" WHERE id=$1`).
+					WithArgs(int64(100)).
+					WillReturnRows(rows)
+			},
+			want:    "user-uid-1",
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup miniredis and pgxmock
+			s := miniredis.RunT(t)
+			defer s.Close()
+
+			redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+			defer redisClient.Close()
+
+			mockPool, err := pgxmock.NewPool(
+				pgxmock.QueryMatcherOption(pgxmock.QueryMatcherEqual),
+			)
+			require.NoError(t, err)
+			defer mockPool.Close()
+
+			// Setup mocks
+			if tt.setup != nil {
+				tt.setup(s, mockPool)
+			}
+
+			ctx := context.Background()
+			logger := infra.NewNoopLogger()
+
+			// Execute
+			got, err := mapperID(
+				ctx,
+				logger,
+				redisClient,
+				tt.id,
+				func(s string) string { return s },
+				func(id int64) string {
+					return "user:id:" + strconv.FormatInt(id, 10)
+				},
+				func(id int64) (*testIdentity, error) {
+					rows, err := mockPool.Query(context.Background(), `SELECT id, uid FROM "user" WHERE id=$1`, id)
+					if err != nil {
+						return nil, err
+					}
+					defer rows.Close()
+
+					var i int64
+					var u string
+					if rows.Next() {
+						if err := rows.Scan(&i, &u); err != nil {
+							return nil, err
+						}
+						return &testIdentity{id: i, uid: u}, nil
+					}
+					return nil, domainerrors.ErrUserNotFound
+				},
+				func(id *testIdentity) string {
+					return id.uid
+				},
+				time.Hour,
+			)
+
+			// Assert
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 // TestInvalidate tests the invalidate helper function
 func TestInvalidate(t *testing.T) {
 	tests := []struct {
