@@ -102,7 +102,7 @@ func (r *userFileResolver) IDsByUIDs(ctx context.Context, userFileUIDs []string)
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userFileResolver.IDsByUIDs")
 	defer resvSpan.End()
 
-	result, err := mapperID(
+	result, err := mapperIDs(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -149,7 +149,7 @@ func (r *userFileResolver) UIDsByIDs(ctx context.Context, userFileIDs []int64) (
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userFileResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperID(
+	result, err := mapperIDs(
 		newCtx,
 		r.logger,
 		r.redisClient,

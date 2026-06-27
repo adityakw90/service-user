@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	domainErrors "github.com/adityakw90/service-user/internal/core/domain/errors"
+	domainModel "github.com/adityakw90/service-user/internal/core/domain/model"
 	domainParam "github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,7 @@ func TestValidateOrderBy(t *testing.T) {
 		defaultOrd string
 		allowed    map[string]domainParam.UserOrderBy
 		want       string
+		wantErr    bool
 	}{
 		{
 			name: "Valid OrderBy - username",
@@ -37,6 +39,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "username",
+			wantErr:    false,
 		},
 		{
 			name: "Valid OrderBy - email",
@@ -46,6 +49,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "email",
+			wantErr:    false,
 		},
 		{
 			name: "Valid OrderBy - id",
@@ -55,6 +59,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "id",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid OrderBy - SQL injection attempt",
@@ -63,7 +68,7 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
-			want:       "created_at", // fallback to default
+			wantErr:    true,
 		},
 		{
 			name: "Invalid OrderBy - non-existent column",
@@ -72,7 +77,7 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
-			want:       "created_at", // fallback to default
+			wantErr:    true,
 		},
 		{
 			name:       "Nil pagination",
@@ -80,6 +85,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "created_at",
+			wantErr:    false,
 		},
 		{
 			name: "Nil OrderBy",
@@ -89,6 +95,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
 			want:       "created_at",
+			wantErr:    false,
 		},
 		{
 			name: "Empty OrderBy string",
@@ -97,7 +104,8 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    testAllowedOrderBy,
-			want:       "created_at", // empty string is not in map
+			want:       "created_at",
+			wantErr:    false,
 		},
 		{
 			name: "Valid OrderBy with different default",
@@ -107,6 +115,7 @@ func TestValidateOrderBy(t *testing.T) {
 			defaultOrd: "id",
 			allowed:    testAllowedOrderBy,
 			want:       "status",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid OrderBy with custom default",
@@ -115,7 +124,7 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "updated_at",
 			allowed:    testAllowedOrderBy,
-			want:       "updated_at",
+			wantErr:    true,
 		},
 		{
 			name: "Empty allowed map",
@@ -124,14 +133,20 @@ func TestValidateOrderBy(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			allowed:    map[string]domainParam.UserOrderBy{},
-			want:       "created_at", // fallback to default since map is empty
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validateOrderBy(tt.pagination, tt.defaultOrd, tt.allowed)
-			assert.Equal(t, tt.want, got)
+			got, err := validateOrderBy(tt.pagination, tt.defaultOrd, tt.allowed)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -143,6 +158,7 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 		pagination *domainParam.PaginationParam
 		defaultOrd string
 		want       string
+		wantErr    bool
 	}{
 		{
 			name: "Valid Device OrderBy - device_name",
@@ -151,6 +167,7 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "device_name",
+			wantErr:    false,
 		},
 		{
 			name: "Valid Device OrderBy - device_fingerprint",
@@ -159,6 +176,7 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "device_fingerprint",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid Device OrderBy",
@@ -166,14 +184,20 @@ func TestValidateOrderByWithDevice(t *testing.T) {
 				OrderBy: func() *string { s := "invalid_column"; return &s }(),
 			},
 			defaultOrd: "created_at",
-			want:       "created_at",
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByDevice)
-			assert.Equal(t, tt.want, got)
+			got, err := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByDevice)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -185,6 +209,7 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 		pagination *domainParam.PaginationParam
 		defaultOrd string
 		want       string
+		wantErr    bool
 	}{
 		{
 			name: "Valid UserFile OrderBy - file_type",
@@ -193,6 +218,7 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "file_type",
+			wantErr:    false,
 		},
 		{
 			name: "Valid UserFile OrderBy - file_name",
@@ -201,6 +227,7 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 			},
 			defaultOrd: "created_at",
 			want:       "file_name",
+			wantErr:    false,
 		},
 		{
 			name: "Invalid UserFile OrderBy",
@@ -208,14 +235,20 @@ func TestValidateOrderByWithUserFile(t *testing.T) {
 				OrderBy: func() *string { s := "invalid_column"; return &s }(),
 			},
 			defaultOrd: "created_at",
-			want:       "created_at",
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByUserFile)
-			assert.Equal(t, tt.want, got)
+			got, err := validateOrderBy(tt.pagination, tt.defaultOrd, allowedOrderByUserFile)
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Empty(t, got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -290,6 +323,136 @@ func TestHandlePgError(t *testing.T) {
 			if gotErr.Error() != tt.wantErr.Error() {
 				t.Errorf("HandlePgError() = %v, want %v", gotErr, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestBuildMeta(t *testing.T) {
+	tests := []struct {
+		name     string
+		total    int64
+		page     int
+		limit    int
+		wantMeta *domainModel.Meta
+	}{
+		{
+			name:   "Happy Path - First page",
+			total:  100,
+			page:   1,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 100,
+				Page:  1,
+				Limit: 10,
+				Pages: 10,
+			},
+		},
+		{
+			name:   "Happy Path - Middle page",
+			total:  100,
+			page:   3,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 100,
+				Page:  3,
+				Limit: 10,
+				Pages: 10,
+			},
+		},
+		{
+			name:   "Happy Path - Last page",
+			total:  95,
+			page:   10,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 95,
+				Page:  10,
+				Limit: 10,
+				Pages: 10,
+			},
+		},
+		{
+			name:   "Empty result set",
+			total:  0,
+			page:   1,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 0,
+				Page:  1,
+				Limit: 10,
+				Pages: 1,
+			},
+		},
+		{
+			name:   "Total less than limit",
+			total:  5,
+			page:   1,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 5,
+				Page:  1,
+				Limit: 10,
+				Pages: 1,
+			},
+		},
+		{
+			name:   "Exact multiple of limit",
+			total:  100,
+			page:   1,
+			limit:  25,
+			wantMeta: &domainModel.Meta{
+				Total: 100,
+				Page:  1,
+				Limit: 25,
+				Pages: 4,
+			},
+		},
+		{
+			name:   "Page beyond total",
+			total:  50,
+			page:   11,
+			limit:  10,
+			wantMeta: &domainModel.Meta{
+				Total: 50,
+				Page:  11,
+				Limit: 10,
+				Pages: 5,
+			},
+		},
+		{
+			name:   "Limit of 1",
+			total:  5,
+			page:   1,
+			limit:  1,
+			wantMeta: &domainModel.Meta{
+				Total: 5,
+				Page:  1,
+				Limit: 1,
+				Pages: 5,
+			},
+		},
+		{
+			name:   "Large total",
+			total:  10000,
+			page:   3,
+			limit:  50,
+			wantMeta: &domainModel.Meta{
+				Total: 10000,
+				Page:  3,
+				Limit: 50,
+				Pages: 200,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMeta := buildMeta(tt.total, tt.page, tt.limit)
+
+			assert.Equal(t, tt.wantMeta.Total, gotMeta.Total)
+			assert.Equal(t, tt.wantMeta.Page, gotMeta.Page)
+			assert.Equal(t, tt.wantMeta.Limit, gotMeta.Limit)
+			assert.Equal(t, tt.wantMeta.Pages, gotMeta.Pages)
 		})
 	}
 }

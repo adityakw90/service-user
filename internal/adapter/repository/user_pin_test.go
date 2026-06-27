@@ -242,6 +242,100 @@ func TestPinRepository_List(t *testing.T) {
 			wantCount: 2,
 			wantErr:   false,
 		},
+		{
+			name:       "Valid OrderBy - user_id",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "user_id"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"user_id", "code", "created_at", "updated_at"}).
+					AddRow(int64(1), "hashedpin1", time.Now(), time.Now())
+				mock.ExpectQuery(`SELECT user_id, code, created_at, updated_at FROM user_pin`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - created_at",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "created_at"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"user_id", "code", "created_at", "updated_at"}).
+					AddRow(int64(1), "hashedpin1", time.Now(), time.Now())
+				mock.ExpectQuery(`SELECT user_id, code, created_at, updated_at FROM user_pin`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - updated_at",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "updated_at"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"user_id", "code", "created_at", "updated_at"}).
+					AddRow(int64(1), "hashedpin1", time.Now(), time.Now())
+				mock.ExpectQuery(`SELECT user_id, code, created_at, updated_at FROM user_pin`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Invalid OrderBy - SQL injection attempt",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "user_id; DROP TABLE user_pin; --"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).WillReturnRows(countRows)
+			},
+			wantCount:  0,
+			wantErr:    true,
+		},
+		{
+			name:       "Invalid OrderBy - non-existent column",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "invalid_column"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).WillReturnRows(countRows)
+			},
+			wantCount:  0,
+			wantErr:    true,
+		},
+		{
+			name:       "Nil OrderBy - should use default",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: nil},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"user_id", "code", "created_at", "updated_at"}).
+					AddRow(int64(1), "hashedpin1", time.Now(), time.Now())
+				mock.ExpectQuery(`SELECT user_id, code, created_at, updated_at FROM user_pin`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
 	}
 
 	for _, tt := range tests {

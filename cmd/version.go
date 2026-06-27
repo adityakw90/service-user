@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -16,10 +18,8 @@ var (
 // This must be called before config.Load() to handle version early.
 // Note: os.Exit(0) will skip any defer statements in main().
 func handleVersionFlag() {
-	for _, arg := range os.Args {
-		if arg == "--version=true" || arg == "--version" {
-			fmt.Printf("service-user %s (build: %s)\n", Version, BuildTime)
-			os.Exit(0)
-		}
+	if pflag.Lookup("version").Value.String() == "true" {
+		fmt.Printf("service-user %s (build: %s)\n", Version, BuildTime)
+		os.Exit(0)
 	}
 }

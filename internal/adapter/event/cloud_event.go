@@ -21,7 +21,7 @@ type CloudEvent struct {
 	Source      string         `json:"source"`
 	SpecVersion string         `json:"specversion"`
 	Type        string         `json:"type"`
-	Time        string         `json:"time"`
+	Time        time.Time      `json:"time"`
 	Data        CloudEventData `json:"data"`
 }
 
@@ -42,13 +42,12 @@ func NewCloudEvent(ctx context.Context, eventType event.EventType, eventData any
 			"error": fmt.Sprintf("failed to marshal event data: %v", err),
 		})
 	}
-
 	return CloudEvent{
 		ID:          uuid.New().String(),
 		Source:      Source,
 		SpecVersion: SpecVersion,
 		Type:        string(eventType),
-		Time:        time.Now().UTC().Format(time.RFC3339),
+		Time:        time.Now().UTC(),
 		Data: CloudEventData{
 			ActorId:   actorId,
 			ActorType: actorType,

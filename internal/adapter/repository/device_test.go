@@ -404,6 +404,136 @@ func TestDeviceRepository_List(t *testing.T) {
 			wantCount: 2,
 			wantErr:   false,
 		},
+		{
+			name:       "Valid OrderBy - id",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "id"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY id DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - uid",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "uid"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY uid DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - device_fingerprint",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "device_fingerprint"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY device_fingerprint DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - device_name",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "device_name"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY device_name DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - created_at",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "created_at"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Invalid OrderBy - SQL injection attempt",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "id; DROP TABLE device; --"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).WillReturnRows(countRows)
+			},
+			wantCount:  0,
+			wantErr:   true,
+		},
+		{
+			name:       "Invalid OrderBy - non-existent column",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "nonexistent"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).WillReturnRows(countRows)
+			},
+			wantCount:  0,
+			wantErr:   true,
+		},
+		{
+			name:       "Nil OrderBy - should use default",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: nil},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(1)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "device_fingerprint", "device_name", "created_at"}).
+					AddRow(int64(1), "uid1", "fp1", "iPhone 14", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, device_fingerprint, device_name, created_at FROM device ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+					WithArgs(10, 0).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -465,6 +595,21 @@ func TestDeviceRepository_ListByUserID(t *testing.T) {
 			wantCount: 2,
 			wantErr:   false,
 		},
+		{
+			name:       "Invalid OrderBy - non-existent column",
+			userID:     1,
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "nonexistent"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, userID int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device d JOIN user_device ud ON d\.id = ud\.device_id WHERE ud\.user_id = \$1 AND ud\.revoked_at IS NULL`).
+					WithArgs(userID).
+					WillReturnRows(countRows)
+			},
+			wantCount: 0,
+			wantErr:   true,
+		},
+
 	}
 
 	for _, tt := range tests {

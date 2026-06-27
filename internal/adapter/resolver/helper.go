@@ -7,14 +7,13 @@ import (
 	"time"
 
 	monitoring "github.com/adityakw90/go-monitoring"
-	"github.com/adityakw90/service-user/internal/core/domain/param"
+	domainParam "github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/redis/go-redis/v9"
 )
 
-// mapperID is a generic helper for bidirectional ID/UID mapping with caching.
-// Uses Redis pipeline for batch GET operations and concurrent DB fetches.
-// Copied from service-access for consistency across microservices.
-func mapperID[T any, KS comparable, KT comparable](
+const REDIS_SET_DEFAULT_TIMEOUT = 2 * time.Second
+
+func mapperIDs[T any, KS comparable, KT comparable](
 	ctx context.Context,
 	logger monitoring.Logger,
 	redisClient *redis.Client,
@@ -79,7 +78,7 @@ func mapperID[T any, KS comparable, KT comparable](
 			defer wg.Done()
 
 			// use new context with timeout
-			newCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			newCtx, cancel := context.WithTimeout(ctx, REDIS_SET_DEFAULT_TIMEOUT)
 			defer cancel()
 
 			// Fetch from DB
@@ -124,16 +123,62 @@ func mapperID[T any, KS comparable, KT comparable](
 	return results, nil
 }
 
+func mapperID[T any, KS comparable, KT comparable](
+	ctx context.Context,
+	logger monitoring.Logger,
+	redisClient *redis.Client,
+	key KS,
+	convertResult func(string) KT,
+	cacheKeyFunc func(KS) string,
+	dbFetchFunc func(KS) (*T, error),
+	getValueFromStruct func(*T) KT,
+	cacheDuration time.Duration,
+) (KT, error) {
+	var zero KT
+
+	cacheKey := cacheKeyFunc(key)
+	cachedValue, err := redisClient.Get(ctx, cacheKey).Result()
+
+	switch err {
+	case nil:
+		return convertResult(cachedValue), nil
+	case redis.Nil:
+		// Cache miss, fetch from DB
+	default:
+		logger.Error("Redis error", map[string]interface{}{
+			"error.message": err.Error(),
+			"key":           key,
+		})
+	}
+
+	value, err := dbFetchFunc(key)
+	if err != nil {
+		return zero, err
+	}
+
+	cacheValue := getValueFromStruct(value)
+	newCtx, cancel := context.WithTimeout(ctx, REDIS_SET_DEFAULT_TIMEOUT)
+	defer cancel()
+
+	if err := redisClient.Set(newCtx, cacheKey, cacheValue, cacheDuration).Err(); err != nil {
+		logger.Error("Failed to set cache", map[string]interface{}{
+			"error.message": err.Error(),
+		})
+	}
+
+	return cacheValue, nil
+}
+
 // helper for invalidate cache
 // Uses Redis pipeline for efficient batch operations.
 func invalidate(
 	ctx context.Context,
 	redisClient *redis.Client,
 	redisPrefix string,
-	opts ...param.InvalidateOpt,
+	opts ...domainParam.InvalidateOpt,
 ) error {
 	// Parse options
-	options := &param.InvalidateOptions{}
+	options := &domainParam.InvalidateOptions{}
 	for _, opt := range opts {
 		opt(options)
 	}

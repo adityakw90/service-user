@@ -16,5 +16,5 @@ type Device struct {
 // Devices contains the list of devices and metadata for pagination.
 type Devices struct {
 	Items []Device
-	Meta  Meta
+	Meta  *Meta
 }

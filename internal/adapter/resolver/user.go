@@ -102,7 +102,7 @@ func (r *userResolver) IDsByUIDs(ctx context.Context, userUIDs []string) (map[st
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userResolver.IDsByUIDs")
 	defer resvSpan.End()
 
-	result, err := mapperID(
+	result, err := mapperIDs(
 		newCtx,
 		r.logger,
 		r.redisClient,
@@ -149,7 +149,7 @@ func (r *userResolver) UIDsByIDs(ctx context.Context, userIDs []int64) (map[int6
 	newCtx, resvSpan := r.tracer.StartSpan(ctx, "userResolver.UIDsByIDs")
 	defer resvSpan.End()
 
-	result, err := mapperID(
+	result, err := mapperIDs(
 		newCtx,
 		r.logger,
 		r.redisClient,

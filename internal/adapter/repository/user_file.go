@@ -180,7 +180,10 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserFile)
+	orderByValue, err := validateOrderBy(pagination, "created_at", allowedOrderByUserFile)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue
@@ -216,19 +219,9 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 		fileItems[i] = *f
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.UserFiles{
 		Items: fileItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }
 

@@ -100,7 +100,10 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserPin)
+	orderByValue, err := validateOrderBy(pagination, "created_at", allowedOrderByUserPin)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue
@@ -138,18 +141,8 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 		pinItems[i] = *p
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.UserPins{
 		Items: pinItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }

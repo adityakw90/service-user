@@ -28,8 +28,14 @@ app:
 	// Reset pflag for clean test state
 	pflag.CommandLine = pflag.NewFlagSet("test", pflag.ContinueOnError)
 
+	// Define flags that the production code expects
+	pflag.String("config", "", "Path to configuration file")
+	pflag.String("ip", "0.0.0.0", "Service listening IP")
+	pflag.Int("port", 50051, "Service listening port")
+
 	// Simulate command line args with --config flag
 	os.Args = []string{"test", "--config", configPath}
+	pflag.Parse()
 
 	// Load config
 	cfg, err := Load()
@@ -65,8 +71,14 @@ app:
 	// Reset pflag for clean test state
 	pflag.CommandLine = pflag.NewFlagSet("test", pflag.ContinueOnError)
 
+	// Define flags that the production code expects
+	pflag.String("config", "", "Path to configuration file")
+	pflag.String("ip", "0.0.0.0", "Service listening IP")
+	pflag.Int("port", 50051, "Service listening port")
+
 	// Simulate command line args without --config flag
 	os.Args = []string{"test"}
+	pflag.Parse()
 
 	// Load config
 	cfg, err := Load()
@@ -102,8 +114,14 @@ app:
 	// Reset pflag for clean test state
 	pflag.CommandLine = pflag.NewFlagSet("test", pflag.ContinueOnError)
 
+	// Define flags that the production code expects
+	pflag.String("config", "", "Path to configuration file")
+	pflag.String("ip", "0.0.0.0", "Service listening IP")
+	pflag.Int("port", 50051, "Service listening port")
+
 	// Simulate command line args without --config flag
 	os.Args = []string{"test"}
+	pflag.Parse()
 
 	// Load config
 	cfg, err := Load()
@@ -170,11 +188,17 @@ app:
 		// Reset pflag for clean test state
 		pflag.CommandLine = pflag.NewFlagSet("test", pflag.ContinueOnError)
 
+		// Define flags that the production code expects
+		pflag.String("config", "", "Path to configuration file")
+		pflag.String("ip", "0.0.0.0", "Service listening IP")
+		pflag.Int("port", 50051, "Service listening port")
+
 		// Temporarily set AddConfigPath to use our test directories
 		// We need to modify the Load function to accept config paths for testing
 		// For now, we'll test by setting environment variable
 
 		os.Args = []string{"test", "--config", customConfigPath}
+		pflag.Parse()
 
 		cfg, err := Load()
 		require.NoError(t, err)
@@ -202,8 +226,14 @@ func TestConfigLoadDefaults(t *testing.T) {
 	// Reset pflag for clean test state
 	pflag.CommandLine = pflag.NewFlagSet("test", pflag.ContinueOnError)
 
+	// Define flags that the production code expects
+	pflag.String("config", "", "Path to configuration file")
+	pflag.String("ip", "0.0.0.0", "Service listening IP")
+	pflag.Int("port", 50051, "Service listening port")
+
 	// Simulate command line args
 	os.Args = []string{"test"}
+	pflag.Parse()
 
 	// Load config (should use defaults)
 	cfg, err := Load()

@@ -37,5 +37,5 @@ func (p *UserProfile) FullName() string {
 
 type UserProfiles struct {
 	Items []UserProfile
-	Meta  Meta
+	Meta  *Meta
 }

@@ -1,0 +1,9 @@
+coverage:
+  range: 60..80
+  round: down
+  precision: 2
+
+ignore:
+  - "cmd/main.go"
+  - "test/**"
+  - "mocks/**"

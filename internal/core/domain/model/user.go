@@ -80,5 +80,5 @@ func (u *User) Ban() {
 // Users contains the list of users and metadata for pagination.
 type Users struct {
 	Items []User
-	Meta  Meta
+	Meta  *Meta
 }

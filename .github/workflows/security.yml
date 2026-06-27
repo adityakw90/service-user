@@ -18,7 +18,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run govulncheck
-        uses: golang/govulncheck-action@v1
+      # https://github.com/golang/go/issues/80059
+      # change to manual check until issue resolved
+      # if the issue has been resolved, we can use the golang/govulncheck-action@v1
+      # - name: Run govulncheck
+      #   uses: golang/govulncheck-action@v1
+      #   with:
+      #     go-version-file: go.mod
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # Pin govulncheck until the latest scanner no longer panics on this module.
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.3.0
+
+      - name: Run govulncheck
+        run: govulncheck -C . -format text ./...

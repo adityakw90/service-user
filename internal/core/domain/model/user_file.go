@@ -36,5 +36,5 @@ func (f *UserFile) IsPrivate() bool {
 // Files contains the list of files and metadata for pagination.
 type UserFiles struct {
 	Items []UserFile
-	Meta  Meta
+	Meta  *Meta
 }

@@ -45,5 +45,5 @@ func (ud *UserDevice) SetSessionID(sessionID string) {
 
 type UserDevices struct {
 	Items []UserDevice
-	Meta  Meta
+	Meta  *Meta
 }

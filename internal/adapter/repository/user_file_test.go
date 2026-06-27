@@ -338,6 +338,154 @@ func TestUserFileRepository_List(t *testing.T) {
 			wantCount: 1,
 			wantErr:   false,
 		},
+		{
+			name:       "Valid OrderBy - id",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "id"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - uid",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "uid"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - user_id",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "user_id"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - file_type",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "file_type"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - file_name",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "file_name"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Valid OrderBy - created_at",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "created_at"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
+		{
+			name:       "Invalid OrderBy - SQL injection attempt",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "id; DROP TABLE user_file; --"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).WillReturnRows(countRows)
+			},
+			wantCount:  0,
+			wantErr:    true,
+		},
+		{
+			name:       "Invalid OrderBy - non-existent column",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: func() *string { s := "nonexistent"; return &s }()},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).WillReturnRows(countRows)
+			},
+			wantCount:  0,
+			wantErr:    true,
+		},
+		{
+			name:       "Nil OrderBy - should use default",
+			pagination: &param.PaginationParam{Limit: util.Ptr(10), Page: util.Ptr(1), OrderBy: nil},
+			filter:     nil,
+			setupMock: func(mock pgxmock.PgxPoolIface, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) {
+				countRows := pgxmock.NewRows([]string{"count"}).AddRow(int64(1))
+				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_file`).
+					WillReturnRows(countRows)
+
+				rows := pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}).
+					AddRow(int64(1), "uid1", int64(1), "avatar", "file1.jpg", "/path1", "image/jpeg", int64(1024), "public", time.Now())
+				mock.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file`).
+					WithArgs(pgxmock.AnyArg(), pgxmock.AnyArg()).
+					WillReturnRows(rows)
+			},
+			wantCount: 1,
+			wantErr:   false,
+		},
 	}
 
 	for _, tt := range tests {

@@ -126,7 +126,10 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *param.Pagin
 
 	// Get paginated results
 	// Apply sorting
-	orderByValue := validateOrderBy(pagination, "created_at", allowedOrderByUserDevice)
+	orderByValue, err := validateOrderBy(pagination, "created_at", allowedOrderByUserDevice)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build ORDER BY clause
 	orderByClause := orderByValue
@@ -167,19 +170,9 @@ func (r *UserDeviceRepository) List(ctx context.Context, pagination *param.Pagin
 		udItems[i] = *ud
 	}
 
-	totalPages := int(total) / limit
-	if int(total)%limit > 0 {
-		totalPages++
-	}
-
 	return &model.UserDevices{
 		Items: udItems,
-		Meta: model.Meta{
-			Total: total,
-			Page:  page,
-			Limit: limit,
-			Pages: totalPages,
-		},
+		Meta:  buildMeta(total, page, limit),
 	}, nil
 }
 
