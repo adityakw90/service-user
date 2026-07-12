@@ -296,6 +296,7 @@ func main() {
 
 	// create executor
 	exc := executor.NewServiceExecutor(iMon.Logger, iMon.Tracer)
+	defer exc.Close()
 
 	// Create observers based on config
 	authObserver := createAuthObserver(cfg, iMon.Logger, iMon.Tracer)
