@@ -154,6 +154,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 
 	// Initialize Executor
 	serviceExecutor := executor.NewServiceExecutor(monitoring.Logger, monitoring.Tracer)
+	t.Cleanup(serviceExecutor.Close)
 
 	// Initialize services
 	userService := svc.NewUserService(

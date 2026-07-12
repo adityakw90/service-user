@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 
+	executor "github.com/adityakw90/service-user/internal/core/port/executor"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -57,8 +58,21 @@ func (_c *MockExecutor_Do_Call) RunAndReturn(run func(context.Context, string, f
 }
 
 // DoAsync provides a mock function with given fields: ctx, name, fn
-func (_m *MockExecutor) DoAsync(ctx context.Context, name string, fn func(context.Context)) {
-	_m.Called(ctx, name, fn)
+func (_m *MockExecutor) DoAsync(ctx context.Context, name string, fn func(context.Context)) error {
+	ret := _m.Called(ctx, name, fn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoAsync")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(context.Context)) error); ok {
+		r0 = rf(ctx, name, fn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockExecutor_DoAsync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoAsync'
@@ -81,13 +95,61 @@ func (_c *MockExecutor_DoAsync_Call) Run(run func(ctx context.Context, name stri
 	return _c
 }
 
-func (_c *MockExecutor_DoAsync_Call) Return() *MockExecutor_DoAsync_Call {
-	_c.Call.Return()
+func (_c *MockExecutor_DoAsync_Call) Return(_a0 error) *MockExecutor_DoAsync_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockExecutor_DoAsync_Call) RunAndReturn(run func(context.Context, string, func(context.Context))) *MockExecutor_DoAsync_Call {
-	_c.Run(run)
+func (_c *MockExecutor_DoAsync_Call) RunAndReturn(run func(context.Context, string, func(context.Context)) error) *MockExecutor_DoAsync_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DoParallel provides a mock function with given fields: ctx, name, tasks
+func (_m *MockExecutor) DoParallel(ctx context.Context, name string, tasks []executor.Task) error {
+	ret := _m.Called(ctx, name, tasks)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoParallel")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, []executor.Task) error); ok {
+		r0 = rf(ctx, name, tasks)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockExecutor_DoParallel_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoParallel'
+type MockExecutor_DoParallel_Call struct {
+	*mock.Call
+}
+
+// DoParallel is a helper method to define mock.On call
+//   - ctx context.Context
+//   - name string
+//   - tasks []executor.Task
+func (_e *MockExecutor_Expecter) DoParallel(ctx interface{}, name interface{}, tasks interface{}) *MockExecutor_DoParallel_Call {
+	return &MockExecutor_DoParallel_Call{Call: _e.mock.On("DoParallel", ctx, name, tasks)}
+}
+
+func (_c *MockExecutor_DoParallel_Call) Run(run func(ctx context.Context, name string, tasks []executor.Task)) *MockExecutor_DoParallel_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].([]executor.Task))
+	})
+	return _c
+}
+
+func (_c *MockExecutor_DoParallel_Call) Return(_a0 error) *MockExecutor_DoParallel_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockExecutor_DoParallel_Call) RunAndReturn(run func(context.Context, string, []executor.Task) error) *MockExecutor_DoParallel_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
