@@ -84,16 +84,6 @@ func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx 
 	return nil
 }
 
-func (s *serviceExecutor) Close() {
-	s.closeOnce.Do(func() {
-		s.mu.Lock()
-		s.closed = true
-		s.mu.Unlock()
-
-		s.wg.Wait()
-	})
-}
-
 func (s *serviceExecutor) DoParallel(ctx context.Context, name string, tasks []portExecutor.Task) error {
 	if len(tasks) == 0 {
 		return nil
@@ -157,4 +147,14 @@ func (s *serviceExecutor) DoParallel(ctx context.Context, name string, tasks []p
 	case <-ctx.Done():
 		return ctx.Err()
 	}
+}
+
+func (s *serviceExecutor) Close() {
+	s.closeOnce.Do(func() {
+		s.mu.Lock()
+		s.closed = true
+		s.mu.Unlock()
+
+		s.wg.Wait()
+	})
 }
