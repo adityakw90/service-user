@@ -13,7 +13,7 @@ type EventPublisher interface {
 	Name() string
 
 	// Publish publishes a domain event with the given event type and data.
-	Publish(ctx context.Context, eventType event.EventType, eventData any) error
+	Publish(ctx context.Context, message event.Message) error
 
 	// Close closes the publisher connection.
 	Close() error

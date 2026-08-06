@@ -46,13 +46,16 @@ func (p *HTTPPublisher) Name() string {
 }
 
 // Publish publishes an event via HTTP.
-func (p *HTTPPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
+func (p *HTTPPublisher) Publish(ctx context.Context, message event.Message) error {
+	if err := message.Validate(); err != nil {
+		return err
+	}
 	newCtx, span := p.tracer.StartSpan(ctx, "HTTPPublisher.Publish")
 	defer span.End()
 
 	// Convert to CloudEvent format
-	ce := NewCloudEvent(ctx, eventType, eventData)
-	span.AddEvent(string(eventType),
+	ce := NewCloudEvent(ctx, message)
+	span.AddEvent(string(message.Type),
 		trace.WithAttributes(
 			attribute.String("type", ce.Type),
 			attribute.String("source", ce.Source),

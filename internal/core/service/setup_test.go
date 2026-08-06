@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	eventMocks "github.com/adityakw90/service-user/mocks/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	eventMocks "github.com/adityakw90/service-user/mocks/event"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/mock"
 )
@@ -142,5 +142,5 @@ func createDeletedUser(id int64, uid, username, email string) *model.User {
 
 // setupEventPublisherAny allows any Publish calls (useful when not testing event behavior)
 func setupEventPublisherAny(t *testing.T, ep *eventMocks.MockEventPublisher) {
-	ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Maybe().Return(nil)
+	ep.EXPECT().Publish(mock.Anything, mock.Anything).Maybe().Return(nil)
 }

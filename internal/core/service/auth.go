@@ -171,11 +171,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		}, domainerrors.ErrAccountLockedOut)
 
 		// Publish login locked event
-		s.eventPublisher.Publish(ctx, event.EventLoginLocked, event.EventLoginLockedData{
+		s.eventPublisher.Publish(ctx, event.Message{Type: event.EventLoginLocked, Entity: event.Entity{ID: payload.Identifier, Type: payload.IdentifierType}, Metadata: event.EventLoginLockedData{
 			Identifier:     payload.Identifier,
 			IdentifierType: payload.IdentifierType,
 			FailureReason:  "Account is locked",
-		})
+		}})
 
 		return nil, domainerrors.ErrAccountLockedOut
 	}
@@ -191,11 +191,11 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		}, domainerrors.ErrInvalidCredentials)
 
 		// Publish login failed event
-		s.eventPublisher.Publish(ctx, event.EventLoginFailed, event.EventLoginFailedData{
+		s.eventPublisher.Publish(ctx, event.Message{Type: event.EventLoginFailed, Entity: event.Entity{ID: payload.Identifier, Type: payload.IdentifierType}, Metadata: event.EventLoginFailedData{
 			Identifier:     payload.Identifier,
 			IdentifierType: payload.IdentifierType,
 			FailureReason:  "invalid_credentials",
-		})
+		}})
 
 		return nil, domainerrors.ErrInvalidCredentials
 	}
@@ -343,7 +343,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		if userDevice != nil {
 			loginEventData.IPAddress = userDevice.IPAddress
 		}
-		err := s.eventPublisher.Publish(newCtx, event.EventLogin, loginEventData)
+		err := s.eventPublisher.Publish(newCtx, event.Message{Type: event.EventLogin, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: loginEventData})
 		if err != nil {
 			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
 				UID:      &user.UID,
@@ -526,10 +526,23 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	}
 
 	// Publish OAuth login event
-	s.eventPublisher.Publish(ctx, "auth.oauth_login", event.EventOAuthLoginData{
-		UserUID:  user.UID,
-		Provider: "google",
-	})
+	eventMessage, err := event.NewMessage(
+		event.EventOAuthLogin,
+		event.Entity{ID: user.UID, Type: "user", Name: &user.Username},
+		&event.EventOAuthLoginData{
+			UserUID:  user.UID,
+			Provider: "google",
+		},
+	)
+	if err != nil {
+		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+			UID:            &user.UID,
+			Email:          &user.Email,
+			IdentifierType: "oauth",
+		}, err)
+		return nil, err
+	}
+	s.eventPublisher.Publish(ctx, eventMessage)
 
 	active := true
 	deleted := false
@@ -687,10 +700,10 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 	}
 
 	// Publish token refresh event
-	s.eventPublisher.Publish(ctx, event.EventTokenRefresh, event.EventTokenRefreshData{
+	s.eventPublisher.Publish(ctx, event.Message{Type: event.EventTokenRefresh, Entity: event.Entity{ID: claims.Identifier, Type: claims.IdentifierType}, Metadata: event.EventTokenRefreshData{
 		Identifier:     claims.Identifier,
 		IdentifierType: claims.IdentifierType,
-	})
+	}})
 
 	active := true
 	deleted := false
@@ -805,10 +818,10 @@ func (s *authService) RevokeToken(ctx context.Context, token string, tokenType s
 	}
 
 	// Publish revoke event
-	s.eventPublisher.Publish(ctx, event.EventRevokeToken, event.EventRevokeTokenData{
+	s.eventPublisher.Publish(ctx, event.Message{Type: event.EventRevokeToken, Entity: event.Entity{ID: claims.Identifier, Type: claims.IdentifierType}, Metadata: event.EventRevokeTokenData{
 		Identifier:     claims.Identifier,
 		IdentifierType: claims.IdentifierType,
-	})
+	}})
 
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
 		UID:            &claims.Uid,
@@ -872,10 +885,10 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 		}, nil) // Invalid PIN, but not an error - just reject
 
 		// Publish PIN verify failed event
-		err = s.eventPublisher.Publish(ctx, event.EventPINFail, event.EventPinFailData{
+		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventPINFail, Entity: event.Entity{ID: userUid, Type: "user_pin"}, Metadata: event.EventPinFailData{
 			UserUID: userUid,
 			Reason:  "invalid_pin",
-		})
+		}})
 		if err != nil {
 			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 				UID:            &userUid,
@@ -889,11 +902,11 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 	}
 
 	// Publish PIN verify success event
-	err = s.eventPublisher.Publish(ctx, event.EventPINVerify, event.EventPinVerifyData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventPINVerify, Entity: event.Entity{ID: userUid, Type: "user_pin"}, Metadata: event.EventPinVerifyData{
 		UserUID: userUid,
 		Success: true,
 		Reason:  "pin_verified",
-	})
+	}})
 	if err != nil {
 		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 			UID:            &userUid,

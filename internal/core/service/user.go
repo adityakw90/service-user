@@ -270,13 +270,13 @@ func (s *userService) Create(ctx context.Context, createParam *param.UserCreateP
 	}
 
 	// Publish user created event
-	err = s.eventPublisher.Publish(ctx, event.EventUserCreated, event.EventUserCreatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: event.EventUserCreatedData{
 		UserUID:  user.UID,
 		ActorUID: user.UID,
 		Username: user.Username,
 		Email:    user.Email,
 		Status:   string(user.Status),
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			Operation: "create",
@@ -454,11 +454,11 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	_ = s.resolvers.User().Invalidate(ctx, param.WithUIDs(user.UID), param.WithIDs(user.ID))
 
 	// Publish user updated event
-	err = s.eventPublisher.Publish(ctx, event.EventUserUpdated, event.EventUserUpdatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: event.EventUserUpdatedData{
 		UserUID:      uid,
 		ActorUID:     uid,
 		ChangesCount: changesCount,
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			Operation: "update",
@@ -529,10 +529,10 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 	_ = s.resolvers.User().Invalidate(ctx, param.WithUIDs(user.UID), param.WithIDs(user.ID))
 
 	// Publish user deleted event
-	err = s.eventPublisher.Publish(ctx, event.EventUserDeleted, event.EventUserDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: event.EventUserDeletedData{
 		UserUID:  uid,
 		ActorUID: uid,
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			Operation: "delete",
@@ -716,10 +716,10 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	}
 
 	// Publish user update profile event
-	err = s.eventPublisher.Publish(ctx, event.EventUserUpdateProfile, event.EventUserUpdateProfileData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.Entity{ID: userUID, Type: "user_profile", Name: util.Ptr(profile.FullName())}, Metadata: event.EventUserUpdateProfileData{
 		UserUID:  userUID,
 		ActorUID: userUID,
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			UID:       &userUID,
@@ -841,10 +841,10 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 
 	// Publish user update pin event
 	if isNewPIN {
-		err = s.eventPublisher.Publish(ctx, event.EventUserCreatePin, event.EventUserCreatePinData{
+		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.Entity{ID: userUID, Type: "user_pin"}, Metadata: event.EventUserCreatePinData{
 			UserUID:  userUID,
 			ActorUID: userUID,
-		})
+		}})
 		if err != nil {
 			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 				UID:       &userUID,
@@ -853,10 +853,10 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 			return err
 		}
 	} else {
-		err = s.eventPublisher.Publish(ctx, event.EventUserUpdatePin, event.EventUserUpdatePinData{
+		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.Entity{ID: userUID, Type: "user_pin"}, Metadata: event.EventUserUpdatePinData{
 			UserUID:  userUID,
 			ActorUID: userUID,
-		})
+		}})
 		if err != nil {
 			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 				UID:       &userUID,
@@ -1023,10 +1023,10 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	}
 
 	// Publish device revoked event
-	err = s.eventPublisher.Publish(ctx, event.EventDeviceDeleted, event.EventDeviceDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.Entity{ID: deviceUID, Type: "device", Name: &device.DeviceName}, Metadata: event.EventDeviceDeletedData{
 		UserUID:   userUID,
 		DeviceUID: deviceUID,
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			UID:       &userUID,
@@ -1034,11 +1034,11 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 		}, err)
 		return err
 	}
-	err = s.eventPublisher.Publish(ctx, event.EventUserRevokeDevice, event.EventUserRevokeDeviceData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.Entity{ID: deviceUID, Type: "device", Name: &device.DeviceName}, Metadata: event.EventUserRevokeDeviceData{
 		UserUID:   userUID,
 		ActorUID:  userUID,
 		DeviceUID: deviceUID,
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			UID:       &userUID,
@@ -1162,10 +1162,10 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 	}
 
 	// Publish user update password event
-	err = s.eventPublisher.Publish(ctx, event.EventUserUpdatePassword, event.EventUserUpdatePasswordData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.Entity{ID: userUID, Type: "user", Name: &user.Username}, Metadata: event.EventUserUpdatePasswordData{
 		UserUID:  userUID,
 		ActorUID: userUID,
-	})
+	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 			UID:       &userUID,

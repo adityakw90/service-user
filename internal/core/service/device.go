@@ -147,9 +147,9 @@ func (s *deviceService) Delete(ctx context.Context, uid string) error {
 	}
 
 	// Publish device deleted event
-	err = s.eventPublisher.Publish(ctx, event.EventDeviceDeleted, event.EventDeviceDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.Entity{ID: uid, Type: "device", Name: &device.DeviceName}, Metadata: event.EventDeviceDeletedData{
 		DeviceUID: uid,
-	})
+	}})
 	if err != nil {
 		s.deviceObserver.OnSignal(ctx, signal.SignalFail, signal.DeviceSignal{
 			UID:       &uid,

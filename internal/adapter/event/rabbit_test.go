@@ -161,6 +161,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				assert.Equal(t, "auth.login", m.publishWithConfirmArgHeaders["ce_type"])
 				assert.Equal(t, Source, m.publishWithConfirmArgHeaders["ce_source"])
 				assert.Equal(t, SpecVersion, m.publishWithConfirmArgHeaders["ce_specversion"])
+				assert.Equal(t, "test-actor", m.publishWithConfirmArgHeaders["actor_name"])
 
 				assert.NotNil(t, m.publishWithConfirmArgBody)
 				assert.NotEmpty(t, m.publishWithConfirmArgBody)
@@ -415,7 +416,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			publisher := NewRabbitmqPublisher(mockConn, tt.config, logger, tracer)
 
 			ctx := tt.setupCtx()
-			err := publisher.Publish(ctx, tt.eventType, tt.eventData)
+			err := publisher.Publish(ctx, event.Message{Type: tt.eventType, Entity: event.Entity{ID: "entity-1", Type: "user"}, Metadata: tt.eventData})
 
 			if tt.wantErr {
 				assert.Error(t, err)

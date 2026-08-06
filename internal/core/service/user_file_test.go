@@ -243,7 +243,7 @@ func TestUserFileService_Add(t *testing.T) {
 					file.ID = 1
 					return file, nil
 				}).Once()
-				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			param: param.UserFileCreateParam{
 				UserUID:    "user-uid",
@@ -355,7 +355,7 @@ func TestUserFileService_Update(t *testing.T) {
 			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
 				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
 				fr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
-				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
 			param: param.UserFileUpdateParam{
@@ -371,7 +371,7 @@ func TestUserFileService_Update(t *testing.T) {
 			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
 				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
 				fr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
-				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
 			param: param.UserFileUpdateParam{
@@ -446,7 +446,7 @@ func TestUserFileService_Delete(t *testing.T) {
 			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
 				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
 				fr.EXPECT().Delete(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
-				ep.EXPECT().Publish(mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			uid: "file-uid",
 		},

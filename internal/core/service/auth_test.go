@@ -129,10 +129,10 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 
 func TestAuthService_generateUsername(t *testing.T) {
 	tests := []struct {
-		name        string
-		userInfo    *model.OAuthUserInfo
-		setupMocks  func(*repomocks.MockUserRepository, *securitymocks.MockUIDGenerator)
-		want        string
+		name       string
+		userInfo   *model.OAuthUserInfo
+		setupMocks func(*repomocks.MockUserRepository, *securitymocks.MockUIDGenerator)
+		want       string
 	}{
 		{
 			name: "Happy Path - Simple Email",
