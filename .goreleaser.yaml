@@ -113,8 +113,5 @@ changelog:
       - "^docs:"
       - "^test:"
       - "^ci:"
-      - "^build:"
-      - "^chore:"
-      - "^refactor:"
 
 dist: dist
