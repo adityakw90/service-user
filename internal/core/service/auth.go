@@ -343,8 +343,21 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		if userDevice != nil {
 			loginEventData.IPAddress = userDevice.IPAddress
 		}
-		err := s.eventPublisher.Publish(newCtx, event.Message{Type: event.EventLogin, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: loginEventData})
+
+		eventMessage, err := event.NewMessage(
+			event.EventLogin,
+			event.NewUserEntity(user),
+			&loginEventData,
+		)
 		if err != nil {
+			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:            &user.UID,
+				Email:          &user.Email,
+				IdentifierType: "oauth",
+			}, err)
+			return
+		}
+		if err := s.eventPublisher.Publish(newCtx, eventMessage); err != nil {
 			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
 				UID:      &user.UID,
 				Email:    &user.Email,
@@ -528,7 +541,7 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	// Publish OAuth login event
 	eventMessage, err := event.NewMessage(
 		event.EventOAuthLogin,
-		event.Entity{ID: user.UID, Type: "user", Name: &user.Username},
+		event.NewUserEntity(user),
 		&event.EventOAuthLoginData{
 			UserUID:  user.UID,
 			Provider: "google",

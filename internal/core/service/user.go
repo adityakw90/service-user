@@ -270,7 +270,7 @@ func (s *userService) Create(ctx context.Context, createParam *param.UserCreateP
 	}
 
 	// Publish user created event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: event.EventUserCreatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.NewUserEntity(user), Metadata: event.EventUserCreatedData{
 		UserUID:  user.UID,
 		ActorUID: user.UID,
 		Username: user.Username,
@@ -454,7 +454,7 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	_ = s.resolvers.User().Invalidate(ctx, param.WithUIDs(user.UID), param.WithIDs(user.ID))
 
 	// Publish user updated event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: event.EventUserUpdatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatedData{
 		UserUID:      uid,
 		ActorUID:     uid,
 		ChangesCount: changesCount,
@@ -529,7 +529,7 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 	_ = s.resolvers.User().Invalidate(ctx, param.WithUIDs(user.UID), param.WithIDs(user.ID))
 
 	// Publish user deleted event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.Entity{ID: user.UID, Type: "user", Name: &user.Username}, Metadata: event.EventUserDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.NewUserEntity(user), Metadata: event.EventUserDeletedData{
 		UserUID:  uid,
 		ActorUID: uid,
 	}})
@@ -1162,7 +1162,7 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 	}
 
 	// Publish user update password event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.Entity{ID: userUID, Type: "user", Name: &user.Username}, Metadata: event.EventUserUpdatePasswordData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatePasswordData{
 		UserUID:  userUID,
 		ActorUID: userUID,
 	}})

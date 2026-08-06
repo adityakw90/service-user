@@ -1,14 +1,9 @@
 package event
 
 import (
-	"errors"
 	"strings"
-)
 
-var (
-	ErrEventTypeRequired  = errors.New("event type is required")
-	ErrEntityTypeRequired = errors.New("event entity type is required")
-	ErrEntityIDRequired   = errors.New("event entity id is required")
+	domainError "github.com/adityakw90/service-user/internal/core/domain/errors"
 )
 
 // Entity identifies the business resource affected by an event.
@@ -37,13 +32,13 @@ func NewMessage(eventType EventType, entity Entity, metadata any) (Message, erro
 // Validate checks fields required by the audit service.
 func (m Message) Validate() error {
 	if strings.TrimSpace(string(m.Type)) == "" {
-		return ErrEventTypeRequired
+		return domainError.ErrEventTypeRequired
 	}
 	if strings.TrimSpace(m.Entity.Type) == "" {
-		return ErrEntityTypeRequired
+		return domainError.ErrEntityTypeRequired
 	}
 	if strings.TrimSpace(m.Entity.ID) == "" {
-		return ErrEntityIDRequired
+		return domainError.ErrEntityIDRequired
 	}
 	return nil
 }

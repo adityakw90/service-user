@@ -1,5 +1,16 @@
 package event
 
+import "github.com/adityakw90/service-user/internal/core/domain/model"
+
+// NewUserEntity identifies a user affected by an event.
+func NewUserEntity(user *model.User) Entity {
+	return Entity{
+		ID:   user.UID,
+		Type: "user",
+		Name: &user.Username,
+	}
+}
+
 // EventUserCreatedData is emitted when a user is created.
 type EventUserCreatedData struct {
 	UserUID  string
