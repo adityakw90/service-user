@@ -195,7 +195,7 @@ func TestHTTPPublisher_Publish(t *testing.T) {
 			publisher := NewHTTPPublisher(server.URL, 5*time.Second, logger, tracer)
 
 			ctx := util.SetClientName(context.Background(), "test-client")
-			ctx = util.SetActor(ctx, "test-actor-id", "test-actor-type")
+			ctx = util.SetActor(ctx, "test-actor-id", "test-actor-type", "Test Actor")
 
 			err := publisher.Publish(ctx, tt.eventType, tt.eventData)
 
@@ -228,7 +228,7 @@ func TestHTTPPublisher_Publish_ContextValues(t *testing.T) {
 			name: "With Client and Actor Context",
 			setupContext: func(ctx context.Context) context.Context {
 				ctx = util.SetClientName(ctx, "web-app")
-				ctx = util.SetActor(ctx, "user-123", "user")
+				ctx = util.SetActor(ctx, "user-123", "user", "Alice")
 				return ctx
 			},
 			expectedClient: "web-app",

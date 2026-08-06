@@ -16,9 +16,13 @@ func isValidUUID(id string) bool {
 	return pattern.MatchString(id)
 }
 
-func setupContext(ctx context.Context, clientName, actorId, actorType string) context.Context {
+func setupContext(ctx context.Context, clientName, actorId, actorType string, actorNames ...string) context.Context {
+	actorName := "test-actor"
+	if len(actorNames) > 0 {
+		actorName = actorNames[0]
+	}
 	ctx = util.SetClientName(ctx, clientName)
-	ctx = util.SetActor(ctx, actorId, actorType)
+	ctx = util.SetActor(ctx, actorId, actorType, actorName)
 	return ctx
 }
 
@@ -62,6 +66,9 @@ func TestNewCloudEvent(t *testing.T) {
 				if ce.Data.ActorType != "user" {
 					t.Errorf("ActorType = %v, want %v", ce.Data.ActorType, "user")
 				}
+				if ce.Data.ActorName != "test-actor" {
+					t.Errorf("ActorName = %v, want %v", ce.Data.ActorName, "test-actor")
+				}
 				if !isValidUUID(ce.ID) {
 					t.Errorf("ID = %v is not a valid UUID", ce.ID)
 				}
@@ -92,6 +99,9 @@ func TestNewCloudEvent(t *testing.T) {
 				}
 				if ce.Data.ActorType != "unknown" {
 					t.Errorf("ActorType = %v, want %v", ce.Data.ActorType, "unknown")
+				}
+				if ce.Data.ActorName != "unknown" {
+					t.Errorf("ActorName = %v, want %v", ce.Data.ActorName, "unknown")
 				}
 			},
 		},

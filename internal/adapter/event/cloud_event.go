@@ -29,13 +29,14 @@ type CloudEventData struct {
 	Client    string          `json:"client"`
 	ActorId   string          `json:"actor_id"`
 	ActorType string          `json:"actor_type"`
+	ActorName string          `json:"actor_name"`
 	MetaData  json.RawMessage `json:"metadata"`
 }
 
 func NewCloudEvent(ctx context.Context, eventType event.EventType, eventData any) CloudEvent {
 	clientName := util.GetClientName(ctx)
-	actorId, actorType := util.GetActor(ctx)
-	metadata, err := json.Marshal(eventData)
+	actorId, actorType, actorName := util.GetActor(ctx)
+	metadata, err := json.Marshal(message.Metadata)
 	if err != nil {
 		// If marshaling fails, wrap in error structure
 		metadata, _ = json.Marshal(map[string]interface{}{
@@ -51,6 +52,7 @@ func NewCloudEvent(ctx context.Context, eventType event.EventType, eventData any
 		Data: CloudEventData{
 			ActorId:   actorId,
 			ActorType: actorType,
+			ActorName: actorName,
 			Client:    clientName,
 			MetaData:  metadata,
 		},
