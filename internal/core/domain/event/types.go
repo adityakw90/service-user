@@ -12,6 +12,7 @@ const (
 	EventRevokeToken  EventType = "auth.revoke_token"
 	EventPINVerify    EventType = "auth.pin_verify"
 	EventPINFail      EventType = "auth.pin_fail"
+	EventOAuthLogin   EventType = "auth.oauth_login"
 
 	// User Events
 	EventUserCreated        EventType = "user.created"
