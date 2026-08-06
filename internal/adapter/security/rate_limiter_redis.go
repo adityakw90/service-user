@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 )
 
 const (

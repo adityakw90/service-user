@@ -18,11 +18,11 @@ type rateLimitState struct {
 // MemoryRateLimiter implements RateLimiter using in-memory storage.
 // Suitable for development and testing environments.
 type MemoryRateLimiter struct {
-	mu          sync.RWMutex
-	keys        map[string]*rateLimitState
-	limit       int
-	windowSize  time.Duration
-	keyPrefix   string // prefix for internal keys (e.g., "ip:")
+	mu         sync.RWMutex
+	keys       map[string]*rateLimitState
+	limit      int
+	windowSize time.Duration
+	keyPrefix  string // prefix for internal keys (e.g., "ip:")
 }
 
 // NewMemoryRateLimiter creates a new in-memory rate limiter with configured limit and window.

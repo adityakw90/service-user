@@ -30,9 +30,9 @@ func TestAdapter_Observer_UserFileObserver_OnSignal_Success(t *testing.T) {
 	fileSize := int64(1024)
 
 	obs.OnSignal(ctx, signal.SignalSuccess, signal.UserFileSignal{
-		UID:      &uid,
-		FileName: &fileName,
-		FileSize: &fileSize,
+		UID:       &uid,
+		FileName:  &fileName,
+		FileSize:  &fileSize,
 		Operation: "get",
 	}, nil)
 

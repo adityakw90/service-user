@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user-proto/gen/go/common"
+	"github.com/adityakw90/service-user/internal/core/domain/model"
 )
 
 func TestToProtoMeta(t *testing.T) {

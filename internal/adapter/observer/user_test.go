@@ -32,10 +32,10 @@ func TestAdapter_Observer_UserObserver_OnSignal_Success(t *testing.T) {
 	active := true
 
 	obs.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:      &uid,
-		Username: &username,
-		Status:   &status,
-		Active:   &active,
+		UID:       &uid,
+		Username:  &username,
+		Status:    &status,
+		Active:    &active,
 		Operation: "get",
 	}, nil)
 

@@ -127,8 +127,8 @@ func TestStart(t *testing.T) {
 		errContains string
 	}{
 		{
-			name:        "Invalid Address - returns error",
-			address:     "invalid-address",
+			name:    "Invalid Address - returns error",
+			address: "invalid-address",
 			setupCtx: func() context.Context {
 				return context.Background()
 			},
@@ -136,8 +136,8 @@ func TestStart(t *testing.T) {
 			errContains: "listen",
 		},
 		{
-			name:        "Invalid Address - missing port",
-			address:     "localhost",
+			name:    "Invalid Address - missing port",
+			address: "localhost",
 			setupCtx: func() context.Context {
 				return context.Background()
 			},

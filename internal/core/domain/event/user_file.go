@@ -9,12 +9,12 @@ type EventUserFileCreatedData struct {
 
 // EventUserFileUpdatedData is emitted when a user file is updated.
 type EventUserFileUpdatedData struct {
-	UserUID  string
-	FileUID  string
+	UserUID string
+	FileUID string
 }
 
 // EventUserFileDeletedData is emitted when a user file is deleted.
 type EventUserFileDeletedData struct {
-	UserUID  string
-	FileUID  string
+	UserUID string
+	FileUID string
 }

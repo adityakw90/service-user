@@ -34,10 +34,10 @@ type UserFileUpdateParam struct {
 type UserFileOrderBy string
 
 const (
-	OrderByUserFileID         UserFileOrderBy = "id"
-	OrderByUserFileUID        UserFileOrderBy = "uid"
-	OrderByUserFileUserID     UserFileOrderBy = "user_id"
-	OrderByUserFileFileType   UserFileOrderBy = "file_type"
-	OrderByUserFileFileName   UserFileOrderBy = "file_name"
-	OrderByUserFileCreatedAt  UserFileOrderBy = "created_at"
+	OrderByUserFileID        UserFileOrderBy = "id"
+	OrderByUserFileUID       UserFileOrderBy = "uid"
+	OrderByUserFileUserID    UserFileOrderBy = "user_id"
+	OrderByUserFileFileType  UserFileOrderBy = "file_type"
+	OrderByUserFileFileName  UserFileOrderBy = "file_name"
+	OrderByUserFileCreatedAt UserFileOrderBy = "created_at"
 )

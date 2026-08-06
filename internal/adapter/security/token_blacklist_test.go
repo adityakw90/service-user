@@ -160,11 +160,11 @@ func TestTokenBlacklistAdapter_RemoveAll(t *testing.T) {
 
 func TestTokenBlacklistAdapter_IsAllowed(t *testing.T) {
 	tests := []struct {
-		name         string
-		userUID      string
-		tid          string
-		preAddToken  bool
-		wantAllowed  bool
+		name        string
+		userUID     string
+		tid         string
+		preAddToken bool
+		wantAllowed bool
 	}{
 		{name: "Token in blacklist", userUID: "user-123", tid: "token-abc", preAddToken: true, wantAllowed: false},
 		{name: "Token not in blacklist", userUID: "user-123", tid: "token-xyz", preAddToken: false, wantAllowed: true},

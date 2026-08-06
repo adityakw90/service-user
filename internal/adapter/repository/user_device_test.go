@@ -79,19 +79,19 @@ func TestUserDeviceRepository_GetByUserIDAndDeviceID(t *testing.T) {
 
 func TestUserDeviceRepository_Create(t *testing.T) {
 	tests := []struct {
-		name      string
-		userDev   *model.UserDevice
-		wantErr   bool
+		name    string
+		userDev *model.UserDevice
+		wantErr bool
 	}{
 		{
 			name: "Create valid user-device relationship",
 			userDev: &model.UserDevice{
-				UserID:      1,
-				DeviceID:    2,
-				IPAddress:   "192.168.1.1",
+				UserID:       1,
+				DeviceID:     2,
+				IPAddress:    "192.168.1.1",
 				LastActiveAt: time.Now().UTC(),
-				SessionID:   "test-session-123",
-				CreatedAt:   time.Now().UTC(),
+				SessionID:    "test-session-123",
+				CreatedAt:    time.Now().UTC(),
 			},
 			wantErr: false,
 		},
@@ -139,9 +139,9 @@ func TestUserDeviceRepository_Update(t *testing.T) {
 		{
 			name: "Update user-device relationship",
 			userDev: &model.UserDevice{
-				UserID:      1,
-				DeviceID:    2,
-				IPAddress:   "10.0.0.1",
+				UserID:       1,
+				DeviceID:     2,
+				IPAddress:    "10.0.0.1",
 				LastActiveAt: time.Now().UTC(),
 			},
 			setupMock: func(mock pgxmock.PgxPoolIface, userDev *model.UserDevice) {
@@ -397,8 +397,8 @@ func TestUserDeviceRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_device`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Invalid OrderBy - non-existent column",
@@ -408,8 +408,8 @@ func TestUserDeviceRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_device`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Nil OrderBy - should use default",

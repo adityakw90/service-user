@@ -13,10 +13,10 @@ func TestDomain_Signal_UserSignal_Creation(t *testing.T) {
 	active := true
 
 	sig := UserSignal{
-		UID:      &uid,
-		Username: &username,
-		Status:   &status,
-		Active:   &active,
+		UID:       &uid,
+		Username:  &username,
+		Status:    &status,
+		Active:    &active,
 		Operation: "get",
 	}
 

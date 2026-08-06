@@ -25,14 +25,14 @@ func TestChainUnaryInterceptors(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name: "Happy Path - two interceptors chain correctly",
+			name:         "Happy Path - two interceptors chain correctly",
 			interceptors: nil, // Will be created in test
 			wantCalls:    []string{"interceptor1", "interceptor2", "handler"},
 			wantResponse: "response",
 			wantErr:      false,
 		},
 		{
-			name: "Single Interceptor - directly returns the interceptor",
+			name:         "Single Interceptor - directly returns the interceptor",
 			interceptors: nil,
 			wantCalls:    []string{"interceptor1", "handler"},
 			wantResponse: "response",
