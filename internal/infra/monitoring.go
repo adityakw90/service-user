@@ -52,9 +52,7 @@ func ConvertConfigToOptions(cfg *MonitoringConfig) []gomon.Option {
 			cfg.TracerProviderHost,
 			cfg.TracerProviderPort,
 		))
-		if cfg.TracerSampleRatio > 0 {
-			opts = append(opts, gomon.WithTracerSampleRatio(cfg.TracerSampleRatio))
-		}
+		opts = append(opts, gomon.WithTracerSampleRatio(cfg.TracerSampleRatio))
 		if cfg.TracerInsecure {
 			opts = append(opts, gomon.WithTracerInsecure(cfg.TracerInsecure))
 		}
