@@ -62,7 +62,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		TracerProvider:      "stdout",
 		TracerProviderHost:  "localhost",
 		TracerProviderPort:  6831,
-		TracerSampleRatio:   1.0,
+		TracerSampleRatio:   0,
 		MetricProvider:      "stdout",
 		MetricProviderHost:  "localhost",
 		MetricProviderPort:  9090,

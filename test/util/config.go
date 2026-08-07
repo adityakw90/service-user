@@ -1,20 +1,12 @@
 package testutil
 
 import (
-	"os"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/adityakw90/service-user/internal/config"
 )
-
-func getEnv(key, defaultValue string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultValue
-}
 
 func LoadTestConfig(t *testing.T) (*config.Config, error) {
 	t.Helper()
