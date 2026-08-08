@@ -7,7 +7,7 @@ import (
 	domainError "github.com/adityakw90/service-user/internal/core/domain/errors"
 )
 
-func TestNewMessage(t *testing.T) {
+func TestMessage_NewMessage(t *testing.T) {
 	entityName := "Ada"
 	tests := []struct {
 		name      string
@@ -36,7 +36,7 @@ func TestNewMessage(t *testing.T) {
 	}
 }
 
-func TestNewMessageValidation(t *testing.T) {
+func TestMessage_Validation(t *testing.T) {
 	tests := []struct {
 		name      string
 		eventType EventType

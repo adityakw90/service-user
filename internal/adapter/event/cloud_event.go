@@ -58,7 +58,7 @@ func NewCloudEvent(ctx context.Context, message event.Message) CloudEvent {
 			ActorType:  actorType,
 			ActorName:  actorName,
 			EntityId:   message.Entity.ID,
-			EntityType: message.Entity.Type,
+			EntityType: string(message.Entity.Type),
 			EntityName: message.Entity.Name,
 			MetaData:   metadata,
 		},

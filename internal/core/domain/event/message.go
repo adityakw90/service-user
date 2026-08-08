@@ -6,13 +6,6 @@ import (
 	domainError "github.com/adityakw90/service-user/internal/core/domain/errors"
 )
 
-// Entity identifies the business resource affected by an event.
-type Entity struct {
-	ID   string
-	Type string
-	Name *string
-}
-
 // Message is the domain-level contract passed to event publishers.
 type Message struct {
 	Type     EventType
@@ -34,11 +27,8 @@ func (m Message) Validate() error {
 	if strings.TrimSpace(string(m.Type)) == "" {
 		return domainError.ErrEventTypeRequired
 	}
-	if strings.TrimSpace(m.Entity.Type) == "" {
-		return domainError.ErrEntityTypeRequired
-	}
-	if strings.TrimSpace(m.Entity.ID) == "" {
-		return domainError.ErrEntityIDRequired
+	if err := m.Entity.Validate(); err != nil {
+		return err
 	}
 	return nil
 }
