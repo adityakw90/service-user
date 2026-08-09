@@ -31,13 +31,14 @@ func NewPinRepository(db PostgrePool) repository.UserPinRepository {
 // GetByUserID retrieves a PIN by user ID.
 func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.UserPin, error) {
 	query := `
-		SELECT user_id, code, created_at, updated_at
+		SELECT user_pin.user_id, "user".uid, user_pin.code, user_pin.created_at, user_pin.updated_at
 		FROM user_pin
-		WHERE user_id = $1
+		JOIN "user" ON "user".id = user_pin.user_id
+		WHERE user_pin.user_id = $1
 	`
 	var m model.UserPin
 	err := r.db.QueryRow(ctx, query, userID).Scan(
-		&m.UserID, &m.Code, &m.CreatedAt, &m.UpdatedAt,
+		&m.UserID, &m.UserUID, &m.Code, &m.CreatedAt, &m.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, errors.ErrPinNotSet
