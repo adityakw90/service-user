@@ -171,7 +171,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		}, domainerrors.ErrAccountLockedOut)
 
 		// Publish login locked event
-		s.eventPublisher.Publish(ctx, event.Message{Type: event.EventLoginLocked, Entity: event.Entity{ID: payload.Identifier, Type: payload.IdentifierType}, Metadata: event.EventLoginLockedData{
+		s.eventPublisher.Publish(ctx, event.Message{Type: event.EventLoginLocked, Entity: event.NewUserEntity(user), Metadata: event.EventLoginLockedData{
 			Identifier:     payload.Identifier,
 			IdentifierType: payload.IdentifierType,
 			FailureReason:  "Account is locked",
@@ -191,7 +191,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *param.AuthParam
 		}, domainerrors.ErrInvalidCredentials)
 
 		// Publish login failed event
-		s.eventPublisher.Publish(ctx, event.Message{Type: event.EventLoginFailed, Entity: event.Entity{ID: payload.Identifier, Type: payload.IdentifierType}, Metadata: event.EventLoginFailedData{
+		s.eventPublisher.Publish(ctx, event.Message{Type: event.EventLoginFailed, Entity: event.NewUserEntity(user), Metadata: event.EventLoginFailedData{
 			Identifier:     payload.Identifier,
 			IdentifierType: payload.IdentifierType,
 			FailureReason:  "invalid_credentials",
@@ -713,7 +713,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*m
 	}
 
 	// Publish token refresh event
-	s.eventPublisher.Publish(ctx, event.Message{Type: event.EventTokenRefresh, Entity: event.Entity{ID: claims.Identifier, Type: claims.IdentifierType}, Metadata: event.EventTokenRefreshData{
+	s.eventPublisher.Publish(ctx, event.Message{Type: event.EventTokenRefresh, Entity: event.NewTokenEntity(claims), Metadata: event.EventTokenRefreshData{
 		Identifier:     claims.Identifier,
 		IdentifierType: claims.IdentifierType,
 	}})
@@ -831,7 +831,7 @@ func (s *authService) RevokeToken(ctx context.Context, token string, tokenType s
 	}
 
 	// Publish revoke event
-	s.eventPublisher.Publish(ctx, event.Message{Type: event.EventRevokeToken, Entity: event.Entity{ID: claims.Identifier, Type: claims.IdentifierType}, Metadata: event.EventRevokeTokenData{
+	s.eventPublisher.Publish(ctx, event.Message{Type: event.EventRevokeToken, Entity: event.NewTokenEntity(claims), Metadata: event.EventRevokeTokenData{
 		Identifier:     claims.Identifier,
 		IdentifierType: claims.IdentifierType,
 	}})
@@ -898,7 +898,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 		}, nil) // Invalid PIN, but not an error - just reject
 
 		// Publish PIN verify failed event
-		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventPINFail, Entity: event.Entity{ID: userUid, Type: "user_pin"}, Metadata: event.EventPinFailData{
+		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventPINFail, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventPinFailData{
 			UserUID: userUid,
 			Reason:  "invalid_pin",
 		}})
@@ -915,7 +915,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 	}
 
 	// Publish PIN verify success event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventPINVerify, Entity: event.Entity{ID: userUid, Type: "user_pin"}, Metadata: event.EventPinVerifyData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventPINVerify, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventPinVerifyData{
 		UserUID: userUid,
 		Success: true,
 		Reason:  "pin_verified",

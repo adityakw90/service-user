@@ -195,7 +195,7 @@ func (s *userFileService) Add(ctx context.Context, param param.UserFileCreatePar
 
 	// Publish user file created event
 
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileCreated, Entity: event.Entity{ID: file.UID, Type: "user_file", Name: &file.FileName}, Metadata: event.EventUserFileCreatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileCreated, Entity: event.NewUserFileEntity(file), Metadata: event.EventUserFileCreatedData{
 		UserUID:  file.UserUID,
 		FileUID:  file.UID,
 		FileName: file.FileName,
@@ -264,7 +264,7 @@ func (s *userFileService) Update(ctx context.Context, uid string, param param.Us
 	}
 
 	// Publish user file updated event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileUpdated, Entity: event.Entity{ID: uid, Type: "user_file", Name: &file.FileName}, Metadata: event.EventUserFileUpdatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileUpdated, Entity: event.NewUserFileEntity(file), Metadata: event.EventUserFileUpdatedData{
 		UserUID: file.UserUID,
 		FileUID: uid,
 	}})
@@ -316,7 +316,7 @@ func (s *userFileService) Delete(ctx context.Context, uid string) error {
 
 	// Publish user file deleted event
 
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileDeleted, Entity: event.Entity{ID: uid, Type: "user_file", Name: &file.FileName}, Metadata: event.EventUserFileDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileDeleted, Entity: event.NewUserFileEntity(file), Metadata: event.EventUserFileDeletedData{
 		UserUID: file.UserUID,
 		FileUID: uid,
 	}})

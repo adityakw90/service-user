@@ -716,7 +716,7 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	}
 
 	// Publish user update profile event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.Entity{ID: userUID, Type: "user_profile", Name: util.Ptr(profile.FullName())}, Metadata: event.EventUserUpdateProfileData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.NewUserProfileEntity(profile), Metadata: event.EventUserUpdateProfileData{
 		UserUID:  userUID,
 		ActorUID: userUID,
 	}})
@@ -811,14 +811,15 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 		return err
 	}
 
+	userPin := existingPin
 	if isNewPIN {
 		// Create new PIN
-		userPin := &model.UserPin{
+		userPin = &model.UserPin{
 			UserID:  user.ID,
 			UserUID: user.UID,
 			Code:    hashedPin,
 		}
-		_, err = s.pinRepo.Create(ctx, userPin)
+		userPin, err = s.pinRepo.Create(ctx, userPin)
 		if err != nil {
 			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 				UID:       &userUID,
@@ -828,8 +829,8 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 		}
 	} else {
 		// Update existing PIN
-		existingPin.Code = hashedPin
-		err = s.pinRepo.Update(ctx, existingPin)
+		userPin.Code = hashedPin
+		err = s.pinRepo.Update(ctx, userPin)
 		if err != nil {
 			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
 				UID:       &userUID,
@@ -841,7 +842,7 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 
 	// Publish user update pin event
 	if isNewPIN {
-		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.Entity{ID: userUID, Type: "user_pin"}, Metadata: event.EventUserCreatePinData{
+		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserCreatePinData{
 			UserUID:  userUID,
 			ActorUID: userUID,
 		}})
@@ -853,7 +854,7 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 			return err
 		}
 	} else {
-		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.Entity{ID: userUID, Type: "user_pin"}, Metadata: event.EventUserUpdatePinData{
+		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserUpdatePinData{
 			UserUID:  userUID,
 			ActorUID: userUID,
 		}})
@@ -1023,7 +1024,7 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	}
 
 	// Publish device revoked event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.Entity{ID: deviceUID, Type: "device", Name: &device.DeviceName}, Metadata: event.EventDeviceDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.NewDeviceEntity(device), Metadata: event.EventDeviceDeletedData{
 		UserUID:   userUID,
 		DeviceUID: deviceUID,
 	}})
@@ -1034,7 +1035,7 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 		}, err)
 		return err
 	}
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.Entity{ID: deviceUID, Type: "device", Name: &device.DeviceName}, Metadata: event.EventUserRevokeDeviceData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.NewDeviceEntity(device), Metadata: event.EventUserRevokeDeviceData{
 		UserUID:   userUID,
 		ActorUID:  userUID,
 		DeviceUID: deviceUID,
