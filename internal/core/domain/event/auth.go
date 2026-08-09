@@ -3,11 +3,9 @@ package event
 type EventLoginData struct {
 	Identifier     string
 	IdentifierType string
-	UserUID        string
-	UserName       string
-	DeviceUID      string
-	DeviceName     string
-	IPAddress      string
+	DeviceUID      *string
+	DeviceName     *string
+	IPAddress      *string
 }
 
 type EventLoginFailedData struct {

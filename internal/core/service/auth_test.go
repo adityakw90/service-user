@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
-	"github.com/adityakw90/service-user/internal/core/domain/model"
-	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	domainModel "github.com/adityakw90/service-user/internal/core/domain/model"
+	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	eventmocks "github.com/adityakw90/service-user/mocks/event"
 	executormocks "github.com/adityakw90/service-user/mocks/executor"
 	oauthmocks "github.com/adityakw90/service-user/mocks/oauth"
@@ -17,14 +17,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// setupObserverAny allows any OnSignal calls on the observer (useful when not testing signal behavior)
-func setupAuthObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[signal.AuthSignal]) {
-	// Allow any OnSignal call without checking parameters
-	// Use Maybe() to make the expectation optional (can be called 0 or more times)
-	// Note: Using EXPECT().OnSignal() pattern for better type safety
-	observer.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.AnythingOfType("signal.AuthSignal"), mock.Anything).Maybe()
-}
 
 // TestAuthService_GoogleOAuth tests the GoogleOAuth method.
 func TestAuthService_GoogleOAuth(t *testing.T) {
@@ -85,8 +77,9 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 			mockTokenBlacklist := securitymocks.NewMockTokenStore(t)
 			mockExecutor := executormocks.NewMockExecutor(t)
 			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
-			mockAuthObserver := observermocks.NewMockServiceObserver[signal.AuthSignal](t)
-			setupAuthObserverAny(t, mockAuthObserver) // Keep custom observer mock
+			mockAuthObserver := observermocks.NewMockServiceObserver[domainSignal.AuthSignal](t)
+			// setup mock auth observer
+			mockAuthObserver.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.AnythingOfType("signal.AuthSignal"), mock.Anything).Maybe()
 
 			if tt.setupMocks != nil {
 				tt.setupMocks(mockUIDGen, mockOAuthProvider)
@@ -130,13 +123,13 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 func TestAuthService_generateUsername(t *testing.T) {
 	tests := []struct {
 		name       string
-		userInfo   *model.OAuthUserInfo
+		userInfo   *domainModel.OAuthUserInfo
 		setupMocks func(*repomocks.MockUserRepository, *securitymocks.MockUIDGenerator)
 		want       string
 	}{
 		{
 			name: "Happy Path - Simple Email",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "john.doe@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -146,7 +139,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Happy Path - Email with Numbers",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "user123@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -156,7 +149,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Special Characters Normalization - Hyphens and Plus",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "john-doe+test@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -166,7 +159,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Special Characters Normalization - Exclamation Mark",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "user!test@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -176,7 +169,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Special Characters Normalization - Multiple Special Chars Sequence",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "user#$%test@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -186,7 +179,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Minimum Length Handling - Two Characters",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "ab@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -196,7 +189,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Minimum Length Handling - Single Character",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "x@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -206,7 +199,7 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Underscores and Dots Preserved",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "user_name.test@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
@@ -216,12 +209,12 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Single Collision - Adds Suffix",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "john.doe@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
 				// First call returns existing user
-				existingUser := &model.User{Username: "john.doe"}
+				existingUser := &domainModel.User{Username: "john.doe"}
 				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john.doe").Return(existingUser, nil)
 				// Generate suffix
 				mockUIDGen.EXPECT().New().Return("uid123456789")
@@ -232,11 +225,11 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Multiple Collisions - Keeps Adding Suffixes",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "john@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
-				existingUser := &model.User{Username: "john"}
+				existingUser := &domainModel.User{Username: "john"}
 				// First collision
 				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "john").Return(existingUser, nil).Once()
 				mockUIDGen.EXPECT().New().Return("uid1111222333").Once()
@@ -249,11 +242,11 @@ func TestAuthService_generateUsername(t *testing.T) {
 		},
 		{
 			name: "Short Username with Collision",
-			userInfo: &model.OAuthUserInfo{
+			userInfo: &domainModel.OAuthUserInfo{
 				Email: "ab@example.com",
 			},
 			setupMocks: func(mockUserRepo *repomocks.MockUserRepository, mockUIDGen *securitymocks.MockUIDGenerator) {
-				existingUser := &model.User{Username: "user_ab"}
+				existingUser := &domainModel.User{Username: "user_ab"}
 				// First collision after adding prefix
 				mockUserRepo.EXPECT().GetByUsername(mock.Anything, "user_ab").Return(existingUser, nil)
 				mockUIDGen.EXPECT().New().Return("uid9876543210")

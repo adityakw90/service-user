@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/event"
+	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -130,11 +131,9 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventData: event.EventLoginData{
 				Identifier:     "test@example.com",
 				IdentifierType: "email",
-				UserUID:        "uid-123",
-				UserName:       "Test User",
-				DeviceUID:      "device-123",
-				DeviceName:     "iPhone",
-				IPAddress:      "192.168.1.1",
+				DeviceUID:      util.Ptr("device-123"),
+				DeviceName:     util.Ptr("iPhone"),
+				IPAddress:      util.Ptr("192.168.1.1"),
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "test-exchange",
