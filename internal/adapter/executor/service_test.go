@@ -58,7 +58,10 @@ func TestServiceExecutor_Do(t *testing.T) {
 			executor := NewServiceExecutor(logger, tracer)
 			ctx := context.Background()
 
-			executor.Do(ctx, tt.operationName, tt.fn)
+			executor.Do(ctx, tt.operationName, func(inner context.Context) error {
+				tt.fn(inner)
+				return nil
+			})
 		})
 	}
 }
@@ -125,9 +128,10 @@ func TestServiceExecutor_DoAsync(t *testing.T) {
 			}
 
 			done := make(chan struct{})
-			wrappedFn := func(inner context.Context) {
+			wrappedFn := func(inner context.Context) error {
 				defer close(done)
 				tt.fn(inner)
+				return nil
 			}
 			executor.DoAsync(ctx, tt.operationName, wrappedFn)
 			select {
@@ -149,9 +153,10 @@ func TestServiceExecutor_DoAsync_Lifecycle(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
-	require.NoError(t, executor.DoAsync(context.Background(), "blocking", func(context.Context) {
+	require.NoError(t, executor.DoAsync(context.Background(), "blocking", func(context.Context) error {
 		close(started)
 		<-release
+		return nil
 	}))
 	<-started
 
@@ -174,7 +179,7 @@ func TestServiceExecutor_DoAsync_Lifecycle(t *testing.T) {
 		t.Fatal("Close timed out waiting for the asynchronous task")
 	}
 
-	require.ErrorIs(t, executor.DoAsync(context.Background(), "closed", func(context.Context) {}), domainError.ErrExecutorClosed)
+	require.ErrorIs(t, executor.DoAsync(context.Background(), "closed", func(context.Context) error { return nil }), domainError.ErrExecutorClosed)
 	executor.Close()
 }
 
@@ -190,8 +195,9 @@ func TestServiceExecutor_DoAsync_Concurrent(t *testing.T) {
 
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
-			executor.DoAsync(ctx, fmt.Sprintf("concurrent-operation-%d", index), func(innerCtx context.Context) {
+			executor.DoAsync(ctx, fmt.Sprintf("concurrent-operation-%d", index), func(innerCtx context.Context) error {
 				done <- struct{}{}
+				return nil
 			})
 		}(i)
 	}

@@ -163,50 +163,110 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 		return nil, err
 	}
 	if locked {
-		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
-			UID:            &user.UID,
-			Email:          &user.Email,
-			Username:       &user.Username,
-			IdentifierType: payload.IdentifierType,
-		}, domainerrors.ErrAccountLockedOut)
-
 		// Publish login locked event
-		s.eventPublisher.Publish(ctx, domainEvent.Message{Type: domainEvent.EventLoginLocked, Entity: domainEvent.NewUserEntity(user), Metadata: domainEvent.EventLoginLockedData{
-			Identifier:     payload.Identifier,
-			IdentifierType: payload.IdentifierType,
-			FailureReason:  "Account is locked",
-		}})
-
+		s.executor.DoAsync(ctx, "auth.publish.locked", func(newCtx context.Context) error {
+			eventMessage, errExc := domainEvent.NewMessage(
+				domainEvent.EventLoginLocked,
+				domainEvent.NewUserEntity(user),
+				domainEvent.EventLoginLockedData{
+					Identifier:     payload.Identifier,
+					IdentifierType: payload.IdentifierType,
+					FailureReason:  "Account is locked",
+				},
+			)
+			if errExc != nil {
+				s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					UID:      &user.UID,
+					Email:    &user.Email,
+					Username: &user.Username,
+					Extra: &map[string]any{
+						"context": "auth.publish.locked",
+						"event":   domainEvent.EventLogin,
+					},
+				}, errExc)
+				return errExc
+			}
+			if errExc := s.eventPublisher.Publish(newCtx, eventMessage); errExc != nil {
+				s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					UID:      &user.UID,
+					Email:    &user.Email,
+					Username: &user.Username,
+					Extra: &map[string]any{
+						"context": "auth.publish.locked",
+						"event":   domainEvent.EventLogin,
+					},
+				}, errExc)
+				return errExc
+			}
+			return nil
+		})
 		return nil, domainerrors.ErrAccountLockedOut
 	}
 
 	// Verify password
 	if !s.passwordHasher.Compare(user.Password, payload.Password) {
 		// Track failed attempt
-		_ = s.attemptTracker.Track(ctx, user.UID)
-
-		s.authObserver.OnSignal(ctx, domainSignal.SignalReject, domainSignal.AuthSignal{
-			Identifier:     payload.Identifier,
-			IdentifierType: payload.IdentifierType,
-		}, domainerrors.ErrInvalidCredentials)
+		if errTrack := s.attemptTracker.Track(ctx, user.UID); errTrack != nil {
+			// log error but do not return error
+			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:            &user.UID,
+				Email:          &user.Email,
+				Username:       &user.Username,
+				IdentifierType: payload.IdentifierType,
+				Extra:          &map[string]any{"context": "auth.track_attempt"},
+			}, errTrack)
+		}
 
 		// Publish login failed event
-		s.eventPublisher.Publish(ctx, domainEvent.Message{Type: domainEvent.EventLoginFailed, Entity: domainEvent.NewUserEntity(user), Metadata: domainEvent.EventLoginFailedData{
-			Identifier:     payload.Identifier,
-			IdentifierType: payload.IdentifierType,
-			FailureReason:  "invalid_credentials",
-		}})
+		s.executor.DoAsync(ctx, "auth.publish.failed", func(newCtx context.Context) error {
+			eventMessage, errExc := domainEvent.NewMessage(
+				domainEvent.EventLoginFailed,
+				domainEvent.NewUserEntity(user),
+				domainEvent.EventLoginFailedData{
+					Identifier:     payload.Identifier,
+					IdentifierType: payload.IdentifierType,
+					FailureReason:  "invalid_credentials",
+				},
+			)
+			if errExc != nil {
+				s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					UID:      &user.UID,
+					Email:    &user.Email,
+					Username: &user.Username,
+					Extra: &map[string]any{
+						"context": "auth.publish.failed",
+						"event":   domainEvent.EventLogin,
+					},
+				}, errExc)
+				return errExc
+			}
+			if errExc := s.eventPublisher.Publish(newCtx, eventMessage); errExc != nil {
+				s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					UID:      &user.UID,
+					Email:    &user.Email,
+					Username: &user.Username,
+					Extra: &map[string]any{
+						"context": "auth.publish.failed",
+						"event":   domainEvent.EventLogin,
+					},
+				}, errExc)
+				return errExc
+			}
+			return nil
+		})
 
 		return nil, domainerrors.ErrInvalidCredentials
 	}
 
 	// Reset failed attempts on successful authentication
 	if resetErr := s.attemptTracker.Reset(ctx, user.UID); resetErr != nil {
+		// log error but do not return error
 		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
 			UID:            &user.UID,
 			Email:          &user.Email,
 			Username:       &user.Username,
 			IdentifierType: payload.IdentifierType,
+			Extra:          &map[string]any{"context": "auth.reset_attempt"},
 		}, resetErr)
 	}
 
@@ -328,7 +388,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 		Extra:          payload.Extra,
 	}, nil)
 
-	s.executor.DoAsync(ctx, "auth.publish", func(newCtx context.Context) {
+	s.executor.DoAsync(ctx, "auth.publish", func(newCtx context.Context) error {
 		// Publish login event
 		loginEventData := domainEvent.EventLoginData{
 			Identifier:     payload.Identifier,
@@ -353,7 +413,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 				Email:          &user.Email,
 				IdentifierType: "oauth",
 			}, err)
-			return
+			return err
 		}
 		if err := s.eventPublisher.Publish(newCtx, eventMessage); err != nil {
 			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
@@ -365,7 +425,9 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 					"event":   domainEvent.EventLogin,
 				},
 			}, err)
+			return err
 		}
+		return nil
 	})
 
 	return &domainModel.Token{
@@ -537,23 +599,35 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	}
 
 	// Publish OAuth login event
-	eventMessage, err := domainEvent.NewMessage(
-		domainEvent.EventOAuthLogin,
-		domainEvent.NewUserEntity(user),
-		&domainEvent.EventOAuthLoginData{
-			UserUID:  user.UID,
-			Provider: "google",
-		},
-	)
-	if err != nil {
-		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
-			UID:            &user.UID,
-			Email:          &user.Email,
-			IdentifierType: "oauth",
-		}, err)
-		return nil, err
-	}
-	s.eventPublisher.Publish(ctx, eventMessage)
+	s.executor.DoAsync(ctx, "auth.publish.oauth", func(newCtx context.Context) error {
+		eventMessage, err := domainEvent.NewMessage(
+			domainEvent.EventOAuthLogin,
+			domainEvent.NewUserEntity(user),
+			&domainEvent.EventOAuthLoginData{
+				UserUID:  user.UID,
+				Provider: "google",
+			},
+		)
+		if err != nil {
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:            &user.UID,
+				Email:          &user.Email,
+				IdentifierType: "oauth",
+				Extra:          &map[string]any{"context": "Failed to create event message"},
+			}, err)
+			return err
+		}
+		if err := s.eventPublisher.Publish(newCtx, eventMessage); err != nil {
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:            &user.UID,
+				Email:          &user.Email,
+				IdentifierType: "oauth",
+				Extra:          &map[string]any{"context": "Failed to publish OAuth login event"},
+			}, err)
+			return err
+		}
+		return nil
+	})
 
 	active := true
 	deleted := false
@@ -711,17 +785,40 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	}
 
 	// Publish token refresh event
-	s.eventPublisher.Publish(
-		ctx,
-		domainEvent.Message{
-			Type:   domainEvent.EventTokenRefresh,
-			Entity: domainEvent.NewTokenEntity(claims),
-			Metadata: domainEvent.EventTokenRefreshData{
+	s.executor.DoAsync(ctx, "auth.publish.refresh_token", func(newCtx context.Context) error {
+		eventMessage, errExc := domainEvent.NewMessage(
+			domainEvent.EventTokenRefresh,
+			domainEvent.NewTokenEntity(claims),
+			domainEvent.EventTokenRefreshData{
 				Identifier:     claims.Identifier,
 				IdentifierType: claims.IdentifierType,
 			},
-		},
-	)
+		)
+		if errExc != nil {
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:      &claims.Uid,
+				Email:    &user.Email,
+				Username: &user.Username,
+				Extra: &map[string]any{
+					"context": "auth.publish.refresh_token",
+					"event":   domainEvent.EventTokenRefresh,
+				},
+			}, errExc)
+			return errExc
+		}
+		if errExc := s.eventPublisher.Publish(newCtx, eventMessage); errExc != nil {
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:   &claims.Uid,
+				Email: &user.Email,
+				Extra: &map[string]any{
+					"context": "auth.publish.refresh_token",
+					"event":   domainEvent.EventTokenRefresh,
+				},
+			}, errExc)
+			return errExc
+		}
+		return nil
+	})
 
 	active := true
 	deleted := false
@@ -836,17 +933,20 @@ func (s *authService) RevokeToken(ctx context.Context, token string, tokenType s
 	}
 
 	// Publish revoke event
-	s.eventPublisher.Publish(
-		ctx,
-		domainEvent.Message{
-			Type:   domainEvent.EventRevokeToken,
-			Entity: domainEvent.NewTokenEntity(claims),
-			Metadata: domainEvent.EventRevokeTokenData{
-				Identifier:     claims.Identifier,
-				IdentifierType: claims.IdentifierType,
+	s.executor.DoAsync(ctx, "auth.publish.revoke_token", func(newCtx context.Context) error {
+		s.eventPublisher.Publish(
+			newCtx,
+			domainEvent.Message{
+				Type:   domainEvent.EventRevokeToken,
+				Entity: domainEvent.NewTokenEntity(claims),
+				Metadata: domainEvent.EventRevokeTokenData{
+					Identifier:     claims.Identifier,
+					IdentifierType: claims.IdentifierType,
+				},
 			},
-		},
-	)
+		)
+		return nil
+	})
 
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
 		UID:            &claims.Uid,
@@ -910,50 +1010,55 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 		}, nil) // Invalid PIN, but not an error - just reject
 
 		// Publish PIN verify failed event
-		err = s.eventPublisher.Publish(
-			ctx,
-			domainEvent.Message{
-				Type:   domainEvent.EventPINFail,
-				Entity: domainEvent.NewUserPinEntity(userPin),
-				Metadata: domainEvent.EventPinFailData{
-					UserUID: userUid,
-					Reason:  "invalid_pin",
+		s.executor.DoAsync(ctx, "auth.publish.pin_fail", func(newCtx context.Context) error {
+			err := s.eventPublisher.Publish(
+				newCtx,
+				domainEvent.Message{
+					Type:   domainEvent.EventPINFail,
+					Entity: domainEvent.NewUserPinEntity(userPin),
+					Metadata: domainEvent.EventPinFailData{
+						UserUID: userUid,
+						Reason:  "invalid_pin",
+					},
 				},
-			},
-		)
-		if err != nil {
-			s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
-				UID:            &userUid,
-				Email:          &user.Email,
-				IdentifierType: "verify_pin",
-			}, err)
-			return false, err
-		}
+			)
+			if err != nil {
+				s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+					UID:            &userUid,
+					Email:          &user.Email,
+					IdentifierType: "verify_pin",
+				}, err)
+			}
+			return err
+		})
 
 		return false, nil
 	}
 
 	// Publish PIN verify success event
-	err = s.eventPublisher.Publish(
-		ctx,
-		domainEvent.Message{
-			Type:   domainEvent.EventPINVerify,
-			Entity: domainEvent.NewUserPinEntity(userPin),
-			Metadata: domainEvent.EventPinVerifyData{
-				UserUID: userUid,
-				Success: true,
-				Reason:  "pin_verified",
+	s.executor.DoAsync(ctx, "auth.publish.pin_verified", func(newCtx context.Context) error {
+		errExc := s.eventPublisher.Publish(
+			newCtx,
+			domainEvent.Message{
+				Type:   domainEvent.EventPINVerify,
+				Entity: domainEvent.NewUserPinEntity(userPin),
+				Metadata: domainEvent.EventPinVerifyData{
+					UserUID: userUid,
+					Success: true,
+					Reason:  "pin_verified",
+				},
 			},
-		},
-	)
-	if err != nil {
-		s.authObserver.OnSignal(ctx, domainSignal.SignalFail, domainSignal.AuthSignal{
-			UID:            &userUid,
-			Email:          &user.Email,
-			IdentifierType: "verify_pin",
-		}, err)
-		return false, err
-	}
+		)
+		if errExc != nil {
+			s.authObserver.OnSignal(newCtx, domainSignal.SignalFail, domainSignal.AuthSignal{
+				UID:            &userUid,
+				Email:          &user.Email,
+				IdentifierType: "verify_pin",
+			}, errExc)
+			return errExc
+		}
+		return nil
+	})
 
 	active := user.IsActive()
 	s.authObserver.OnSignal(ctx, domainSignal.SignalSuccess, domainSignal.AuthSignal{
