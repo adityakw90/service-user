@@ -181,7 +181,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserCreated,
 			eventData: event.EventUserCreatedData{
-				UserUID:  "new-user-uid",
 				ActorUID: "admin-456",
 				Username: "newuser",
 				Email:    "newuser@example.com",
@@ -209,7 +208,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserDeleted,
 			eventData: event.EventUserDeletedData{
-				UserUID:  "deleted-user-uid",
 				ActorUID: "admin-789",
 			},
 			config: RabbitmqPublisherConfig{
@@ -232,7 +230,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserUpdatePassword,
 			eventData: event.EventUserUpdatePasswordData{
-				UserUID:  "user-789",
 				ActorUID: "user-789",
 			},
 			config: RabbitmqPublisherConfig{
@@ -255,7 +252,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserCreatePin,
 			eventData: event.EventUserCreatePinData{
-				UserUID:  "user-101",
 				ActorUID: "user-101",
 			},
 			config: RabbitmqPublisherConfig{
@@ -278,7 +274,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserUpdateProfile,
 			eventData: event.EventUserUpdateProfileData{
-				UserUID:  "user-202",
 				ActorUID: "user-202",
 			},
 			config: RabbitmqPublisherConfig{
@@ -297,9 +292,8 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserRevokeDevice,
 			eventData: event.EventUserRevokeDeviceData{
-				UserUID:   "user-303",
-				ActorUID:  "user-303",
-				DeviceUID: "device-303",
+				UserUID:  "user-303",
+				ActorUID: "user-303",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
@@ -318,7 +312,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventType: event.EventUserFileCreated,
 			eventData: event.EventUserFileCreatedData{
 				UserUID: "user-404",
-				FileUID: "file-404",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "file-events",
@@ -337,7 +330,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventType: event.EventUserFileUpdated,
 			eventData: event.EventUserFileUpdatedData{
 				UserUID: "user-505",
-				FileUID: "file-505",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "file-events",
@@ -356,7 +348,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventType: event.EventUserFileDeleted,
 			eventData: event.EventUserFileDeletedData{
 				UserUID: "user-606",
-				FileUID: "file-606",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "file-events",

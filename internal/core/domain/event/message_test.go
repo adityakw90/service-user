@@ -19,7 +19,7 @@ func TestMessage_NewMessage(t *testing.T) {
 			name:      "valid message",
 			eventType: EventUserUpdated,
 			entity:    Entity{ID: "user-1", Type: "user", Name: &entityName},
-			metadata:  EventUserUpdatedData{UserUID: "user-1"},
+			metadata:  EventUserUpdatedData{ActorUID: "actor-1"},
 		},
 	}
 

@@ -369,7 +369,6 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 			domainEvent.EventOAuthLogin,
 			domainEvent.NewUserEntity(user),
 			&domainEvent.EventOAuthLoginData{
-				UserUID:  user.UID,
 				Provider: "google",
 			},
 		)
@@ -608,8 +607,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 					Type:   domainEvent.EventPINFail,
 					Entity: domainEvent.NewUserPinEntity(userPin),
 					Metadata: domainEvent.EventPinFailData{
-						UserUID: userUid,
-						Reason:  "invalid_pin",
+						Reason: "invalid_pin",
 					},
 				},
 			)
@@ -630,7 +628,6 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 				Type:   domainEvent.EventPINVerify,
 				Entity: domainEvent.NewUserPinEntity(userPin),
 				Metadata: domainEvent.EventPinVerifyData{
-					UserUID: userUid,
 					Success: true,
 					Reason:  "pin_verified",
 				},

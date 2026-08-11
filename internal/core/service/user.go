@@ -271,7 +271,6 @@ func (s *userService) Create(ctx context.Context, createParam *param.UserCreateP
 
 	// Publish user created event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.NewUserEntity(user), Metadata: event.EventUserCreatedData{
-		UserUID:  user.UID,
 		ActorUID: user.UID,
 		Username: user.Username,
 		Email:    user.Email,
@@ -455,7 +454,6 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 
 	// Publish user updated event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatedData{
-		UserUID:      uid,
 		ActorUID:     uid,
 		ChangesCount: changesCount,
 	}})
@@ -530,7 +528,6 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 
 	// Publish user deleted event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.NewUserEntity(user), Metadata: event.EventUserDeletedData{
-		UserUID:  uid,
 		ActorUID: uid,
 	}})
 	if err != nil {
@@ -717,7 +714,6 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 
 	// Publish user update profile event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.NewUserProfileEntity(profile), Metadata: event.EventUserUpdateProfileData{
-		UserUID:  userUID,
 		ActorUID: userUID,
 	}})
 	if err != nil {
@@ -843,7 +839,6 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 	// Publish user update pin event
 	if isNewPIN {
 		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserCreatePinData{
-			UserUID:  userUID,
 			ActorUID: userUID,
 		}})
 		if err != nil {
@@ -855,7 +850,6 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 		}
 	} else {
 		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserUpdatePinData{
-			UserUID:  userUID,
 			ActorUID: userUID,
 		}})
 		if err != nil {
@@ -1025,8 +1019,7 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 
 	// Publish device revoked event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.NewDeviceEntity(device), Metadata: event.EventDeviceDeletedData{
-		UserUID:   userUID,
-		DeviceUID: deviceUID,
+		UserUID: userUID,
 	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
@@ -1036,9 +1029,8 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 		return err
 	}
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.NewDeviceEntity(device), Metadata: event.EventUserRevokeDeviceData{
-		UserUID:   userUID,
-		ActorUID:  userUID,
-		DeviceUID: deviceUID,
+		UserUID:  userUID,
+		ActorUID: userUID,
 	}})
 	if err != nil {
 		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
@@ -1164,7 +1156,6 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 
 	// Publish user update password event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatePasswordData{
-		UserUID:  userUID,
 		ActorUID: userUID,
 	}})
 	if err != nil {

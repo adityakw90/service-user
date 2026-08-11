@@ -152,7 +152,7 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 				return []*mocksevent.MockEventPublisher{mockPub1, mockPub2, mockPub3}
 			},
 			eventType: event.EventPINVerify,
-			eventData: event.EventPinVerifyData{UserUID: "user-123", Success: true},
+			eventData: event.EventPinVerifyData{Success: true},
 			wantErr:   true,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 				for i, p := range publishers {

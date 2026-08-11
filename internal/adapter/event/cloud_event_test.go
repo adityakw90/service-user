@@ -137,7 +137,6 @@ func TestNewCloudEvent(t *testing.T) {
 			},
 			eventType: event.EventPINVerify,
 			eventData: event.EventPinVerifyData{
-				UserUID: "uid-789",
 				Success: true,
 				Reason:  "valid_pin",
 			},
@@ -163,7 +162,6 @@ func TestNewCloudEvent(t *testing.T) {
 			},
 			eventType: event.EventPINVerify,
 			eventData: event.EventPinVerifyData{
-				UserUID: "uid-789",
 				Success: false,
 				Reason:  "invalid_pin",
 			},
@@ -348,7 +346,7 @@ func TestNewCloudEventCopiesEntity(t *testing.T) {
 	ce := NewCloudEvent(context.Background(), domainevent.Message{
 		Type:     domainevent.EventUserUpdated,
 		Entity:   domainevent.Entity{ID: "user-1", Type: "user", Name: &name},
-		Metadata: domainevent.EventUserUpdatedData{UserUID: "user-1"},
+		Metadata: domainevent.EventUserUpdatedData{ActorUID: "actor-1"},
 	})
 
 	if ce.Data.EntityId != "user-1" || ce.Data.EntityType != "user" {
