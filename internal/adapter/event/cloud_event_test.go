@@ -346,7 +346,7 @@ func TestNewCloudEventCopiesEntity(t *testing.T) {
 	ce := NewCloudEvent(context.Background(), domainevent.Message{
 		Type:     domainevent.EventUserUpdated,
 		Entity:   domainevent.Entity{ID: "user-1", Type: "user", Name: &name},
-		Metadata: domainevent.EventUserUpdatedData{ActorUID: "actor-1"},
+		Metadata: domainevent.EventUserUpdatedData{ChangesCount: 1},
 	})
 
 	if ce.Data.EntityId != "user-1" || ce.Data.EntityType != "user" {

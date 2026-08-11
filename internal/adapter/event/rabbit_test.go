@@ -181,7 +181,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserCreated,
 			eventData: event.EventUserCreatedData{
-				ActorUID: "admin-456",
 				Username: "newuser",
 				Email:    "newuser@example.com",
 				Status:   "active",
@@ -207,9 +206,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return context.Background()
 			},
 			eventType: event.EventUserDeleted,
-			eventData: event.EventUserDeletedData{
-				ActorUID: "admin-789",
-			},
+			eventData: event.EventUserDeletedData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
 				RoutingKeyPrefix: "",
@@ -229,9 +226,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return setupContext(context.Background(), "api", "user-789", "user")
 			},
 			eventType: event.EventUserUpdatePassword,
-			eventData: event.EventUserUpdatePasswordData{
-				ActorUID: "user-789",
-			},
+			eventData: event.EventUserUpdatePasswordData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "security-events",
 				RoutingKeyPrefix: "auth",
@@ -251,9 +246,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return setupContext(context.Background(), "mobile", "user-101", "user")
 			},
 			eventType: event.EventUserCreatePin,
-			eventData: event.EventUserCreatePinData{
-				ActorUID: "user-101",
-			},
+			eventData: event.EventUserCreatePinData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
 				RoutingKeyPrefix: "user",
@@ -273,9 +266,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return setupContext(context.Background(), "web", "user-202", "user")
 			},
 			eventType: event.EventUserUpdateProfile,
-			eventData: event.EventUserUpdateProfileData{
-				ActorUID: "user-202",
-			},
+			eventData: event.EventUserUpdateProfileData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
 				RoutingKeyPrefix: "user",
@@ -292,8 +283,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserRevokeDevice,
 			eventData: event.EventUserRevokeDeviceData{
-				UserUID:  "user-303",
-				ActorUID: "user-303",
+				UserUID: "user-303",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
