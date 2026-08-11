@@ -306,6 +306,16 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErrMsg)
 				assert.Nil(t, got)
+
+				if strings.Contains(tt.wantErrMsg, "exchange code") {
+					assert.True(t, errors.Is(err, domainErrors.ErrOAuthExchangeFailed), "error should wrap ErrOAuthExchangeFailed")
+				} else if strings.Contains(tt.wantErrMsg, "code challenge") {
+					assert.True(t, errors.Is(err, domainErrors.ErrOAuthCodeVerifierMissing), "error should wrap ErrOAuthCodeVerifierMissing")
+				}
+
+				cause := errors.Unwrap(err)
+				require.NotNil(t, cause, "underlying cause should be retained")
+				assert.Contains(t, cause.Error(), tt.wantErrMsg, "cause error should contain the failure description")
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, got)

@@ -111,12 +111,12 @@ func (g *GoogleOAuth) GetAuthorizationURL(ctx context.Context, state string, red
 	// Generate PKCE challenge
 	challenge, err := g.createCodeChallenge()
 	if err != nil {
-		return "", fmt.Errorf("failed to create code challenge: %w", err)
+		return "", domainErrors.ErrOAuthFailedGenerateCodeVerifier.WithCause(fmt.Errorf("failed to create code challenge: %w", err))
 	}
 
 	// Store challenge in Redis
 	if err := g.storeChallenge(ctx, state, challenge); err != nil {
-		return "", fmt.Errorf("failed to store code challenge: %w", err)
+		return "", domainErrors.ErrOAuthFailedGenerateCodeVerifier.WithCause(fmt.Errorf("failed to store code challenge: %w", err))
 	}
 
 	// Use oauth2 library to generate auth URL with access_type=offline and prompt=consent
@@ -135,7 +135,7 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 	// Get code challenge from Redis
 	challenge, err := g.getChallenge(ctx, state)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get code challenge: %w", err)
+		return nil, domainErrors.ErrOAuthCodeVerifierMissing.WithCause(fmt.Errorf("failed to get code challenge: %w", err))
 	}
 
 	// Exchange code for tokens using oauth2 library
@@ -144,7 +144,7 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 		oauth2.SetAuthURLParam("code_verifier", challenge),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code for tokens: %w", err)
+		return nil, domainErrors.ErrOAuthExchangeFailed.WithCause(fmt.Errorf("failed to exchange code for tokens: %w", err))
 	}
 
 	// Calculate expires_in
