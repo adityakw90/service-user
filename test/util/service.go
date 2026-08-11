@@ -147,7 +147,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	uidGen := security.NewUIDGenerator()
 
 	// Initialize Observer
-	authObserver := observer.NewAuthObserver(monitoring.Logger, monitoring.Tracer)
 	userObserver := observer.NewUserObserver(monitoring.Logger, monitoring.Tracer)
 	deviceObserver := observer.NewDeviceObserver(monitoring.Logger, monitoring.Tracer)
 	userFileObserver := observer.NewUserFileObserver(monitoring.Logger, monitoring.Tracer)
@@ -220,7 +219,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		tokenBlacklist,
 		serviceExecutor,
 		eventPublisher,
-		authObserver,
+		// authObserver,
 		security.NewNoopAttemptTracker(),
 		security.NewNoopRateLimiter(),
 	)

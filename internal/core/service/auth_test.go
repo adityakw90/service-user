@@ -99,7 +99,6 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				mockTokenBlacklist,
 				mockExecutor,
 				mockEventPublisher,
-				mockAuthObserver,
 				nil, // attemptTracker
 				nil, // rateLimiter
 			)
@@ -280,7 +279,6 @@ func TestAuthService_generateUsername(t *testing.T) {
 				nil, // tokenBlacklist
 				nil, // executor
 				nil, // eventPublisher
-				nil, // authObserver
 				nil, // attemptTracker
 				nil, // rateLimiter
 			)
