@@ -174,28 +174,28 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 func (g *GoogleOAuth) GetUserInfo(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", g.config.UserInfoURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to create request: %w", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
 	resp, err := g.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user info: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to get user info: %w", err))
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to read response: %w", err))
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("userinfo error: %s", string(body))
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("userinfo error: %s", string(body)))
 	}
 
 	var userResp googleUserResp
 	if err := json.Unmarshal(body, &userResp); err != nil {
-		return nil, fmt.Errorf("failed to parse user info: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to parse user info: %w", err))
 	}
 
 	return &model.OAuthUserInfo{

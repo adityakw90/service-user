@@ -454,6 +454,11 @@ func TestAdapter_Oauth_GetUserInfo(t *testing.T) {
 				if tt.wantErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.wantErrMsg)
 				}
+				assert.True(t, errors.Is(err, domainErrors.ErrOAuthUserInfoFailed), "error should wrap ErrOAuthUserInfoFailed")
+
+				cause := errors.Unwrap(err)
+				require.NotNil(t, cause, "underlying cause should be retained")
+				assert.Contains(t, cause.Error(), tt.wantErrMsg, "cause error should contain the failure description")
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, got)
@@ -502,4 +507,9 @@ func TestAdapter_Oauth_GetUserInfo_NetworkError(t *testing.T) {
 	_, err = oauth.GetUserInfo(ctx, token)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get user info")
+	assert.True(t, errors.Is(err, domainErrors.ErrOAuthUserInfoFailed), "error should wrap ErrOAuthUserInfoFailed")
+
+	cause := errors.Unwrap(err)
+	require.NotNil(t, cause, "underlying cause should be retained")
+	assert.Contains(t, cause.Error(), "failed to get user info", "cause error should contain network failure description")
 }
