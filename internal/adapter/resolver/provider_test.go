@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adityakw90/service-user/internal/infra"
 	monitoring "github.com/adityakw90/go-monitoring"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/redis/go-redis/v9"

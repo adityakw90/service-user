@@ -646,8 +646,8 @@ func TestUserRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user.*`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Invalid OrderBy - non-existent column",
@@ -657,8 +657,8 @@ func TestUserRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user.*`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Nil OrderBy - should use default",

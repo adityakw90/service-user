@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/infra"
-	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/pashagolub/pgxmock/v2"
 	"github.com/redis/go-redis/v9"

@@ -26,6 +26,10 @@ test-cover:
 		go test -race -covermode=atomic -coverprofile=coverage.txt ./...; \
 	fi
 
+# Test coverage report
+test-cover-report:
+	@go tool cover -html=coverage.txt
+
 # Clean test cache and coverage files
 test-clean:
 	@echo "Cleaning test cache and coverage files..."

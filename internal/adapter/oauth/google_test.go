@@ -224,7 +224,7 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 				// Don't set anything - simulate missing/expired challenge
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to get code challenge",
+			wantErrMsg: "google code challenge not found",
 		},
 		{
 			name:        "State Mismatch - Challenge Not Found",
@@ -238,7 +238,7 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 				require.NoError(t, err)
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to get code challenge",
+			wantErrMsg: "google code challenge not found",
 		},
 		{
 			name:        "Token Without ID Token",
@@ -306,6 +306,16 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErrMsg)
 				assert.Nil(t, got)
+
+				if strings.Contains(tt.wantErrMsg, "exchange code") {
+					assert.True(t, errors.Is(err, domainErrors.ErrOAuthExchangeFailed), "error should wrap ErrOAuthExchangeFailed")
+				} else if strings.Contains(tt.wantErrMsg, "code challenge") {
+					assert.True(t, errors.Is(err, domainErrors.ErrOAuthCodeVerifierMissing), "error should wrap ErrOAuthCodeVerifierMissing")
+				}
+
+				cause := errors.Unwrap(err)
+				require.NotNil(t, cause, "underlying cause should be retained")
+				assert.Contains(t, cause.Error(), tt.wantErrMsg, "cause error should contain the failure description")
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, got)
@@ -454,6 +464,11 @@ func TestAdapter_Oauth_GetUserInfo(t *testing.T) {
 				if tt.wantErrMsg != "" {
 					assert.Contains(t, err.Error(), tt.wantErrMsg)
 				}
+				assert.True(t, errors.Is(err, domainErrors.ErrOAuthUserInfoFailed), "error should wrap ErrOAuthUserInfoFailed")
+
+				cause := errors.Unwrap(err)
+				require.NotNil(t, cause, "underlying cause should be retained")
+				assert.Contains(t, cause.Error(), tt.wantErrMsg, "cause error should contain the failure description")
 			} else {
 				require.NoError(t, err)
 				require.NotNil(t, got)
@@ -502,4 +517,9 @@ func TestAdapter_Oauth_GetUserInfo_NetworkError(t *testing.T) {
 	_, err = oauth.GetUserInfo(ctx, token)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get user info")
+	assert.True(t, errors.Is(err, domainErrors.ErrOAuthUserInfoFailed), "error should wrap ErrOAuthUserInfoFailed")
+
+	cause := errors.Unwrap(err)
+	require.NotNil(t, cause, "underlying cause should be retained")
+	assert.Contains(t, cause.Error(), "failed to get user info", "cause error should contain network failure description")
 }

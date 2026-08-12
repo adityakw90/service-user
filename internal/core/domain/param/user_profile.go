@@ -21,7 +21,7 @@ type UserProfileListParam struct {
 type UserProfileOrderBy string
 
 const (
-	OrderByUserProfileID         UserProfileOrderBy = "user_id"
+	OrderByUserProfileID        UserProfileOrderBy = "user_id"
 	OrderByUserProfileCreatedAt UserProfileOrderBy = "created_at"
 	OrderByUserProfileUpdatedAt UserProfileOrderBy = "updated_at"
 )

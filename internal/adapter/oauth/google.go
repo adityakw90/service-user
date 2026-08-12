@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +25,8 @@ const (
 	GoogleChallengeCharset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
 	GoogleUserInfoURL      = "https://www.googleapis.com/oauth2/v2/userinfo"
 )
+
+var ErrGoogleCodeChallengeNotFound = errors.New("google code challenge not found")
 
 type googleUserResp struct {
 	ID            string `json:"id"`
@@ -111,12 +114,12 @@ func (g *GoogleOAuth) GetAuthorizationURL(ctx context.Context, state string, red
 	// Generate PKCE challenge
 	challenge, err := g.createCodeChallenge()
 	if err != nil {
-		return "", fmt.Errorf("failed to create code challenge: %w", err)
+		return "", domainErrors.ErrOAuthFailedGenerateCodeVerifier.WithCause(fmt.Errorf("failed to create code challenge: %w", err))
 	}
 
 	// Store challenge in Redis
 	if err := g.storeChallenge(ctx, state, challenge); err != nil {
-		return "", fmt.Errorf("failed to store code challenge: %w", err)
+		return "", domainErrors.ErrOAuthFailedGenerateCodeVerifier.WithCause(fmt.Errorf("failed to store code challenge: %w", err))
 	}
 
 	// Use oauth2 library to generate auth URL with access_type=offline and prompt=consent
@@ -135,7 +138,13 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 	// Get code challenge from Redis
 	challenge, err := g.getChallenge(ctx, state)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get code challenge: %w", err)
+		// Map only not-found/missing-key errors to ErrOAuthCodeVerifierMissing
+		// Preserve backend and context failures as operational errors
+		if errors.Is(err, ErrGoogleCodeChallengeNotFound) {
+			return nil, domainErrors.ErrOAuthCodeVerifierMissing.WithCause(err)
+		}
+		// Operational error: return with cause preserved
+		return nil, err
 	}
 
 	// Exchange code for tokens using oauth2 library
@@ -144,7 +153,7 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 		oauth2.SetAuthURLParam("code_verifier", challenge),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code for tokens: %w", err)
+		return nil, domainErrors.ErrOAuthExchangeFailed.WithCause(fmt.Errorf("failed to exchange code for tokens: %w", err))
 	}
 
 	// Calculate expires_in
@@ -174,28 +183,28 @@ func (g *GoogleOAuth) ExchangeCode(ctx context.Context, code, state, redirectURI
 func (g *GoogleOAuth) GetUserInfo(ctx context.Context, token *model.OAuthTokens) (*model.OAuthUserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", g.config.UserInfoURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to create request: %w", err))
 	}
 	req.Header.Set("Authorization", "Bearer "+token.AccessToken)
 
 	resp, err := g.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user info: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to get user info: %w", err))
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to read response: %w", err))
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("userinfo error: %s", string(body))
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("userinfo error: %s", string(body)))
 	}
 
 	var userResp googleUserResp
 	if err := json.Unmarshal(body, &userResp); err != nil {
-		return nil, fmt.Errorf("failed to parse user info: %w", err)
+		return nil, domainErrors.ErrOAuthUserInfoFailed.WithCause(fmt.Errorf("failed to parse user info: %w", err))
 	}
 
 	return &model.OAuthUserInfo{
@@ -245,7 +254,7 @@ func (g *GoogleOAuth) getChallenge(ctx context.Context, state string) (string, e
 	code, err := g.redisClient.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", fmt.Errorf("code challenge not found or expired for state: %s", state)
+			return "", ErrGoogleCodeChallengeNotFound
 		}
 		return "", fmt.Errorf("failed to get code challenge: %w", err)
 	}

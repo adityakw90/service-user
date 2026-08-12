@@ -17,7 +17,7 @@ type UserPinListParam struct {
 type UserPinOrderBy string
 
 const (
-	OrderByUserPinUserID     UserPinOrderBy = "user_id"
-	OrderByUserPinCreatedAt  UserPinOrderBy = "created_at"
-	OrderByUserPinUpdatedAt  UserPinOrderBy = "updated_at"
+	OrderByUserPinUserID    UserPinOrderBy = "user_id"
+	OrderByUserPinCreatedAt UserPinOrderBy = "created_at"
+	OrderByUserPinUpdatedAt UserPinOrderBy = "updated_at"
 )

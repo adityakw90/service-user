@@ -40,9 +40,9 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				return []*mocksevent.MockEventPublisher{}
 			},
-			eventType:  event.EventLogin,
-			eventData:  event.EventLoginData{Identifier: "test@example.com"},
-			wantErr:    false,
+			eventType: event.EventLogin,
+			eventData: event.EventLoginData{Identifier: "test@example.com"},
+			wantErr:   false,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 			},
 			validateLogs: func(t *testing.T, logger *mockLogger) {
@@ -56,14 +56,14 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub := mocksevent.NewMockEventPublisher(t)
 				mockPub.On("Name").Maybe().Return("publisher-1")
-				mockPub.EXPECT().Publish(mock.Anything, event.EventLogin, mock.Anything).Return(nil)
+				mockPub.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 				return []*mocksevent.MockEventPublisher{mockPub}
 			},
-			eventType:  event.EventLogin,
-			eventData:  event.EventLoginData{Identifier: "test@example.com"},
-			wantErr:    false,
+			eventType: event.EventLogin,
+			eventData: event.EventLoginData{Identifier: "test@example.com"},
+			wantErr:   false,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
-				publishers[0].AssertCalled(t, "Publish", mock.Anything, event.EventLogin, mock.Anything)
+				publishers[0].AssertCalled(t, "Publish", mock.Anything, mock.Anything)
 			},
 			validateLogs: func(t *testing.T, logger *mockLogger) {
 				if len(logger.errorMessages) != 0 {
@@ -76,14 +76,14 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub := mocksevent.NewMockEventPublisher(t)
 				mockPub.On("Name").Maybe().Return("publisher-1")
-				mockPub.EXPECT().Publish(mock.Anything, event.EventLogin, mock.Anything).Return(errors.New("publish failed"))
+				mockPub.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("publish failed"))
 				return []*mocksevent.MockEventPublisher{mockPub}
 			},
-			eventType:  event.EventLogin,
-			eventData:  event.EventLoginData{Identifier: "test@example.com"},
-			wantErr:    true,
+			eventType: event.EventLogin,
+			eventData: event.EventLoginData{Identifier: "test@example.com"},
+			wantErr:   true,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
-				publishers[0].AssertCalled(t, "Publish", mock.Anything, event.EventLogin, mock.Anything)
+				publishers[0].AssertCalled(t, "Publish", mock.Anything, mock.Anything)
 			},
 			validateLogs: func(t *testing.T, logger *mockLogger) {
 				if len(logger.errorMessages) != 1 {
@@ -106,24 +106,24 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub1 := mocksevent.NewMockEventPublisher(t)
 				mockPub1.On("Name").Maybe().Return("publisher-1")
-				mockPub1.EXPECT().Publish(mock.Anything, event.EventUserCreated, mock.Anything).Return(nil)
+				mockPub1.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				mockPub2 := mocksevent.NewMockEventPublisher(t)
 				mockPub2.On("Name").Maybe().Return("publisher-2")
-				mockPub2.EXPECT().Publish(mock.Anything, event.EventUserCreated, mock.Anything).Return(nil)
+				mockPub2.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				mockPub3 := mocksevent.NewMockEventPublisher(t)
 				mockPub3.On("Name").Maybe().Return("publisher-3")
-				mockPub3.EXPECT().Publish(mock.Anything, event.EventUserCreated, mock.Anything).Return(nil)
+				mockPub3.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				return []*mocksevent.MockEventPublisher{mockPub1, mockPub2, mockPub3}
 			},
-			eventType:  event.EventUserCreated,
-			eventData:  struct{ UserUID string }{UserUID: "user-123"},
-			wantErr:    false,
+			eventType: event.EventUserCreated,
+			eventData: struct{ UserUID string }{UserUID: "user-123"},
+			wantErr:   false,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 				for i, p := range publishers {
-					if !p.AssertCalled(t, "Publish", mock.Anything, event.EventUserCreated, mock.Anything) {
+					if !p.AssertCalled(t, "Publish", mock.Anything, mock.Anything) {
 						t.Errorf("Publisher %d: Publish was not called", i)
 					}
 				}
@@ -139,24 +139,24 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub1 := mocksevent.NewMockEventPublisher(t)
 				mockPub1.On("Name").Maybe().Return("publisher-1")
-				mockPub1.EXPECT().Publish(mock.Anything, event.EventPINVerify, mock.Anything).Return(errors.New("first error"))
+				mockPub1.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("first error"))
 
 				mockPub2 := mocksevent.NewMockEventPublisher(t)
 				mockPub2.On("Name").Maybe().Return("publisher-2")
-				mockPub2.EXPECT().Publish(mock.Anything, event.EventPINVerify, mock.Anything).Return(nil)
+				mockPub2.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				mockPub3 := mocksevent.NewMockEventPublisher(t)
 				mockPub3.On("Name").Maybe().Return("publisher-3")
-				mockPub3.EXPECT().Publish(mock.Anything, event.EventPINVerify, mock.Anything).Return(nil)
+				mockPub3.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				return []*mocksevent.MockEventPublisher{mockPub1, mockPub2, mockPub3}
 			},
-			eventType:  event.EventPINVerify,
-			eventData:  event.EventPinVerifyData{UserUID: "user-123", Success: true},
-			wantErr:    true,
+			eventType: event.EventPINVerify,
+			eventData: event.EventPinVerifyData{Success: true},
+			wantErr:   true,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 				for i, p := range publishers {
-					if !p.AssertCalled(t, "Publish", mock.Anything, event.EventPINVerify, mock.Anything) {
+					if !p.AssertCalled(t, "Publish", mock.Anything, mock.Anything) {
 						t.Errorf("Publisher %d: Publish was not called", i)
 					}
 				}
@@ -176,24 +176,24 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub1 := mocksevent.NewMockEventPublisher(t)
 				mockPub1.On("Name").Maybe().Return("publisher-1")
-				mockPub1.EXPECT().Publish(mock.Anything, event.EventTokenRefresh, mock.Anything).Return(nil)
+				mockPub1.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				mockPub2 := mocksevent.NewMockEventPublisher(t)
 				mockPub2.On("Name").Maybe().Return("publisher-2")
-				mockPub2.EXPECT().Publish(mock.Anything, event.EventTokenRefresh, mock.Anything).Return(errors.New("middle error"))
+				mockPub2.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("middle error"))
 
 				mockPub3 := mocksevent.NewMockEventPublisher(t)
 				mockPub3.On("Name").Maybe().Return("publisher-3")
-				mockPub3.EXPECT().Publish(mock.Anything, event.EventTokenRefresh, mock.Anything).Return(nil)
+				mockPub3.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				return []*mocksevent.MockEventPublisher{mockPub1, mockPub2, mockPub3}
 			},
-			eventType:  event.EventTokenRefresh,
-			eventData:  event.EventTokenRefreshData{Identifier: "test@example.com"},
-			wantErr:    true,
+			eventType: event.EventTokenRefresh,
+			eventData: event.EventTokenRefreshData{Identifier: "test@example.com"},
+			wantErr:   true,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 				for i, p := range publishers {
-					if !p.AssertCalled(t, "Publish", mock.Anything, event.EventTokenRefresh, mock.Anything) {
+					if !p.AssertCalled(t, "Publish", mock.Anything, mock.Anything) {
 						t.Errorf("Publisher %d: Publish was not called", i)
 					}
 				}
@@ -213,24 +213,24 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub1 := mocksevent.NewMockEventPublisher(t)
 				mockPub1.On("Name").Maybe().Return("publisher-1")
-				mockPub1.EXPECT().Publish(mock.Anything, event.EventLoginFailed, mock.Anything).Return(errors.New("error 1"))
+				mockPub1.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("error 1"))
 
 				mockPub2 := mocksevent.NewMockEventPublisher(t)
 				mockPub2.On("Name").Maybe().Return("publisher-2")
-				mockPub2.EXPECT().Publish(mock.Anything, event.EventLoginFailed, mock.Anything).Return(errors.New("error 2"))
+				mockPub2.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("error 2"))
 
 				mockPub3 := mocksevent.NewMockEventPublisher(t)
 				mockPub3.On("Name").Maybe().Return("publisher-3")
-				mockPub3.EXPECT().Publish(mock.Anything, event.EventLoginFailed, mock.Anything).Return(errors.New("error 3"))
+				mockPub3.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("error 3"))
 
 				return []*mocksevent.MockEventPublisher{mockPub1, mockPub2, mockPub3}
 			},
-			eventType:  event.EventLoginFailed,
-			eventData:  event.EventLoginFailedData{Identifier: "bad@example.com", FailureReason: "invalid"},
-			wantErr:    true,
+			eventType: event.EventLoginFailed,
+			eventData: event.EventLoginFailedData{Identifier: "bad@example.com", FailureReason: "invalid"},
+			wantErr:   true,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 				for i, p := range publishers {
-					if !p.AssertCalled(t, "Publish", mock.Anything, event.EventLoginFailed, mock.Anything) {
+					if !p.AssertCalled(t, "Publish", mock.Anything, mock.Anything) {
 						t.Errorf("Publisher %d: Publish was not called", i)
 					}
 				}
@@ -255,20 +255,20 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			setupMocks: func(t *testing.T) []*mocksevent.MockEventPublisher {
 				mockPub1 := mocksevent.NewMockEventPublisher(t)
 				mockPub1.On("Name").Maybe().Return("publisher-1")
-				mockPub1.EXPECT().Publish(mock.Anything, event.EventUserUpdated, mock.Anything).Return(nil)
+				mockPub1.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				mockPub2 := mocksevent.NewMockEventPublisher(t)
 				mockPub2.On("Name").Maybe().Return("publisher-2")
-				mockPub2.EXPECT().Publish(mock.Anything, event.EventUserUpdated, mock.Anything).Return(nil)
+				mockPub2.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil)
 
 				return []*mocksevent.MockEventPublisher{mockPub1, mockPub2}
 			},
-			eventType:  event.EventUserUpdated,
-			eventData:  struct{ UserUID string }{UserUID: "user-456"},
-			wantErr:    false,
+			eventType: event.EventUserUpdated,
+			eventData: struct{ UserUID string }{UserUID: "user-456"},
+			wantErr:   false,
 			validateCalls: func(t *testing.T, publishers []*mocksevent.MockEventPublisher) {
 				for i, p := range publishers {
-					if !p.AssertCalled(t, "Publish", mock.Anything, event.EventUserUpdated, mock.Anything) {
+					if !p.AssertCalled(t, "Publish", mock.Anything, mock.Anything) {
 						t.Errorf("Publisher %d: Publish was not called", i)
 					}
 				}
@@ -297,7 +297,7 @@ func TestMultiEventPublisher_Publish(t *testing.T) {
 			mp := NewMultiEventPublisher(logger, tracer, publisherSlice...)
 			ctx := context.Background()
 
-			err := mp.Publish(ctx, tt.eventType, tt.eventData)
+			err := mp.Publish(ctx, event.Message{Type: tt.eventType, Entity: event.Entity{ID: "entity-1", Type: "user"}, Metadata: tt.eventData})
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Publish() error = %v, wantErr %v", err, tt.wantErr)
@@ -494,9 +494,7 @@ func TestMultiEventPublisher_Publish_ConcurrentCalls(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < callsPerGoroutine; j++ {
-				_ = mp.Publish(ctx, event.EventLogin, event.EventLoginData{
-					Identifier: fmt.Sprintf("user-%d-%d", id, j),
-				})
+				_ = mp.Publish(ctx, event.Message{Type: event.EventLogin, Entity: event.Entity{ID: fmt.Sprintf("user-%d-%d", id, j), Type: "user"}, Metadata: event.EventLoginData{Identifier: fmt.Sprintf("user-%d-%d", id, j)}})
 			}
 		}(i)
 	}

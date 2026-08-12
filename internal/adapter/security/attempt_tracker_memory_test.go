@@ -23,31 +23,31 @@ func TestMemoryAttemptTracker_Track(t *testing.T) {
 	userUID := "user-123"
 
 	tests := []struct {
-		name        string
-		setup       func()
-		attempts    int
-		wantLocked  bool
-		wantErr     bool
+		name       string
+		setup      func()
+		attempts   int
+		wantLocked bool
+		wantErr    bool
 	}{
 		{
-			name:     "First attempt does not lock",
-			attempts: 1,
+			name:       "First attempt does not lock",
+			attempts:   1,
 			wantLocked: false,
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:   "Second attempt does not lock",
-			setup:  func() { tracker.Reset(ctx, userUID) },
-			attempts: 2,
+			name:       "Second attempt does not lock",
+			setup:      func() { tracker.Reset(ctx, userUID) },
+			attempts:   2,
 			wantLocked: false,
-			wantErr:   false,
+			wantErr:    false,
 		},
 		{
-			name:   "Third attempt locks account",
-			setup:  func() { tracker.Reset(ctx, userUID) },
-			attempts: 3,
+			name:       "Third attempt locks account",
+			setup:      func() { tracker.Reset(ctx, userUID) },
+			attempts:   3,
 			wantLocked: true,
-			wantErr:   true,
+			wantErr:    true,
 		},
 		{
 			name: "Fourth attempt already locked",

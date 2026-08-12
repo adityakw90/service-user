@@ -19,34 +19,62 @@ func TestServiceExecutor_Do(t *testing.T) {
 	tests := []struct {
 		name          string
 		operationName string
-		fn            func(ctx context.Context)
+		fn            func(ctx context.Context) error
+		wantErr       bool
+		errCheck      func(error) bool
 	}{
 		{
 			name:          "Happy Path - function executes successfully",
 			operationName: "test-operation",
-			fn: func(ctx context.Context) {
-				// Function that does nothing
+			fn: func(ctx context.Context) error {
+				return nil
 			},
+			wantErr: false,
 		},
 		{
 			name:          "Named Operation - operation name appears in logs",
 			operationName: "important-task",
-			fn: func(ctx context.Context) {
-				// Function execution
+			fn: func(ctx context.Context) error {
+				return nil
 			},
+			wantErr: false,
 		},
 		{
 			name:          "Context Propagation - new context with span is passed",
 			operationName: "context-test",
-			fn: func(ctx context.Context) {
-				// Verify context is passed through
+			fn: func(ctx context.Context) error {
 				assert.NotNil(t, ctx, "context should not be nil")
+				return nil
 			},
+			wantErr: false,
 		},
 		{
 			name:          "Empty Function Name - logs empty name",
 			operationName: "",
-			fn:            func(ctx context.Context) {},
+			fn: func(ctx context.Context) error {
+				return nil
+			},
+			wantErr: false,
+		},
+		{
+			name:          "Nil Function - returns ErrExecutorFnInvalid",
+			operationName: "nil-function",
+			fn:            nil,
+			wantErr:       true,
+			errCheck: func(err error) bool {
+				return errors.Is(err, domainError.ErrExecutorFnInvalid)
+			},
+		},
+		{
+			name:          "Function Error - error is propagated",
+			operationName: "error-function",
+			fn: func(ctx context.Context) error {
+				return errors.New("test error")
+			},
+			wantErr: true,
+			errCheck: func(err error) bool {
+				return err.Error() == "test error"
+			},
 		},
 	}
 
@@ -58,7 +86,16 @@ func TestServiceExecutor_Do(t *testing.T) {
 			executor := NewServiceExecutor(logger, tracer)
 			ctx := context.Background()
 
-			executor.Do(ctx, tt.operationName, tt.fn)
+			err := executor.Do(ctx, tt.operationName, tt.fn)
+
+			if tt.wantErr {
+				require.Error(t, err, "expected an error")
+				if tt.errCheck != nil {
+					assert.True(t, tt.errCheck(err), "error check failed: %v", err)
+				}
+			} else {
+				assert.NoError(t, err, "expected no error")
+			}
 		})
 	}
 }
@@ -125,9 +162,10 @@ func TestServiceExecutor_DoAsync(t *testing.T) {
 			}
 
 			done := make(chan struct{})
-			wrappedFn := func(inner context.Context) {
+			wrappedFn := func(inner context.Context) error {
 				defer close(done)
 				tt.fn(inner)
+				return nil
 			}
 			executor.DoAsync(ctx, tt.operationName, wrappedFn)
 			select {
@@ -149,9 +187,10 @@ func TestServiceExecutor_DoAsync_Lifecycle(t *testing.T) {
 
 	started := make(chan struct{})
 	release := make(chan struct{})
-	require.NoError(t, executor.DoAsync(context.Background(), "blocking", func(context.Context) {
+	require.NoError(t, executor.DoAsync(context.Background(), "blocking", func(context.Context) error {
 		close(started)
 		<-release
+		return nil
 	}))
 	<-started
 
@@ -174,7 +213,7 @@ func TestServiceExecutor_DoAsync_Lifecycle(t *testing.T) {
 		t.Fatal("Close timed out waiting for the asynchronous task")
 	}
 
-	require.ErrorIs(t, executor.DoAsync(context.Background(), "closed", func(context.Context) {}), domainError.ErrExecutorClosed)
+	require.ErrorIs(t, executor.DoAsync(context.Background(), "closed", func(context.Context) error { return nil }), domainError.ErrExecutorClosed)
 	executor.Close()
 }
 
@@ -190,8 +229,9 @@ func TestServiceExecutor_DoAsync_Concurrent(t *testing.T) {
 
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
-			executor.DoAsync(ctx, fmt.Sprintf("concurrent-operation-%d", index), func(innerCtx context.Context) {
+			executor.DoAsync(ctx, fmt.Sprintf("concurrent-operation-%d", index), func(innerCtx context.Context) error {
 				done <- struct{}{}
+				return nil
 			})
 		}(i)
 	}

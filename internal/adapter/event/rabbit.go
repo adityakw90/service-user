@@ -84,13 +84,16 @@ func (p *RabbitmqPublisher) Name() string {
 	return "RabbitmqPublisher"
 }
 
-func (p *RabbitmqPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
+func (p *RabbitmqPublisher) Publish(ctx context.Context, message event.Message) error {
+	if err := message.Validate(); err != nil {
+		return err
+	}
 	newCtx, span := p.tracer.StartSpan(ctx, "RabbitmqPublisher.Publish")
 	defer span.End()
 
 	// Convert to CloudEvent format
-	ce := NewCloudEvent(ctx, eventType, eventData)
-	span.AddEvent(string(eventType),
+	ce := NewCloudEvent(ctx, message)
+	span.AddEvent(string(message.Type),
 		trace.WithAttributes(
 			attribute.String("type", ce.Type),
 			attribute.String("source", ce.Source),
@@ -114,6 +117,12 @@ func (p *RabbitmqPublisher) Publish(ctx context.Context, eventType event.EventTy
 		"client":         ce.Data.Client,
 		"actor_id":       ce.Data.ActorId,
 		"actor_type":     ce.Data.ActorType,
+		"actor_name":     ce.Data.ActorName,
+		"entity_id":      ce.Data.EntityId,
+		"entity_type":    ce.Data.EntityType,
+	}
+	if ce.Data.EntityName != nil {
+		headers["entity_name"] = *ce.Data.EntityName
 	}
 
 	// inject trace header

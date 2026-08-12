@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	userFile "github.com/adityakw90/service-user-proto/gen/go/user_file"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/google/uuid"
-	userFile "github.com/adityakw90/service-user-proto/gen/go/user_file"
 )
 
 func TestToProtoUserFile(t *testing.T) {
@@ -83,9 +83,9 @@ func TestToProtoFileList(t *testing.T) {
 		wantLen int
 	}{
 		{
-			name:  "Nil files",
-			files: nil,
-			meta:  &model.Meta{Page: 1, Limit: 10, Total: 0, Pages: 0},
+			name:    "Nil files",
+			files:   nil,
+			meta:    &model.Meta{Page: 1, Limit: 10, Total: 0, Pages: 0},
 			wantLen: 0,
 		},
 		{

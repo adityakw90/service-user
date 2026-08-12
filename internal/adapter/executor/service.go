@@ -34,13 +34,21 @@ func NewServiceExecutor(logger monitoring.Logger, tracer monitoring.Tracer) *ser
 	}
 }
 
-func (s *serviceExecutor) Do(ctx context.Context, name string, fn func(ctx context.Context)) {
+func (s *serviceExecutor) Do(ctx context.Context, name string, fn func(ctx context.Context) error) error {
+	if fn == nil {
+		return domainError.ErrExecutorFnInvalid
+	}
 	newCtx, span := s.tracer.StartChildSpan(ctx, name, s.tracer.SpanFromContext(ctx))
 	defer span.End()
-	fn(newCtx)
+
+	err := fn(newCtx)
+	if err != nil {
+		span.RecordError(err)
+	}
+	return err
 }
 
-func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx context.Context)) error {
+func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx context.Context) error) error {
 	if fn == nil {
 		return domainError.ErrExecutorFnInvalid
 	}
@@ -78,7 +86,14 @@ func (s *serviceExecutor) DoAsync(ctx context.Context, name string, fn func(ctx 
 			cancel()
 			s.wg.Done()
 		}()
-		fn(newCtx)
+		err := fn(newCtx)
+		if err != nil {
+			logger.Error("executor fn return error", map[string]any{
+				"name": name,
+				"msg":  err.Error(),
+			})
+			span.RecordError(err)
+		}
 	}()
 
 	return nil

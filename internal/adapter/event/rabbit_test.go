@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/adityakw90/service-user/internal/core/domain/event"
+	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -130,11 +131,9 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventData: event.EventLoginData{
 				Identifier:     "test@example.com",
 				IdentifierType: "email",
-				UserUID:        "uid-123",
-				UserName:       "Test User",
-				DeviceUID:      "device-123",
-				DeviceName:     "iPhone",
-				IPAddress:      "192.168.1.1",
+				DeviceUID:      util.Ptr("device-123"),
+				DeviceName:     util.Ptr("iPhone"),
+				IPAddress:      util.Ptr("192.168.1.1"),
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "test-exchange",
@@ -161,6 +160,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				assert.Equal(t, "auth.login", m.publishWithConfirmArgHeaders["ce_type"])
 				assert.Equal(t, Source, m.publishWithConfirmArgHeaders["ce_source"])
 				assert.Equal(t, SpecVersion, m.publishWithConfirmArgHeaders["ce_specversion"])
+				assert.Equal(t, "test-actor", m.publishWithConfirmArgHeaders["actor_name"])
 
 				assert.NotNil(t, m.publishWithConfirmArgBody)
 				assert.NotEmpty(t, m.publishWithConfirmArgBody)
@@ -181,8 +181,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserCreated,
 			eventData: event.EventUserCreatedData{
-				UserUID:  "new-user-uid",
-				ActorUID: "admin-456",
 				Username: "newuser",
 				Email:    "newuser@example.com",
 				Status:   "active",
@@ -208,10 +206,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return context.Background()
 			},
 			eventType: event.EventUserDeleted,
-			eventData: event.EventUserDeletedData{
-				UserUID:  "deleted-user-uid",
-				ActorUID: "admin-789",
-			},
+			eventData: event.EventUserDeletedData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
 				RoutingKeyPrefix: "",
@@ -231,10 +226,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return setupContext(context.Background(), "api", "user-789", "user")
 			},
 			eventType: event.EventUserUpdatePassword,
-			eventData: event.EventUserUpdatePasswordData{
-				UserUID:  "user-789",
-				ActorUID: "user-789",
-			},
+			eventData: event.EventUserUpdatePasswordData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "security-events",
 				RoutingKeyPrefix: "auth",
@@ -254,10 +246,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return setupContext(context.Background(), "mobile", "user-101", "user")
 			},
 			eventType: event.EventUserCreatePin,
-			eventData: event.EventUserCreatePinData{
-				UserUID:  "user-101",
-				ActorUID: "user-101",
-			},
+			eventData: event.EventUserCreatePinData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
 				RoutingKeyPrefix: "user",
@@ -277,10 +266,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 				return setupContext(context.Background(), "web", "user-202", "user")
 			},
 			eventType: event.EventUserUpdateProfile,
-			eventData: event.EventUserUpdateProfileData{
-				UserUID:  "user-202",
-				ActorUID: "user-202",
-			},
+			eventData: event.EventUserUpdateProfileData{},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
 				RoutingKeyPrefix: "user",
@@ -297,9 +283,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			},
 			eventType: event.EventUserRevokeDevice,
 			eventData: event.EventUserRevokeDeviceData{
-				UserUID:   "user-303",
-				ActorUID:  "user-303",
-				DeviceUID: "device-303",
+				UserUID: "user-303",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "events",
@@ -318,7 +302,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventType: event.EventUserFileCreated,
 			eventData: event.EventUserFileCreatedData{
 				UserUID: "user-404",
-				FileUID: "file-404",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "file-events",
@@ -337,7 +320,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventType: event.EventUserFileUpdated,
 			eventData: event.EventUserFileUpdatedData{
 				UserUID: "user-505",
-				FileUID: "file-505",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "file-events",
@@ -356,7 +338,6 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			eventType: event.EventUserFileDeleted,
 			eventData: event.EventUserFileDeletedData{
 				UserUID: "user-606",
-				FileUID: "file-606",
 			},
 			config: RabbitmqPublisherConfig{
 				Exchange:         "file-events",
@@ -415,7 +396,7 @@ func TestRabbitmqPublisher_Publish(t *testing.T) {
 			publisher := NewRabbitmqPublisher(mockConn, tt.config, logger, tracer)
 
 			ctx := tt.setupCtx()
-			err := publisher.Publish(ctx, tt.eventType, tt.eventData)
+			err := publisher.Publish(ctx, event.Message{Type: tt.eventType, Entity: event.Entity{ID: "entity-1", Type: "user"}, Metadata: tt.eventData})
 
 			if tt.wantErr {
 				assert.Error(t, err)

@@ -47,6 +47,7 @@ func UnaryRequestInterceptor(
 		clientName := "unknown"
 		actorId := "unknown"
 		actorType := "unknown"
+		actorName := "unknown"
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = m.Tracer.ExtractContext(ctx, md)
 
@@ -58,6 +59,9 @@ func UnaryRequestInterceptor(
 			}
 			if mdActorType, exists := md["actor-type"]; exists && len(mdActorType) > 0 {
 				actorType = mdActorType[0]
+			}
+			if mdActorName, exists := md["actor-name"]; exists && len(mdActorName) > 0 {
+				actorName = mdActorName[0]
 			}
 		}
 
@@ -73,7 +77,7 @@ func UnaryRequestInterceptor(
 
 		// Store client name in context
 		ctx = util.SetClientName(ctx, clientName)
-		ctx = util.SetActor(ctx, actorId, actorType)
+		ctx = util.SetActor(ctx, actorId, actorType, actorName)
 
 		// Add useful attributes to the span
 		span.SetAttributes(
@@ -85,6 +89,7 @@ func UnaryRequestInterceptor(
 			attribute.String("client.name", clientName),
 			attribute.String("actor.id", actorId),
 			attribute.String("actor.type", actorType),
+			attribute.String("actor.name", actorName),
 		)
 
 		// start trace request
@@ -186,6 +191,7 @@ func StreamRequestInterceptor(
 		clientName := "unknown"
 		actorId := "unknown"
 		actorType := "unknown"
+		actorName := "unknown"
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = m.Tracer.ExtractContext(ctx, md)
 
@@ -197,6 +203,9 @@ func StreamRequestInterceptor(
 			}
 			if mdActorType, exists := md["actor-type"]; exists && len(mdActorType) > 0 {
 				actorType = mdActorType[0]
+			}
+			if mdActorName, exists := md["actor-name"]; exists && len(mdActorName) > 0 {
+				actorName = mdActorName[0]
 			}
 		}
 
@@ -212,7 +221,7 @@ func StreamRequestInterceptor(
 
 		// Store client name in context
 		ctx = util.SetClientName(ctx, clientName)
-		ctx = util.SetActor(ctx, actorId, actorType)
+		ctx = util.SetActor(ctx, actorId, actorType, actorName)
 
 		// Add useful attributes to the span
 		span.SetAttributes(
@@ -224,6 +233,7 @@ func StreamRequestInterceptor(
 			attribute.String("client.name", clientName),
 			attribute.String("actor.id", actorId),
 			attribute.String("actor.type", actorType),
+			attribute.String("actor.name", actorName),
 		)
 
 		// start trace request

@@ -336,10 +336,10 @@ func TestBuildMeta(t *testing.T) {
 		wantMeta *domainModel.Meta
 	}{
 		{
-			name:   "Happy Path - First page",
-			total:  100,
-			page:   1,
-			limit:  10,
+			name:  "Happy Path - First page",
+			total: 100,
+			page:  1,
+			limit: 10,
 			wantMeta: &domainModel.Meta{
 				Total: 100,
 				Page:  1,
@@ -348,10 +348,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Happy Path - Middle page",
-			total:  100,
-			page:   3,
-			limit:  10,
+			name:  "Happy Path - Middle page",
+			total: 100,
+			page:  3,
+			limit: 10,
 			wantMeta: &domainModel.Meta{
 				Total: 100,
 				Page:  3,
@@ -360,10 +360,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Happy Path - Last page",
-			total:  95,
-			page:   10,
-			limit:  10,
+			name:  "Happy Path - Last page",
+			total: 95,
+			page:  10,
+			limit: 10,
 			wantMeta: &domainModel.Meta{
 				Total: 95,
 				Page:  10,
@@ -372,10 +372,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Empty result set",
-			total:  0,
-			page:   1,
-			limit:  10,
+			name:  "Empty result set",
+			total: 0,
+			page:  1,
+			limit: 10,
 			wantMeta: &domainModel.Meta{
 				Total: 0,
 				Page:  1,
@@ -384,10 +384,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Total less than limit",
-			total:  5,
-			page:   1,
-			limit:  10,
+			name:  "Total less than limit",
+			total: 5,
+			page:  1,
+			limit: 10,
 			wantMeta: &domainModel.Meta{
 				Total: 5,
 				Page:  1,
@@ -396,10 +396,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Exact multiple of limit",
-			total:  100,
-			page:   1,
-			limit:  25,
+			name:  "Exact multiple of limit",
+			total: 100,
+			page:  1,
+			limit: 25,
 			wantMeta: &domainModel.Meta{
 				Total: 100,
 				Page:  1,
@@ -408,10 +408,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Page beyond total",
-			total:  50,
-			page:   11,
-			limit:  10,
+			name:  "Page beyond total",
+			total: 50,
+			page:  11,
+			limit: 10,
 			wantMeta: &domainModel.Meta{
 				Total: 50,
 				Page:  11,
@@ -420,10 +420,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Limit of 1",
-			total:  5,
-			page:   1,
-			limit:  1,
+			name:  "Limit of 1",
+			total: 5,
+			page:  1,
+			limit: 1,
 			wantMeta: &domainModel.Meta{
 				Total: 5,
 				Page:  1,
@@ -432,10 +432,10 @@ func TestBuildMeta(t *testing.T) {
 			},
 		},
 		{
-			name:   "Large total",
-			total:  10000,
-			page:   3,
-			limit:  50,
+			name:  "Large total",
+			total: 10000,
+			page:  3,
+			limit: 50,
 			wantMeta: &domainModel.Meta{
 				Total: 10000,
 				Page:  3,

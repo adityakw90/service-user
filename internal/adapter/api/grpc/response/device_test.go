@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/adityakw90/service-user/internal/core/domain/model"
 	device "github.com/adityakw90/service-user-proto/gen/go/device"
 	"github.com/adityakw90/service-user-proto/gen/go/user"
+	"github.com/adityakw90/service-user/internal/core/domain/model"
 )
 
 func TestToProtoDevice(t *testing.T) {

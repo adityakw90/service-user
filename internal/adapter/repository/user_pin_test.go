@@ -24,9 +24,9 @@ func TestPinRepository_GetByUserID(t *testing.T) {
 			name:   "Get existing PIN by user ID",
 			userID: 1,
 			setupMock: func(mock pgxmock.PgxPoolIface, userID int64) {
-				rows := pgxmock.NewRows([]string{"user_id", "code", "created_at", "updated_at"}).
-					AddRow(userID, "hashedpin", time.Now(), time.Now())
-				mock.ExpectQuery(`SELECT user_id, code, created_at, updated_at FROM user_pin WHERE user_id = \$1`).
+				rows := pgxmock.NewRows([]string{"user_id", "uid", "code", "created_at", "updated_at"}).
+					AddRow(userID, "user-uid", "hashedpin", time.Now(), time.Now())
+				mock.ExpectQuery(`SELECT user_pin.user_id, "user".uid, user_pin.code, user_pin.created_at, user_pin.updated_at FROM user_pin JOIN "user" ON "user".id = user_pin.user_id WHERE user_pin.user_id = \$1`).
 					WithArgs(userID).
 					WillReturnRows(rows)
 			},
@@ -36,8 +36,8 @@ func TestPinRepository_GetByUserID(t *testing.T) {
 			name:   "Get non-existent PIN by user ID",
 			userID: 999999999,
 			setupMock: func(mock pgxmock.PgxPoolIface, userID int64) {
-				rows := pgxmock.NewRows([]string{"user_id", "code", "created_at", "updated_at"})
-				mock.ExpectQuery(`SELECT user_id, code, created_at, updated_at FROM user_pin WHERE user_id = \$1`).
+				rows := pgxmock.NewRows([]string{"user_id", "uid", "code", "created_at", "updated_at"})
+				mock.ExpectQuery(`SELECT user_pin.user_id, "user".uid, user_pin.code, user_pin.created_at, user_pin.updated_at FROM user_pin JOIN "user" ON "user".id = user_pin.user_id WHERE user_pin.user_id = \$1`).
 					WithArgs(userID).
 					WillReturnRows(rows)
 			},
@@ -67,6 +67,7 @@ func TestPinRepository_GetByUserID(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, tt.userID, result.UserID)
+			assert.Equal(t, "user-uid", result.UserUID)
 
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
@@ -304,8 +305,8 @@ func TestPinRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Invalid OrderBy - non-existent column",
@@ -315,8 +316,8 @@ func TestPinRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_pin`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Nil OrderBy - should use default",

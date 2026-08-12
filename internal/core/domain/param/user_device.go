@@ -17,7 +17,7 @@ type UserDeviceListParam struct {
 type UserDeviceOrderBy string
 
 const (
-	OrderByUserDeviceID          UserDeviceOrderBy = "id"
+	OrderByUserDeviceID           UserDeviceOrderBy = "id"
 	OrderByUserDeviceUserID       UserDeviceOrderBy = "user_id"
 	OrderByUserDeviceDeviceID     UserDeviceOrderBy = "device_id"
 	OrderByUserDeviceLastActiveAt UserDeviceOrderBy = "last_active_at"

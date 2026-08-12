@@ -20,7 +20,10 @@ func (p *NoOpPublisher) Name() string {
 }
 
 // Publish is a no-op.
-func (p *NoOpPublisher) Publish(ctx context.Context, eventType event.EventType, eventData any) error {
+func (p *NoOpPublisher) Publish(ctx context.Context, message event.Message) error {
+	if err := message.Validate(); err != nil {
+		return err
+	}
 	return nil
 }
 

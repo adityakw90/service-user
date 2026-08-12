@@ -55,8 +55,21 @@ func (_c *MockExecutor_Close_Call) RunAndReturn(run func()) *MockExecutor_Close_
 }
 
 // Do provides a mock function with given fields: ctx, name, fn
-func (_m *MockExecutor) Do(ctx context.Context, name string, fn func(context.Context)) {
-	_m.Called(ctx, name, fn)
+func (_m *MockExecutor) Do(ctx context.Context, name string, fn func(context.Context) error) error {
+	ret := _m.Called(ctx, name, fn)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Do")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(context.Context) error) error); ok {
+		r0 = rf(ctx, name, fn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockExecutor_Do_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Do'
@@ -67,30 +80,30 @@ type MockExecutor_Do_Call struct {
 // Do is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - fn func(context.Context)
+//   - fn func(context.Context) error
 func (_e *MockExecutor_Expecter) Do(ctx interface{}, name interface{}, fn interface{}) *MockExecutor_Do_Call {
 	return &MockExecutor_Do_Call{Call: _e.mock.On("Do", ctx, name, fn)}
 }
 
-func (_c *MockExecutor_Do_Call) Run(run func(ctx context.Context, name string, fn func(context.Context))) *MockExecutor_Do_Call {
+func (_c *MockExecutor_Do_Call) Run(run func(ctx context.Context, name string, fn func(context.Context) error)) *MockExecutor_Do_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(func(context.Context)))
+		run(args[0].(context.Context), args[1].(string), args[2].(func(context.Context) error))
 	})
 	return _c
 }
 
-func (_c *MockExecutor_Do_Call) Return() *MockExecutor_Do_Call {
-	_c.Call.Return()
+func (_c *MockExecutor_Do_Call) Return(_a0 error) *MockExecutor_Do_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockExecutor_Do_Call) RunAndReturn(run func(context.Context, string, func(context.Context))) *MockExecutor_Do_Call {
-	_c.Run(run)
+func (_c *MockExecutor_Do_Call) RunAndReturn(run func(context.Context, string, func(context.Context) error) error) *MockExecutor_Do_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
 // DoAsync provides a mock function with given fields: ctx, name, fn
-func (_m *MockExecutor) DoAsync(ctx context.Context, name string, fn func(context.Context)) error {
+func (_m *MockExecutor) DoAsync(ctx context.Context, name string, fn func(context.Context) error) error {
 	ret := _m.Called(ctx, name, fn)
 
 	if len(ret) == 0 {
@@ -98,7 +111,7 @@ func (_m *MockExecutor) DoAsync(ctx context.Context, name string, fn func(contex
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, func(context.Context)) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, func(context.Context) error) error); ok {
 		r0 = rf(ctx, name, fn)
 	} else {
 		r0 = ret.Error(0)
@@ -115,14 +128,14 @@ type MockExecutor_DoAsync_Call struct {
 // DoAsync is a helper method to define mock.On call
 //   - ctx context.Context
 //   - name string
-//   - fn func(context.Context)
+//   - fn func(context.Context) error
 func (_e *MockExecutor_Expecter) DoAsync(ctx interface{}, name interface{}, fn interface{}) *MockExecutor_DoAsync_Call {
 	return &MockExecutor_DoAsync_Call{Call: _e.mock.On("DoAsync", ctx, name, fn)}
 }
 
-func (_c *MockExecutor_DoAsync_Call) Run(run func(ctx context.Context, name string, fn func(context.Context))) *MockExecutor_DoAsync_Call {
+func (_c *MockExecutor_DoAsync_Call) Run(run func(ctx context.Context, name string, fn func(context.Context) error)) *MockExecutor_DoAsync_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(func(context.Context)))
+		run(args[0].(context.Context), args[1].(string), args[2].(func(context.Context) error))
 	})
 	return _c
 }
@@ -132,7 +145,7 @@ func (_c *MockExecutor_DoAsync_Call) Return(_a0 error) *MockExecutor_DoAsync_Cal
 	return _c
 }
 
-func (_c *MockExecutor_DoAsync_Call) RunAndReturn(run func(context.Context, string, func(context.Context)) error) *MockExecutor_DoAsync_Call {
+func (_c *MockExecutor_DoAsync_Call) RunAndReturn(run func(context.Context, string, func(context.Context) error) error) *MockExecutor_DoAsync_Call {
 	_c.Call.Return(run)
 	return _c
 }

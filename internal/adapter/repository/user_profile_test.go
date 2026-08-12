@@ -75,9 +75,9 @@ func TestProfileRepository_GetByUserID(t *testing.T) {
 
 func TestProfileRepository_Create(t *testing.T) {
 	tests := []struct {
-		name     string
-		profile  *model.UserProfile
-		wantErr  bool
+		name    string
+		profile *model.UserProfile
+		wantErr bool
 	}{
 		{
 			name: "Create valid profile",
@@ -318,8 +318,8 @@ func TestProfileRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_profile`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Invalid OrderBy - non-existent column",
@@ -329,8 +329,8 @@ func TestProfileRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM user_profile`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
-			wantErr:    true,
+			wantCount: 0,
+			wantErr:   true,
 		},
 		{
 			name:       "Nil OrderBy - should use default",

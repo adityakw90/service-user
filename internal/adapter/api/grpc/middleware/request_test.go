@@ -5,14 +5,16 @@ import (
 	"errors"
 	"testing"
 
+	monitoring "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/adapter/api/grpc/response"
 	domainErrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/infra"
-	monitoring "github.com/adityakw90/go-monitoring"
+	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -128,6 +130,45 @@ func TestUnaryRequestInterceptor_MakeErrorResponseIntegration(t *testing.T) {
 
 	assert.Equal(t, expectedStatus.Code(), actualStatus.Code())
 	assert.Equal(t, expectedStatus.Message(), actualStatus.Message())
+}
+
+type testServerStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *testServerStream) Context() context.Context { return s.ctx }
+
+func TestRequestInterceptors_ActorNamePropagation(t *testing.T) {
+	md := metadata.Pairs("client", "web-app", "actor-id", "user-123", "actor-type", "user", "actor-name", "Alice")
+	incomingCtx := metadata.NewIncomingContext(context.Background(), md)
+
+	t.Run("unary", func(t *testing.T) {
+		interceptor := UnaryRequestInterceptor(setupMockMonitoring(t))
+		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+			actorID, actorType, actorName := util.GetActor(ctx)
+			assert.Equal(t, "user-123", actorID)
+			assert.Equal(t, "user", actorType)
+			assert.Equal(t, "Alice", actorName)
+			return nil, nil
+		}
+		_, err := interceptor(incomingCtx, nil, &grpc.UnaryServerInfo{FullMethod: "/test.Service/Unary"}, handler)
+		require.NoError(t, err)
+	})
+
+	t.Run("stream", func(t *testing.T) {
+		interceptor := StreamRequestInterceptor(setupMockMonitoring(t))
+		stream := &testServerStream{ctx: incomingCtx}
+		handler := func(srv interface{}, ss grpc.ServerStream) error {
+			actorID, actorType, actorName := util.GetActor(ss.Context())
+			assert.Equal(t, "user-123", actorID)
+			assert.Equal(t, "user", actorType)
+			assert.Equal(t, "Alice", actorName)
+			return nil
+		}
+		err := interceptor(nil, stream, &grpc.StreamServerInfo{FullMethod: "/test.Service/Stream"}, handler)
+		require.NoError(t, err)
+	})
 }
 
 // setupMockMonitoring creates a minimal mock monitoring setup for testing

@@ -502,7 +502,7 @@ func TestDeviceRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
+			wantCount: 0,
 			wantErr:   true,
 		},
 		{
@@ -513,7 +513,7 @@ func TestDeviceRepository_List(t *testing.T) {
 				countRows := pgxmock.NewRows([]string{"count"}).AddRow(0)
 				mock.ExpectQuery(`SELECT COUNT\(\*\) FROM device`).WillReturnRows(countRows)
 			},
-			wantCount:  0,
+			wantCount: 0,
 			wantErr:   true,
 		},
 		{
@@ -609,7 +609,6 @@ func TestDeviceRepository_ListByUserID(t *testing.T) {
 			wantCount: 0,
 			wantErr:   true,
 		},
-
 	}
 
 	for _, tt := range tests {

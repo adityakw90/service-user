@@ -8,9 +8,9 @@ func TestDomain_Signal_UserFileSignal_Creation(t *testing.T) {
 	fileSize := int64(1024)
 
 	sig := UserFileSignal{
-		UID:      &uid,
-		FileName: &fileName,
-		FileSize: &fileSize,
+		UID:       &uid,
+		FileName:  &fileName,
+		FileSize:  &fileSize,
 		Operation: "get",
 	}
 

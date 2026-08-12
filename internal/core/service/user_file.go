@@ -195,11 +195,10 @@ func (s *userFileService) Add(ctx context.Context, param param.UserFileCreatePar
 
 	// Publish user file created event
 
-	err = s.eventPublisher.Publish(ctx, event.EventUserFileCreated, event.EventUserFileCreatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileCreated, Entity: event.NewUserFileEntity(file), Metadata: event.EventUserFileCreatedData{
 		UserUID:  file.UserUID,
-		FileUID:  file.UID,
 		FileName: file.FileName,
-	})
+	}})
 	if err != nil {
 		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
 			UserUID:   &param.UserUID,
@@ -264,10 +263,9 @@ func (s *userFileService) Update(ctx context.Context, uid string, param param.Us
 	}
 
 	// Publish user file updated event
-	err = s.eventPublisher.Publish(ctx, event.EventUserFileUpdated, event.EventUserFileUpdatedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileUpdated, Entity: event.NewUserFileEntity(file), Metadata: event.EventUserFileUpdatedData{
 		UserUID: file.UserUID,
-		FileUID: uid,
-	})
+	}})
 	if err != nil {
 		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
 			UID:       &uid,
@@ -316,10 +314,9 @@ func (s *userFileService) Delete(ctx context.Context, uid string) error {
 
 	// Publish user file deleted event
 
-	err = s.eventPublisher.Publish(ctx, event.EventUserFileDeleted, event.EventUserFileDeletedData{
+	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserFileDeleted, Entity: event.NewUserFileEntity(file), Metadata: event.EventUserFileDeletedData{
 		UserUID: file.UserUID,
-		FileUID: uid,
-	})
+	}})
 	if err != nil {
 		s.userFileObserver.OnSignal(ctx, signal.SignalFail, signal.UserFileSignal{
 			UID:       &uid,

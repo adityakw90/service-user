@@ -299,7 +299,6 @@ func main() {
 	defer exc.Close()
 
 	// Create observers based on config
-	authObserver := createAuthObserver(cfg, iMon.Logger, iMon.Tracer)
 	userObserver := createUserObserver(cfg, iMon.Logger, iMon.Tracer)
 	deviceObserver := createDeviceObserver(cfg, iMon.Logger, iMon.Tracer)
 	userFileObserver := createUserFileObserver(cfg, iMon.Logger, iMon.Tracer)
@@ -337,7 +336,7 @@ func main() {
 		tokenBlacklist,
 		exc,
 		eventPublisher,
-		authObserver,
+		// authObserver,
 		securityAdapters.LoginTracker,
 		securityAdapters.RateLimiter,
 	)
@@ -379,13 +378,6 @@ func main() {
 			"error": err.Error(),
 		})
 	}
-}
-
-func createAuthObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.AuthSignal] {
-	if cfg.Observer.Auth {
-		return observer.NewAuthObserver(logger, tracer)
-	}
-	return observer.NewNoopObserver[domainSignal.AuthSignal]()
 }
 
 func createUserObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserSignal] {

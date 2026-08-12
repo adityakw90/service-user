@@ -195,9 +195,9 @@ func TestHTTPPublisher_Publish(t *testing.T) {
 			publisher := NewHTTPPublisher(server.URL, 5*time.Second, logger, tracer)
 
 			ctx := util.SetClientName(context.Background(), "test-client")
-			ctx = util.SetActor(ctx, "test-actor-id", "test-actor-type")
+			ctx = util.SetActor(ctx, "test-actor-id", "test-actor-type", "Test Actor")
 
-			err := publisher.Publish(ctx, tt.eventType, tt.eventData)
+			err := publisher.Publish(ctx, event.Message{Type: tt.eventType, Entity: event.Entity{ID: "entity-1", Type: "user"}, Metadata: tt.eventData})
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -220,19 +220,20 @@ func TestHTTPPublisher_Publish_ContextValues(t *testing.T) {
 		setupContext   func(ctx context.Context) context.Context
 		expectedClient string
 		expectedActor  struct {
-			id  string
-			typ string
+			id   string
+			typ  string
+			name string
 		}
 	}{
 		{
 			name: "With Client and Actor Context",
 			setupContext: func(ctx context.Context) context.Context {
 				ctx = util.SetClientName(ctx, "web-app")
-				ctx = util.SetActor(ctx, "user-123", "user")
+				ctx = util.SetActor(ctx, "user-123", "user", "Alice")
 				return ctx
 			},
 			expectedClient: "web-app",
-			expectedActor:  struct{ id, typ string }{id: "user-123", typ: "user"},
+			expectedActor:  struct{ id, typ, name string }{id: "user-123", typ: "user", name: "Alice"},
 		},
 		{
 			name: "With No Context Values",
@@ -240,7 +241,7 @@ func TestHTTPPublisher_Publish_ContextValues(t *testing.T) {
 				return ctx
 			},
 			expectedClient: "unknown",
-			expectedActor:  struct{ id, typ string }{id: "unknown", typ: "unknown"},
+			expectedActor:  struct{ id, typ, name string }{id: "unknown", typ: "unknown", name: "unknown"},
 		},
 	}
 
@@ -261,12 +262,13 @@ func TestHTTPPublisher_Publish_ContextValues(t *testing.T) {
 
 			ctx := tt.setupContext(context.Background())
 
-			err := publisher.Publish(ctx, event.EventUserCreated, testEventData{UserID: "123"})
+			err := publisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.Entity{ID: "123", Type: "user"}, Metadata: testEventData{UserID: "123"}})
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedClient, receivedCloudEventData.Client)
 			assert.Equal(t, tt.expectedActor.id, receivedCloudEventData.ActorId)
 			assert.Equal(t, tt.expectedActor.typ, receivedCloudEventData.ActorType)
+			assert.Equal(t, tt.expectedActor.name, receivedCloudEventData.ActorName)
 		})
 	}
 }
@@ -285,7 +287,7 @@ func TestHTTPPublisher_Publish_TraceContextInjection(t *testing.T) {
 	publisher := NewHTTPPublisher(server.URL, 5*time.Second, logger, tracer)
 
 	ctx := context.Background()
-	err := publisher.Publish(ctx, event.EventUserCreated, testEventData{UserID: "123"})
+	err := publisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.Entity{ID: "123", Type: "user"}, Metadata: testEventData{UserID: "123"}})
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, traceParent, "Traceparent header should be injected by tracer")

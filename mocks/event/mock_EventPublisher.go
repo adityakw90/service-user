@@ -113,17 +113,17 @@ func (_c *MockEventPublisher_Name_Call) RunAndReturn(run func() string) *MockEve
 	return _c
 }
 
-// Publish provides a mock function with given fields: ctx, eventType, eventData
-func (_m *MockEventPublisher) Publish(ctx context.Context, eventType domainevent.EventType, eventData interface{}) error {
-	ret := _m.Called(ctx, eventType, eventData)
+// Publish provides a mock function with given fields: ctx, message
+func (_m *MockEventPublisher) Publish(ctx context.Context, message domainevent.Message) error {
+	ret := _m.Called(ctx, message)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Publish")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, domainevent.EventType, interface{}) error); ok {
-		r0 = rf(ctx, eventType, eventData)
+	if rf, ok := ret.Get(0).(func(context.Context, domainevent.Message) error); ok {
+		r0 = rf(ctx, message)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -138,15 +138,14 @@ type MockEventPublisher_Publish_Call struct {
 
 // Publish is a helper method to define mock.On call
 //   - ctx context.Context
-//   - eventType domainevent.EventType
-//   - eventData interface{}
-func (_e *MockEventPublisher_Expecter) Publish(ctx interface{}, eventType interface{}, eventData interface{}) *MockEventPublisher_Publish_Call {
-	return &MockEventPublisher_Publish_Call{Call: _e.mock.On("Publish", ctx, eventType, eventData)}
+//   - message domainevent.Message
+func (_e *MockEventPublisher_Expecter) Publish(ctx interface{}, message interface{}) *MockEventPublisher_Publish_Call {
+	return &MockEventPublisher_Publish_Call{Call: _e.mock.On("Publish", ctx, message)}
 }
 
-func (_c *MockEventPublisher_Publish_Call) Run(run func(ctx context.Context, eventType domainevent.EventType, eventData interface{})) *MockEventPublisher_Publish_Call {
+func (_c *MockEventPublisher_Publish_Call) Run(run func(ctx context.Context, message domainevent.Message)) *MockEventPublisher_Publish_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(domainevent.EventType), args[2].(interface{}))
+		run(args[0].(context.Context), args[1].(domainevent.Message))
 	})
 	return _c
 }
@@ -156,7 +155,7 @@ func (_c *MockEventPublisher_Publish_Call) Return(_a0 error) *MockEventPublisher
 	return _c
 }
 
-func (_c *MockEventPublisher_Publish_Call) RunAndReturn(run func(context.Context, domainevent.EventType, interface{}) error) *MockEventPublisher_Publish_Call {
+func (_c *MockEventPublisher_Publish_Call) RunAndReturn(run func(context.Context, domainevent.Message) error) *MockEventPublisher_Publish_Call {
 	_c.Call.Return(run)
 	return _c
 }
