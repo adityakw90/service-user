@@ -651,6 +651,86 @@ func TestAuthService_Authenticate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "Device fingerprint present but device name nil - skips device handling",
+			payload: &domainParam.AuthParams{
+				Identifier:        "john@example.com",
+				IdentifierType:    "email",
+				Password:          "password123",
+				DeviceFingerprint: util.Ptr("fingerprint-123"),
+				DeviceName:        nil,
+				DeviceIP:          util.Ptr("192.168.1.100"),
+			},
+			setupMocks: func(m authServiceMocks) {
+				m.rateLimiter.EXPECT().Acquire(mock.Anything, "192.168.1.100").Return(true, nil).Once()
+				m.userRepo.EXPECT().GetByEmail(mock.Anything, "john@example.com").Return(testUser, nil).Once()
+				m.attemptTracker.EXPECT().IsLocked(mock.Anything, testUser.UID).Return(false, nil).Once()
+				m.passwordHasher.EXPECT().Compare("hashed_password", "password123").Return(true).Once()
+				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
+				m.uidGen.EXPECT().New().Return("session-id-123").Once()
+
+				// No device repo calls - device handling skipped because DeviceName is nil
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess
+				})).Return("access-token-123", nil).Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
+
+				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
+
+				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
+					_ = fn(ctx)
+				}).Return(nil).Once()
+
+				m.eventPublisher.EXPECT().Publish(mock.Anything, mock.MatchedBy(func(msg domainEvent.Message) bool {
+					ld := msg.Metadata.(*domainEvent.EventLoginData)
+					return msg.Type == domainEvent.EventLogin &&
+						ld.Identifier == "john@example.com" &&
+						ld.DeviceUID == nil // No device in event
+				})).Return(nil).Once()
+			},
+			wantErr: nil,
+		},
+		{
+			name: "Device name present but device fingerprint nil - skips device handling",
+			payload: &domainParam.AuthParams{
+				Identifier:        "john@example.com",
+				IdentifierType:    "email",
+				Password:          "password123",
+				DeviceFingerprint: nil,
+				DeviceName:        util.Ptr("Pixel 6"),
+				DeviceIP:          util.Ptr("192.168.1.100"),
+			},
+			setupMocks: func(m authServiceMocks) {
+				m.rateLimiter.EXPECT().Acquire(mock.Anything, "192.168.1.100").Return(true, nil).Once()
+				m.userRepo.EXPECT().GetByEmail(mock.Anything, "john@example.com").Return(testUser, nil).Once()
+				m.attemptTracker.EXPECT().IsLocked(mock.Anything, testUser.UID).Return(false, nil).Once()
+				m.passwordHasher.EXPECT().Compare("hashed_password", "password123").Return(true).Once()
+				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
+				m.uidGen.EXPECT().New().Return("session-id-123").Once()
+
+				// No device repo calls - device handling skipped because DeviceFingerprint is nil
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess
+				})).Return("access-token-123", nil).Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
+
+				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
+
+				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
+					_ = fn(ctx)
+				}).Return(nil).Once()
+
+				m.eventPublisher.EXPECT().Publish(mock.Anything, mock.MatchedBy(func(msg domainEvent.Message) bool {
+					ld := msg.Metadata.(*domainEvent.EventLoginData)
+					return msg.Type == domainEvent.EventLogin &&
+						ld.Identifier == "john@example.com" &&
+						ld.DeviceUID == nil // No device in event
+				})).Return(nil).Once()
+			},
+			wantErr: nil,
+		},
+		{
 			name: "Unknown identifier type",
 			payload: &domainParam.AuthParams{
 				Identifier:     "john",

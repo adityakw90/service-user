@@ -171,7 +171,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 	sid := s.uidGen.New()
 
 	// check device
-	if payload.DeviceFingerprint != nil {
+	if payload.DeviceFingerprint != nil && payload.DeviceName != nil {
 		device, _ = s.findOrCreateDevice(
 			ctx,
 			*payload.DeviceName,
