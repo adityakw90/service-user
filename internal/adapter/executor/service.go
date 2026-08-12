@@ -35,6 +35,9 @@ func NewServiceExecutor(logger monitoring.Logger, tracer monitoring.Tracer) *ser
 }
 
 func (s *serviceExecutor) Do(ctx context.Context, name string, fn func(ctx context.Context) error) error {
+	if fn == nil {
+		return domainError.ErrExecutorFnInvalid
+	}
 	newCtx, span := s.tracer.StartChildSpan(ctx, name, s.tracer.SpanFromContext(ctx))
 	defer span.End()
 

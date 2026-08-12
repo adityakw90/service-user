@@ -19,34 +19,62 @@ func TestServiceExecutor_Do(t *testing.T) {
 	tests := []struct {
 		name          string
 		operationName string
-		fn            func(ctx context.Context)
+		fn            func(ctx context.Context) error
+		wantErr       bool
+		errCheck      func(error) bool
 	}{
 		{
 			name:          "Happy Path - function executes successfully",
 			operationName: "test-operation",
-			fn: func(ctx context.Context) {
-				// Function that does nothing
+			fn: func(ctx context.Context) error {
+				return nil
 			},
+			wantErr: false,
 		},
 		{
 			name:          "Named Operation - operation name appears in logs",
 			operationName: "important-task",
-			fn: func(ctx context.Context) {
-				// Function execution
+			fn: func(ctx context.Context) error {
+				return nil
 			},
+			wantErr: false,
 		},
 		{
 			name:          "Context Propagation - new context with span is passed",
 			operationName: "context-test",
-			fn: func(ctx context.Context) {
-				// Verify context is passed through
+			fn: func(ctx context.Context) error {
 				assert.NotNil(t, ctx, "context should not be nil")
+				return nil
 			},
+			wantErr: false,
 		},
 		{
 			name:          "Empty Function Name - logs empty name",
 			operationName: "",
-			fn:            func(ctx context.Context) {},
+			fn: func(ctx context.Context) error {
+				return nil
+			},
+			wantErr: false,
+		},
+		{
+			name:          "Nil Function - returns ErrExecutorFnInvalid",
+			operationName: "nil-function",
+			fn:            nil,
+			wantErr:       true,
+			errCheck: func(err error) bool {
+				return errors.Is(err, domainError.ErrExecutorFnInvalid)
+			},
+		},
+		{
+			name:          "Function Error - error is propagated",
+			operationName: "error-function",
+			fn: func(ctx context.Context) error {
+				return errors.New("test error")
+			},
+			wantErr: true,
+			errCheck: func(err error) bool {
+				return err.Error() == "test error"
+			},
 		},
 	}
 
@@ -58,10 +86,16 @@ func TestServiceExecutor_Do(t *testing.T) {
 			executor := NewServiceExecutor(logger, tracer)
 			ctx := context.Background()
 
-			executor.Do(ctx, tt.operationName, func(inner context.Context) error {
-				tt.fn(inner)
-				return nil
-			})
+			err := executor.Do(ctx, tt.operationName, tt.fn)
+
+			if tt.wantErr {
+				require.Error(t, err, "expected an error")
+				if tt.errCheck != nil {
+					assert.True(t, tt.errCheck(err), "error check failed: %v", err)
+				}
+			} else {
+				assert.NoError(t, err, "expected no error")
+			}
 		})
 	}
 }
