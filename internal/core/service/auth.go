@@ -234,7 +234,9 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 	}
 
 	// Add refresh token to whitelist
-	_ = s.tokenWhitelist.Add(ctx, user.UID, sid)
+	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
+		return nil, err
+	}
 
 	s.executor.DoAsync(ctx, "auth.publish", func(newCtx context.Context) error {
 		// Publish login event
@@ -360,7 +362,7 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 
 	// Add refresh token to whitelist
 	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
-		// Log error but don't fail
+		return nil, err
 	}
 
 	// Publish OAuth login event
@@ -471,7 +473,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 
 	// Add new refresh token to whitelist
 	if err := s.tokenWhitelist.Add(ctx, claims.Uid, newSid); err != nil {
-		// Log error but don't fail
+		return nil, err
 	}
 
 	// Remove old session from whitelist (single-use refresh token for security)

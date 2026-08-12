@@ -731,6 +731,33 @@ func TestAuthService_Authenticate(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name: "Whitelist add error during authentication",
+			payload: &domainParam.AuthParams{
+				Identifier:     "john@example.com",
+				IdentifierType: "email",
+				Password:       "password123",
+			},
+			setupMocks: func(m authServiceMocks) {
+				m.userRepo.EXPECT().GetByEmail(mock.Anything, "john@example.com").Return(testUser, nil).Once()
+				m.attemptTracker.EXPECT().IsLocked(mock.Anything, testUser.UID).Return(false, nil).Once()
+				m.passwordHasher.EXPECT().Compare("hashed_password", "password123").Return(true).Once()
+				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
+				m.uidGen.EXPECT().New().Return("session-id-123").Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Type == domainModel.TokenTypeAccess
+				})).Return("access-token-123", nil).Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Type == domainModel.TokenTypeRefresh
+				})).Return("refresh-token-123", nil).Once()
+
+				// Whitelist Add fails - should return error
+				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(errors.New("whitelist storage error")).Once()
+			},
+			wantErr: errors.New("whitelist storage error"),
+		},
+		{
 			name: "Unknown identifier type",
 			payload: &domainParam.AuthParams{
 				Identifier:     "john",
@@ -895,6 +922,28 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 				m.userRepo.EXPECT().GetByEmail(mock.Anything, "john@example.com").Return(nil, errors.New("db fetch error")).Once()
 			},
 			wantErr: errors.New("db fetch error"),
+		},
+		{
+			name: "Whitelist add error during Google OAuth",
+			setupMocks: func(m authServiceMocks) {
+				m.oauthProvider.EXPECT().ExchangeCode(mock.Anything, "code", "state", "redirect").Return(oauthTokens, nil).Once()
+				m.oauthProvider.EXPECT().GetUserInfo(mock.Anything, oauthTokens).Return(oauthUserInfo, nil).Once()
+				m.userRepo.EXPECT().GetByEmail(mock.Anything, "john@example.com").Return(testUser, nil).Once()
+
+				m.uidGen.EXPECT().New().Return("session-id-123").Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Type == domainModel.TokenTypeAccess
+				})).Return("access-token-123", nil).Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Type == domainModel.TokenTypeRefresh
+				})).Return("refresh-token-123", nil).Once()
+
+				// Whitelist Add fails - should return error
+				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(errors.New("whitelist storage error")).Once()
+			},
+			wantErr: errors.New("whitelist storage error"),
 		},
 	}
 
@@ -1092,6 +1141,29 @@ func TestAuthService_RefreshToken(t *testing.T) {
 				m.eventPublisher.EXPECT().Publish(mock.Anything, mock.Anything).Return(nil).Once()
 			},
 			wantErr: nil,
+		},
+		{
+			name:         "Whitelist add error during token refresh",
+			refreshToken: "refresh-token",
+			setupMocks: func(m authServiceMocks) {
+				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
+				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(true, nil).Once()
+				m.userRepo.EXPECT().GetByUID(mock.Anything, refreshClaims.Uid).Return(testUser, nil).Once()
+
+				m.uidGen.EXPECT().New().Return("new-session-id-789").Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Type == domainModel.TokenTypeAccess
+				})).Return("new-access-token-123", nil).Once()
+
+				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+					return claims.Type == domainModel.TokenTypeRefresh
+				})).Return("new-refresh-token-123", nil).Once()
+
+				// Whitelist Add fails - should return error
+				m.tokenWhitelist.EXPECT().Add(mock.Anything, refreshClaims.Uid, "new-session-id-789").Return(errors.New("whitelist storage error")).Once()
+			},
+			wantErr: errors.New("whitelist storage error"),
 		},
 	}
 
