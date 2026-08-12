@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
@@ -389,6 +390,31 @@ func TestUserFileService_Update(t *testing.T) {
 			},
 			wantErr: domainerrors.ErrFileNotFound,
 		},
+		{
+			name: "Error - repository update fails",
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(errors.New("db error")).Once()
+			},
+			uid: "file-uid",
+			param: param.UserFileUpdateParam{
+				FileName: util.Ptr("updated.jpg"),
+			},
+			wantErr: errors.New("db error"),
+		},
+		{
+			name: "Error - event publish fails",
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Update(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("event error")).Once()
+			},
+			uid: "file-uid",
+			param: param.UserFileUpdateParam{
+				FileName: util.Ptr("updated.jpg"),
+			},
+			wantErr: errors.New("event error"),
+		},
 	}
 
 	for _, tt := range tests {
@@ -425,7 +451,7 @@ func TestUserFileService_Update(t *testing.T) {
 			// Assert
 			if tt.wantErr != nil {
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Contains(t, err.Error(), tt.wantErr.Error())
 				return
 			}
 
@@ -457,6 +483,25 @@ func TestUserFileService_Delete(t *testing.T) {
 			},
 			uid:     "nonexistent-file",
 			wantErr: domainerrors.ErrFileNotFound,
+		},
+		{
+			name: "Error - repository delete fails",
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Delete(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(errors.New("db error")).Once()
+			},
+			uid:     "file-uid",
+			wantErr: errors.New("db error"),
+		},
+		{
+			name: "Error - event publish fails",
+			setupMocks: func(fr *repomocks.MockUserFileRepository, ep *eventmocks.MockEventPublisher) {
+				fr.EXPECT().GetByUID(mock.Anything, "file-uid").Return(createUserFile(1, "file-uid", "user-uid", "image"), nil).Once()
+				fr.EXPECT().Delete(mock.Anything, mock.AnythingOfType("*model.UserFile")).Return(nil).Once()
+				ep.EXPECT().Publish(mock.Anything, mock.Anything).Return(errors.New("event error")).Once()
+			},
+			uid:     "file-uid",
+			wantErr: errors.New("event error"),
 		},
 	}
 
@@ -494,7 +539,7 @@ func TestUserFileService_Delete(t *testing.T) {
 			// Assert
 			if tt.wantErr != nil {
 				require.Error(t, err)
-				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Contains(t, err.Error(), tt.wantErr.Error())
 				return
 			}
 

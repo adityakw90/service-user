@@ -47,8 +47,41 @@ func NewUserService(
 	eventPublisher portEvent.EventPublisher,
 	resolvers portResolver.ResolverProvider,
 ) portSvc.UserService {
+	if userRepo == nil {
+		panic("userRepo is required")
+	}
+	if profileRepo == nil {
+		panic("profileRepo is required")
+	}
+	if pinRepo == nil {
+		panic("pinRepo is required")
+	}
+	if deviceRepo == nil {
+		panic("deviceRepo is required")
+	}
+	if userDeviceRepo == nil {
+		panic("userDeviceRepo is required")
+	}
+	if passwordHasher == nil {
+		panic("passwordHasher is required")
+	}
+	if pinHasher == nil {
+		panic("pinHasher is required")
+	}
+	if uidGen == nil {
+		panic("uidGen is required")
+	}
+	if tokenWhitelist == nil {
+		panic("tokenWhitelist is required")
+	}
 	if userObserver == nil {
 		panic("userObserver is required")
+	}
+	if eventPublisher == nil {
+		panic("eventPublisher is required")
+	}
+	if resolvers == nil {
+		panic("resolvers is required")
 	}
 	return &userService{
 		userRepo:       userRepo,

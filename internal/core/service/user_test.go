@@ -9,6 +9,11 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/core/domain/signal"
+	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
+	portObserver "github.com/adityakw90/service-user/internal/core/port/observer"
+	portRepository "github.com/adityakw90/service-user/internal/core/port/repository"
+	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
+	portSecurity "github.com/adityakw90/service-user/internal/core/port/security"
 	eventMocks "github.com/adityakw90/service-user/mocks/event"
 	observermocks "github.com/adityakw90/service-user/mocks/observer"
 	repomocks "github.com/adityakw90/service-user/mocks/repository"
@@ -39,6 +44,273 @@ func setupObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[
 	// Use Maybe() to make the expectation optional (can be called 0 or more times)
 	// Note: Using EXPECT().OnSignal() pattern for better type safety
 	observer.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
+}
+
+func TestCoreService_NewUserService(t *testing.T) {
+	tests := []struct {
+		name             string
+		userRepo         portRepository.UserRepository
+		profileRepo      portRepository.UserProfileRepository
+		pinRepo          portRepository.UserPinRepository
+		deviceRepo       portRepository.DeviceRepository
+		userDeviceRepo   portRepository.UserDeviceRepository
+		passwordHasher   portSecurity.Hasher
+		pinHasher        portSecurity.Hasher
+		uidGen           portSecurity.UIDGenerator
+		tokenWhitelist   portSecurity.TokenStore
+		userObserver     portObserver.ServiceObserver[signal.UserSignal]
+		eventPublisher   portEvent.EventPublisher
+		resolverProvider portResolver.ResolverProvider
+		shouldPanic      bool
+	}{
+		{
+			name:             "Happy Path",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      false,
+		},
+		{
+			name:             "Nil userRepo panics",
+			userRepo:         nil,
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil profileRepo panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      nil,
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil pinRepo panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          nil,
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil deviceRepo panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       nil,
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil userDeviceRepo panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   nil,
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil passwordHasher panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   nil,
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil pinHasher panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        nil,
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil uidGen panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           nil,
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil tokenWhitelist panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   nil,
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil userObserver panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     nil,
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil eventPublisher panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   nil,
+			resolverProvider: resolvermocks.NewMockResolverProvider(t),
+			shouldPanic:      true,
+		},
+		{
+			name:             "Nil resolverProvider panics",
+			userRepo:         repomocks.NewMockUserRepository(t),
+			profileRepo:      repomocks.NewMockUserProfileRepository(t),
+			pinRepo:          repomocks.NewMockUserPinRepository(t),
+			deviceRepo:       repomocks.NewMockDeviceRepository(t),
+			userDeviceRepo:   repomocks.NewMockUserDeviceRepository(t),
+			passwordHasher:   securitymocks.NewMockHasher(t),
+			pinHasher:        securitymocks.NewMockHasher(t),
+			uidGen:           securitymocks.NewMockUIDGenerator(t),
+			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
+			eventPublisher:   eventMocks.NewMockEventPublisher(t),
+			resolverProvider: nil,
+			shouldPanic:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.shouldPanic {
+				require.Panics(t, func() {
+					NewUserService(
+						tt.userRepo,
+						tt.profileRepo,
+						tt.pinRepo,
+						tt.deviceRepo,
+						tt.userDeviceRepo,
+						tt.passwordHasher,
+						tt.pinHasher,
+						tt.uidGen,
+						tt.tokenWhitelist,
+						tt.userObserver,
+						tt.eventPublisher,
+						tt.resolverProvider,
+					)
+				})
+			} else {
+				svc := NewUserService(
+					tt.userRepo,
+					tt.profileRepo,
+					tt.pinRepo,
+					tt.deviceRepo,
+					tt.userDeviceRepo,
+					tt.passwordHasher,
+					tt.pinHasher,
+					tt.uidGen,
+					tt.tokenWhitelist,
+					tt.userObserver,
+					tt.eventPublisher,
+					tt.resolverProvider,
+				)
+				require.NotNil(t, svc)
+			}
+		})
+	}
 }
 
 func TestUserService_Get(t *testing.T) {
