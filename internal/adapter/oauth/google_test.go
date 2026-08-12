@@ -224,7 +224,7 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 				// Don't set anything - simulate missing/expired challenge
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to get code challenge",
+			wantErrMsg: "google code challenge not found",
 		},
 		{
 			name:        "State Mismatch - Challenge Not Found",
@@ -238,7 +238,7 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 				require.NoError(t, err)
 			},
 			wantErr:    true,
-			wantErrMsg: "failed to get code challenge",
+			wantErrMsg: "google code challenge not found",
 		},
 		{
 			name:        "Token Without ID Token",
