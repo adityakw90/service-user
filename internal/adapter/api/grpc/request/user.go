@@ -31,15 +31,16 @@ type UserFilterRequest struct {
 }
 
 func (r *UserFilterRequest) ToUserFilterParams() *param.UserListFilterParam {
-	var status model.UserStatus
+	var status *model.UserStatus
 	if r.Status != nil {
-		status = model.UserStatus(*r.Status)
+		s := model.UserStatus(*r.Status)
+		status = &s
 	}
 	return &param.UserListFilterParam{
 		Uids:     r.Uids,
 		Username: r.Username,
 		Email:    r.Email,
-		Status:   &status,
+		Status:   status,
 		Exists:   r.Exists,
 		Query:    r.Query,
 	}

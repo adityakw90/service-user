@@ -302,9 +302,11 @@ func TestUserFilterRequestFromPb(t *testing.T) {
 			assert.Equal(t, got.Uids, params.Uids)
 			assert.Equal(t, got.Username, params.Username)
 			assert.Equal(t, got.Email, params.Email)
-			require.NotNil(t, params.Status)
 			if tt.wantStatus != nil {
+				require.NotNil(t, params.Status)
 				assert.Equal(t, model.UserStatus(*tt.wantStatus), *params.Status)
+			} else {
+				assert.Nil(t, params.Status)
 			}
 			assert.Equal(t, got.Exists, params.Exists)
 			assert.Equal(t, got.Query, params.Query)
