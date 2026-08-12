@@ -5,7 +5,7 @@ import (
 )
 
 func getEnv(key, defaultValue string) string {
-	if v := os.Getenv(key); v != "" {
+	if v, ok := os.LookupEnv(key); ok {
 		return v
 	}
 	return defaultValue
