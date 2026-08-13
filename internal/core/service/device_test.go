@@ -7,23 +7,13 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
-	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	eventMocks "github.com/adityakw90/service-user/mocks/event"
-	observermocks "github.com/adityakw90/service-user/mocks/observer"
 	repomocks "github.com/adityakw90/service-user/mocks/repository"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-// setupObserverAny allows any OnSignal calls on the observer (useful when not testing signal behavior)
-func setupDeviceObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[signal.DeviceSignal]) {
-	// Allow any OnSignal call without checking parameters
-	// Use Maybe() to make the expectation optional (can be called 0 or more times)
-	// Note: Using EXPECT().OnSignal() pattern for better type safety
-	observer.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.AnythingOfType("signal.DeviceSignal"), mock.Anything).Maybe()
-}
 
 func TestDeviceService_Get(t *testing.T) {
 	tests := []struct {
@@ -66,11 +56,6 @@ func TestDeviceService_Get(t *testing.T) {
 			svc := NewDeviceService(
 				mockDeviceRepo,
 				mockUserDeviceRepo,
-				func() *observermocks.MockServiceObserver[signal.DeviceSignal] {
-					obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
-					setupDeviceObserverAny(t, obs)
-					return obs
-				}(),
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -181,11 +166,6 @@ func TestDeviceService_List(t *testing.T) {
 			svc := NewDeviceService(
 				mockDeviceRepo,
 				mockUserDeviceRepo,
-				func() *observermocks.MockServiceObserver[signal.DeviceSignal] {
-					obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
-					setupDeviceObserverAny(t, obs)
-					return obs
-				}(),
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -255,11 +235,6 @@ func TestDeviceService_Delete(t *testing.T) {
 			svc := NewDeviceService(
 				mockDeviceRepo,
 				mockUserDeviceRepo,
-				func() *observermocks.MockServiceObserver[signal.DeviceSignal] {
-					obs := observermocks.NewMockServiceObserver[signal.DeviceSignal](t)
-					setupDeviceObserverAny(t, obs)
-					return obs
-				}(),
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)

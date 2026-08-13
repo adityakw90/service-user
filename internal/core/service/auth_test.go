@@ -9,11 +9,9 @@ import (
 	domainEvent "github.com/adityakw90/service-user/internal/core/domain/event"
 	domainModel "github.com/adityakw90/service-user/internal/core/domain/model"
 	domainParam "github.com/adityakw90/service-user/internal/core/domain/param"
-	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	eventmocks "github.com/adityakw90/service-user/mocks/event"
 	executormocks "github.com/adityakw90/service-user/mocks/executor"
 	oauthmocks "github.com/adityakw90/service-user/mocks/oauth"
-	observermocks "github.com/adityakw90/service-user/mocks/observer"
 	repomocks "github.com/adityakw90/service-user/mocks/repository"
 	securitymocks "github.com/adityakw90/service-user/mocks/security"
 	"github.com/adityakw90/service-user/pkg/util"
@@ -38,7 +36,6 @@ type authServiceMocks struct {
 	eventPublisher *eventmocks.MockEventPublisher
 	attemptTracker *securitymocks.MockAttemptTracker
 	rateLimiter    *securitymocks.MockRateLimiter
-	authObserver   *observermocks.MockServiceObserver[domainSignal.AuthSignal]
 }
 
 func newAuthServiceMocks(t *testing.T) authServiceMocks {
@@ -58,7 +55,6 @@ func newAuthServiceMocks(t *testing.T) authServiceMocks {
 		eventPublisher: eventmocks.NewMockEventPublisher(t),
 		attemptTracker: securitymocks.NewMockAttemptTracker(t),
 		rateLimiter:    securitymocks.NewMockRateLimiter(t),
-		authObserver:   observermocks.NewMockServiceObserver[domainSignal.AuthSignal](t),
 	}
 }
 
@@ -120,8 +116,6 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 			mockTokenBlacklist := securitymocks.NewMockTokenStore(t)
 			mockExecutor := executormocks.NewMockExecutor(t)
 			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
-			mockAuthObserver := observermocks.NewMockServiceObserver[domainSignal.AuthSignal](t)
-			mockAuthObserver.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.AnythingOfType("signal.AuthSignal"), mock.Anything).Maybe()
 
 			if tt.setupMocks != nil {
 				tt.setupMocks(mockUIDGen, mockOAuthProvider)
