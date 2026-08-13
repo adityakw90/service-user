@@ -25,6 +25,15 @@ func NewResolverProvider(
 	logger monitoring.Logger,
 	tracer monitoring.Tracer,
 ) portResolver.ResolverProvider {
+	if db == nil {
+		panic("db is required")
+	}
+	if redisClient == nil {
+		panic("redis client is required")
+	}
+	if tracer == nil {
+		panic("tracer is required")
+	}
 	return &resolverProvider{
 		db:                 db,
 		redisClient:        redisClient,
