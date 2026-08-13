@@ -7,6 +7,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func TestUserDeviceRepository_GetByUserIDAndDeviceID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID, tt.deviceID)
@@ -103,7 +104,7 @@ func TestUserDeviceRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			mockPool.ExpectExec(`INSERT INTO user_device`).
 				WithArgs(
@@ -159,7 +160,7 @@ func TestUserDeviceRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userDev)
@@ -206,7 +207,7 @@ func TestUserDeviceRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userDev)
@@ -252,7 +253,7 @@ func TestUserDeviceRepository_Revoke(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID, tt.deviceID)
@@ -437,7 +438,7 @@ func TestUserDeviceRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)

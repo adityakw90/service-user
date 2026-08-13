@@ -7,6 +7,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func TestDeviceRepository_GetByID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.id)
@@ -111,7 +112,7 @@ func TestDeviceRepository_GetByUID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.uid)
@@ -171,7 +172,7 @@ func TestDeviceRepository_GetByFingerprint(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.fingerprint)
@@ -217,7 +218,7 @@ func TestDeviceRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			rows := pgxmock.NewRows([]string{"id"}).AddRow(int64(1))
 			mockPool.ExpectQuery(`INSERT INTO device \(uid, device_fingerprint, device_name, created_at\) VALUES \(\$1, \$2, \$3, \$4\) RETURNING id`).
@@ -272,7 +273,7 @@ func TestDeviceRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.device)
@@ -318,7 +319,7 @@ func TestDeviceRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.device)
@@ -542,7 +543,7 @@ func TestDeviceRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)
@@ -617,7 +618,7 @@ func TestDeviceRepository_ListByUserID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewDeviceRepository(mockPool)
+			repo := NewDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID, tt.pagination, tt.filter)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func TestUserFileRepository_GetByID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserFileRepository(mockPool)
+			repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.id)
@@ -111,7 +112,7 @@ func TestUserFileRepository_GetByUID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserFileRepository(mockPool)
+			repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.uid)
@@ -162,7 +163,7 @@ func TestUserFileRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserFileRepository(mockPool)
+			repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			rows := pgxmock.NewRows([]string{"id"}).AddRow(int64(1))
 			mockPool.ExpectQuery(`INSERT INTO user_file`).
@@ -226,7 +227,7 @@ func TestUserFileRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserFileRepository(mockPool)
+			repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.file)
@@ -272,7 +273,7 @@ func TestUserFileRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserFileRepository(mockPool)
+			repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.file)
@@ -494,7 +495,7 @@ func TestUserFileRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserFileRepository(mockPool)
+			repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)

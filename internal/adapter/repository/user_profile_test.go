@@ -7,6 +7,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func TestProfileRepository_GetByUserID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID)
@@ -101,7 +102,7 @@ func TestProfileRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			mockPool.ExpectExec(`INSERT INTO user_profile`).
 				WithArgs(
@@ -163,7 +164,7 @@ func TestProfileRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.profile)
@@ -209,7 +210,7 @@ func TestProfileRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.profile)
@@ -358,7 +359,7 @@ func TestProfileRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)

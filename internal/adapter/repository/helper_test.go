@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+
 func TestValidateOrderBy(t *testing.T) {
 	// Create a test allowed order by map
 	testAllowedOrderBy := map[string]domainParam.UserOrderBy{
