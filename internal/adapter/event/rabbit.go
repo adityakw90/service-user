@@ -64,6 +64,12 @@ func NewRabbitmqPublisher(
 	logger monitoring.Logger,
 	tracer monitoring.Tracer,
 ) portEvent.EventPublisher {
+	if conn == nil {
+		panic("rabbitmq connection is required")
+	}
+	if tracer == nil {
+		panic("tracer is required")
+	}
 	routingKeyPrefix := config.RoutingKeyPrefix
 	if routingKeyPrefix != "" && !strings.HasSuffix(routingKeyPrefix, ".") {
 		routingKeyPrefix += "."
