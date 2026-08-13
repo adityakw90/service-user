@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -32,8 +33,10 @@ func TestTokenBlacklistAdapter_Add(t *testing.T) {
 
 			client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 			defer client.Close()
+			tracer := infra.NewNoopTracer()
+			logger := infra.NewNoopLogger()
 
-			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 
 			err = adapter.Add(context.Background(), tt.userUID, tt.tid)
 
@@ -71,8 +74,10 @@ func TestTokenBlacklistAdapter_Remove(t *testing.T) {
 
 			client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 			defer client.Close()
+			tracer := infra.NewNoopTracer()
+			logger := infra.NewNoopLogger()
 
-			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 			ctx := context.Background()
 
 			if tt.preAddToken {
@@ -133,8 +138,10 @@ func TestTokenBlacklistAdapter_RemoveAll(t *testing.T) {
 
 			client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 			defer client.Close()
+			tracer := infra.NewNoopTracer()
+			logger := infra.NewNoopLogger()
 
-			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 			ctx := context.Background()
 
 			for _, token := range tt.tokensToAdd {
@@ -180,8 +187,10 @@ func TestTokenBlacklistAdapter_IsAllowed(t *testing.T) {
 
 			client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 			defer client.Close()
+			tracer := infra.NewNoopTracer()
+			logger := infra.NewNoopLogger()
 
-			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 			ctx := context.Background()
 
 			if tt.preAddToken {
@@ -215,8 +224,10 @@ func TestTokenBlacklistAdapter_TTL(t *testing.T) {
 
 			client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 			defer client.Close()
+			tracer := infra.NewNoopTracer()
+			logger := infra.NewNoopLogger()
 
-			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", tt.ttl).(*TokenBlacklistAdapter)
+			adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", tt.ttl, tracer, logger).(*TokenBlacklistAdapter)
 			ctx := context.Background()
 
 			userUID := "user-123"
@@ -250,8 +261,10 @@ func TestTokenBlacklistAdapter_MultipleUsers(t *testing.T) {
 
 	client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 	defer client.Close()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
-	adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+	adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 	ctx := context.Background()
 
 	user1 := "user-1"
@@ -285,8 +298,10 @@ func TestTokenBlacklistAdapter_MultipleTokensPerUser(t *testing.T) {
 
 	client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 	defer client.Close()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
-	adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+	adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 	ctx := context.Background()
 
 	userUID := "user-multi"
@@ -323,8 +338,10 @@ func TestTokenBlacklistAdapter_BlockAndUnblockWorkflow(t *testing.T) {
 
 	client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 	defer client.Close()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
-	adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+	adapter := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 	ctx := context.Background()
 
 	userUID := "user-workflow"
@@ -379,9 +396,11 @@ func TestTokenBlacklistAdapter_vs_WhitelistAdapter(t *testing.T) {
 
 	client := redis.NewClient(&redis.Options{Addr: s.Addr()})
 	defer client.Close()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
-	whitelist := NewTokenWhitelistAdapter(client, "token:whitelist:", 30*24*time.Hour).(*TokenWhitelistAdapter)
-	blacklist := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour).(*TokenBlacklistAdapter)
+	whitelist := NewTokenWhitelistAdapter(client, "token:whitelist:", 30*24*time.Hour, tracer, logger).(*TokenWhitelistAdapter)
+	blacklist := NewTokenBlacklistAdapter(client, "token:blacklist:", 30*24*time.Hour, tracer, logger).(*TokenBlacklistAdapter)
 	ctx := context.Background()
 
 	userUID := "user-compare"

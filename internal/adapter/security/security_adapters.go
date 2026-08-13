@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	gomon "github.com/adityakw90/go-monitoring"
 	portsec "github.com/adityakw90/service-user/internal/core/port/security"
 	"github.com/redis/go-redis/v9"
 )
@@ -53,7 +54,7 @@ func (s *SecurityAdapters) Close() error {
 }
 
 // NewSecurityAdapters creates security adapters based on the provided configuration.
-func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *redis.Client) (*SecurityAdapters, error) {
+func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *redis.Client, tracer gomon.Tracer, logger gomon.Logger) (*SecurityAdapters, error) {
 	// Determine if we need Redis connection for any adapter
 	needsRedis := cfg.LoginTracker.Backend == "redis" ||
 		cfg.PINTracker.Backend == "redis" ||
@@ -64,7 +65,7 @@ func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *r
 	}
 
 	// Create login tracker
-	loginTracker, err := newAttemptTracker(ctx, redisClient, cfg.LoginTracker)
+	loginTracker, err := newAttemptTracker(ctx, redisClient, cfg.LoginTracker, tracer, logger)
 	if err != nil {
 		if redisClient != nil {
 			redisClient.Close()
@@ -73,7 +74,7 @@ func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *r
 	}
 
 	// Create PIN tracker
-	pinTracker, err := newAttemptTracker(ctx, redisClient, cfg.PINTracker)
+	pinTracker, err := newAttemptTracker(ctx, redisClient, cfg.PINTracker, tracer, logger)
 	if err != nil {
 		if redisClient != nil {
 			redisClient.Close()
@@ -82,7 +83,7 @@ func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *r
 	}
 
 	// Create rate limiter
-	rateLimiter, err := newRateLimiter(ctx, redisClient, cfg.RateLimiter)
+	rateLimiter, err := newRateLimiter(ctx, redisClient, cfg.RateLimiter, tracer, logger)
 	if err != nil {
 		if redisClient != nil {
 			redisClient.Close()
@@ -115,7 +116,7 @@ func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *r
 }
 
 // newAttemptTracker creates an attempt tracker based on the backend configuration.
-func newAttemptTracker(ctx context.Context, client *redis.Client, cfg AttemptTrackerConfig) (portsec.AttemptTracker, error) {
+func newAttemptTracker(ctx context.Context, client *redis.Client, cfg AttemptTrackerConfig, tracer gomon.Tracer, logger gomon.Logger) (portsec.AttemptTracker, error) {
 	switch cfg.Backend {
 	case "memory":
 		return NewMemoryAttemptTracker(
@@ -132,6 +133,8 @@ func newAttemptTracker(ctx context.Context, client *redis.Client, cfg AttemptTra
 			cfg.LockoutThreshold,
 			cfg.LockoutDuration,
 			cfg.LockoutCounterTTL,
+			tracer,
+			logger,
 		), nil
 	default:
 		return nil, fmt.Errorf("unknown attempt tracker backend: %s (must be 'memory' or 'redis')", cfg.Backend)
@@ -139,7 +142,7 @@ func newAttemptTracker(ctx context.Context, client *redis.Client, cfg AttemptTra
 }
 
 // newRateLimiter creates a rate limiter based on the backend configuration.
-func newRateLimiter(ctx context.Context, client *redis.Client, cfg RateLimiterConfig) (portsec.RateLimiter, error) {
+func newRateLimiter(ctx context.Context, client *redis.Client, cfg RateLimiterConfig, tracer gomon.Tracer, logger gomon.Logger) (portsec.RateLimiter, error) {
 	switch cfg.Backend {
 	case "memory":
 		return NewMemoryRateLimiter(
@@ -154,6 +157,8 @@ func newRateLimiter(ctx context.Context, client *redis.Client, cfg RateLimiterCo
 			client,
 			cfg.Limit,
 			cfg.WindowSize,
+			tracer,
+			logger,
 		), nil
 	default:
 		return nil, fmt.Errorf("unknown rate limiter backend: %s (must be 'memory' or 'redis')", cfg.Backend)

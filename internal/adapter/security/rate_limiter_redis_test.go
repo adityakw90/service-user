@@ -4,15 +4,19 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/adityakw90/service-user/internal/infra"
 )
 
 func TestRedisRateLimiter_Acquire(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	limit := 5
 	windowSize := 60 * time.Second
-	limiter := NewRedisRateLimiter(client, limit, windowSize)
+	limiter := NewRedisRateLimiter(client, limit, windowSize, tracer, logger)
 	deviceIp := "192.168.1.1"
 
 	tests := []struct {
@@ -72,10 +76,12 @@ func TestRedisRateLimiter_Acquire(t *testing.T) {
 func TestRedisRateLimiter_Reset(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	limit := 5
 	windowSize := 60 * time.Second
-	limiter := NewRedisRateLimiter(client, limit, windowSize)
+	limiter := NewRedisRateLimiter(client, limit, windowSize, tracer, logger)
 	deviceIp := "192.168.1.1"
 
 	// Use up the limit
@@ -108,10 +114,12 @@ func TestRedisRateLimiter_Reset(t *testing.T) {
 func TestRedisRateLimiter_SlidingWindow(t *testing.T) {
 	client, mini := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	limit := 5
 	windowSize := 1 * time.Second
-	limiter := NewRedisRateLimiter(client, limit, windowSize)
+	limiter := NewRedisRateLimiter(client, limit, windowSize, tracer, logger)
 	deviceIp := "192.168.1.1"
 
 	// Use up the limit
@@ -141,10 +149,12 @@ func TestRedisRateLimiter_SlidingWindow(t *testing.T) {
 func TestRedisRateLimiter_MultipleIPs(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	limit := 3
 	windowSize := 60 * time.Second
-	limiter := NewRedisRateLimiter(client, limit, windowSize)
+	limiter := NewRedisRateLimiter(client, limit, windowSize, tracer, logger)
 
 	ip1 := "192.168.1.1"
 	ip2 := "192.168.1.2"
@@ -170,10 +180,12 @@ func TestRedisRateLimiter_MultipleIPs(t *testing.T) {
 func TestRedisRateLimiter_ConcurrentRequests(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	limit := 100
 	windowSize := 60 * time.Second
-	limiter := NewRedisRateLimiter(client, limit, windowSize)
+	limiter := NewRedisRateLimiter(client, limit, windowSize, tracer, logger)
 	deviceIp := "192.168.1.1"
 
 	// Launch concurrent requests
