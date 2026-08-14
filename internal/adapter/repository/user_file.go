@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 // allowedOrderByUserFile maps OrderBy string values to their typed enum for validation.
 var allowedOrderByUserFile = map[string]param.UserFileOrderBy{
 	"id":         param.OrderByUserFileID,

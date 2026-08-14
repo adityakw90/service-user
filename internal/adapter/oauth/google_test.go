@@ -509,7 +509,7 @@ func TestAdapter_Oauth_GetUserInfo_NetworkError(t *testing.T) {
 		},
 		redisClient,
 		infra.NewNoopTracer(),
-				infra.NewNoopLogger(),
+		infra.NewNoopLogger(),
 	)
 	require.NoError(t, err)
 
@@ -539,11 +539,11 @@ func TestAdapter_Oauth_GetUserInfo_NetworkError(t *testing.T) {
 
 func TestAdapter_Oauth_createCodeChallenge(t *testing.T) {
 	tests := []struct {
-		name               string
-		config             *GoogleOAuthConfig
-		wantErr            bool
-		wantErrMsg         string
-		verifyChallenge    func(t *testing.T, challenge string)
+		name            string
+		config          *GoogleOAuthConfig
+		wantErr         bool
+		wantErrMsg      string
+		verifyChallenge func(t *testing.T, challenge string)
 	}{
 		{
 			name: "Happy Path - Valid Challenge Generation",
@@ -764,14 +764,14 @@ func TestAdapter_Oauth_storeChallenge_TTL(t *testing.T) {
 
 func TestAdapter_Oauth_getChallenge(t *testing.T) {
 	tests := []struct {
-		name         string
-		state        string
-		setupRedis   func(t *testing.T, ctx context.Context, redisClient *redis.Client)
-		wantErr      bool
-		wantErrType  error
-		wantErrMsg   string
+		name          string
+		state         string
+		setupRedis    func(t *testing.T, ctx context.Context, redisClient *redis.Client)
+		wantErr       bool
+		wantErrType   error
+		wantErrMsg    string
 		wantChallenge string
-		verifyRedis  func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string)
+		verifyRedis   func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string)
 	}{
 		{
 			name:  "Happy Path - Retrieve and Delete",
@@ -849,10 +849,10 @@ func TestAdapter_Oauth_getChallenge(t *testing.T) {
 
 func TestAdapter_Oauth_buildKey(t *testing.T) {
 	tests := []struct {
-		name         string
-		state        string
-		prefix       string
-		wantKey      string
+		name    string
+		state   string
+		prefix  string
+		wantKey string
 	}{
 		{
 			name:    "Normal State",
@@ -888,8 +888,8 @@ func TestAdapter_Oauth_buildKey(t *testing.T) {
 
 			oauth, err := NewGoogleOAuth(
 				&GoogleOAuthConfig{
-					ClientID:       "test-client-id",
-					ClientSecret:   "test-client-secret",
+					ClientID:        "test-client-id",
+					ClientSecret:    "test-client-secret",
 					RedisPKCEPrefix: tt.prefix,
 				},
 				redisClient,

@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 // allowedOrderByDevice maps OrderBy string values to their typed enum for validation.
 var allowedOrderByDevice = map[string]param.DeviceOrderBy{
 	"id":                 param.OrderByDeviceID,

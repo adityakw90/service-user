@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 // allowedOrderByUserPin maps OrderBy string values to their typed enum for validation.
 var allowedOrderByUserPin = map[string]param.UserPinOrderBy{
 	"user_id":    param.OrderByUserPinUserID,

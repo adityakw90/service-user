@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-
 // allowedOrderByUserProfile maps OrderBy string values to their typed enum for validation.
 var allowedOrderByUserProfile = map[string]param.UserProfileOrderBy{
 	"user_id":    param.OrderByUserProfileID,
