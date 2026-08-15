@@ -57,7 +57,7 @@ func (a *TokenWhitelistAdapter) Add(ctx context.Context, userUID, tid string) er
 	err := a.client.Set(newCtx, key, "1", a.defaultTTL).Err()
 	if err != nil {
 		if a.logger != nil {
-			a.logger.Error("redis token whitelist add failed", map[string]any{"error": err, "userUID": userUID, "tid": tid})
+			a.logger.Error("redis token whitelist add failed", map[string]any{"error": err, "userUID": truncateID(userUID), "tid": truncateID(tid)})
 		}
 		return err
 	}
@@ -73,7 +73,7 @@ func (a *TokenWhitelistAdapter) Remove(ctx context.Context, userUID, tid string)
 	err := a.client.Del(newCtx, key).Err()
 	if err != nil {
 		if a.logger != nil {
-			a.logger.Error("redis token whitelist remove failed", map[string]any{"error": err, "userUID": userUID, "tid": tid})
+			a.logger.Error("redis token whitelist remove failed", map[string]any{"error": err, "userUID": truncateID(userUID), "tid": truncateID(tid)})
 		}
 		return err
 	}
@@ -95,7 +95,7 @@ func (a *TokenWhitelistAdapter) RemoveAll(ctx context.Context, userUID string) e
 
 	if err := iter.Err(); err != nil {
 		if a.logger != nil {
-			a.logger.Error("redis token whitelist scan failed", map[string]any{"error": err, "userUID": userUID})
+			a.logger.Error("redis token whitelist scan failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return err
 	}
@@ -104,7 +104,7 @@ func (a *TokenWhitelistAdapter) RemoveAll(ctx context.Context, userUID string) e
 		err := a.client.Del(newCtx, keys...).Err()
 		if err != nil {
 			if a.logger != nil {
-				a.logger.Error("redis token whitelist removeAll failed", map[string]any{"error": err, "userUID": userUID, "keysCount": len(keys)})
+				a.logger.Error("redis token whitelist removeAll failed", map[string]any{"error": err, "userUID": truncateID(userUID), "keysCount": len(keys)})
 			}
 			return err
 		}
@@ -122,7 +122,7 @@ func (a *TokenWhitelistAdapter) IsAllowed(ctx context.Context, userUID, tid stri
 	result, err := a.client.Exists(newCtx, key).Result()
 	if err != nil {
 		if a.logger != nil {
-			a.logger.Error("redis token whitelist isallowed failed", map[string]any{"error": err, "userUID": userUID, "tid": tid})
+			a.logger.Error("redis token whitelist isallowed failed", map[string]any{"error": err, "userUID": truncateID(userUID), "tid": truncateID(tid)})
 		}
 		return false, fmt.Errorf("failed to check token whitelist: %w", err)
 	}

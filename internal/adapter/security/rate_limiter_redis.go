@@ -87,7 +87,7 @@ func (r *RedisRateLimiter) Acquire(ctx context.Context, deviceIp string) (bool, 
 	result, err := r.client.Eval(newCtx, script, []string{rateLimitKey}, now, windowStart, r.limit, member, int(r.windowSize.Seconds())).Result()
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis rate limiter acquire failed", map[string]any{"error": err, "deviceIp": deviceIp})
+			r.logger.Error("redis rate limiter acquire failed", map[string]any{"error": err, "deviceIp": truncateID(deviceIp)})
 		}
 		return false, fmt.Errorf("failed to check rate limit: %w", err)
 	}
@@ -96,7 +96,7 @@ func (r *RedisRateLimiter) Acquire(ctx context.Context, deviceIp string) (bool, 
 	allowed, ok := result.(int64)
 	if !ok {
 		if r.logger != nil {
-			r.logger.Error("redis rate limiter unexpected result format", map[string]any{"deviceIp": deviceIp, "result": result})
+			r.logger.Error("redis rate limiter unexpected result format", map[string]any{"deviceIp": truncateID(deviceIp), "result": result})
 		}
 		return false, fmt.Errorf("unexpected result format from rate limit script")
 	}
@@ -114,7 +114,7 @@ func (r *RedisRateLimiter) Reset(ctx context.Context, deviceIp string) error {
 	err := r.client.Del(newCtx, rateLimitKey).Err()
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis rate limiter reset failed", map[string]any{"error": err, "deviceIp": deviceIp})
+			r.logger.Error("redis rate limiter reset failed", map[string]any{"error": err, "deviceIp": truncateID(deviceIp)})
 		}
 		return fmt.Errorf("failed to reset rate limit: %w", err)
 	}

@@ -57,7 +57,7 @@ func (r *RedisAttemptTracker) Track(ctx context.Context, userUID string) error {
 	count, err := r.client.Incr(newCtx, key).Result()
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker incr failed", map[string]any{"error": err, "userUID": userUID})
+			r.logger.Error("redis attempt tracker incr failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return fmt.Errorf("failed to track attempt: %w", err)
 	}
@@ -74,7 +74,7 @@ func (r *RedisAttemptTracker) Track(ctx context.Context, userUID string) error {
 
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker expire failed", map[string]any{"error": err, "userUID": userUID})
+			r.logger.Error("redis attempt tracker expire failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return fmt.Errorf("failed to set counter TTL: %w", err)
 	}
@@ -86,7 +86,7 @@ func (r *RedisAttemptTracker) Track(ctx context.Context, userUID string) error {
 		err = r.client.Set(newCtx, lockoutKey, 1, r.lockoutDuration).Err()
 		if err != nil {
 			if r.logger != nil {
-				r.logger.Error("redis attempt tracker lockout set failed", map[string]any{"error": err, "userUID": userUID})
+				r.logger.Error("redis attempt tracker lockout set failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 			}
 			return fmt.Errorf("failed to set lockout: %w", err)
 		}
@@ -107,7 +107,7 @@ func (r *RedisAttemptTracker) IsLocked(ctx context.Context, userUID string) (boo
 	exists, err := r.client.Exists(newCtx, lockoutKey).Result()
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker islocked failed", map[string]any{"error": err, "userUID": userUID})
+			r.logger.Error("redis attempt tracker islocked failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return false, fmt.Errorf("failed to check lockout status: %w", err)
 	}
@@ -129,7 +129,7 @@ func (r *RedisAttemptTracker) Reset(ctx context.Context, userUID string) error {
 	err := r.client.Del(newCtx, keys...).Err()
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker reset failed", map[string]any{"error": err, "userUID": userUID})
+			r.logger.Error("redis attempt tracker reset failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return fmt.Errorf("failed to reset attempt tracker: %w", err)
 	}
@@ -151,7 +151,7 @@ func (r *RedisAttemptTracker) GetFailedAttempts(ctx context.Context, userUID str
 	}
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker getfailedattempts failed", map[string]any{"error": err, "userUID": userUID})
+			r.logger.Error("redis attempt tracker getfailedattempts failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return 0, fmt.Errorf("failed to get failed attempts: %w", err)
 	}
@@ -159,7 +159,7 @@ func (r *RedisAttemptTracker) GetFailedAttempts(ctx context.Context, userUID str
 	count, err := strconv.Atoi(val)
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker parse failed attempts failed", map[string]any{"error": err, "userUID": userUID, "value": val})
+			r.logger.Error("redis attempt tracker parse failed attempts failed", map[string]any{"error": err, "userUID": truncateID(userUID), "value": val})
 		}
 		return 0, fmt.Errorf("failed to parse failed attempts: %w", err)
 	}
@@ -178,7 +178,7 @@ func (r *RedisAttemptTracker) GetLockoutRemaining(ctx context.Context, userUID s
 	ttl, err := r.client.TTL(newCtx, lockoutKey).Result()
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("redis attempt tracker getlockoutremaining failed", map[string]any{"error": err, "userUID": userUID})
+			r.logger.Error("redis attempt tracker getlockoutremaining failed", map[string]any{"error": err, "userUID": truncateID(userUID)})
 		}
 		return 0, fmt.Errorf("failed to get lockout remaining: %w", err)
 	}

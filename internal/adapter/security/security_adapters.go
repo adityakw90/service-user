@@ -10,6 +10,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// truncateID returns a safe log-correlation prefix of an identifier.
+// Only the first 8 characters are retained so that raw security identifiers
+// (userUID, tid, device IP) are never written to logs verbatim.
+func truncateID(id string) string {
+	if len(id) <= 8 {
+		return id
+	}
+	return id[:8] + "…"
+}
+
 // AttemptTrackerConfig holds configuration for an attempt tracker.
 type AttemptTrackerConfig struct {
 	Backend           string        // "redis" or "memory"
