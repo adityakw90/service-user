@@ -8,9 +8,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/event"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
-	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
-	"github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/port/repository"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	portSec "github.com/adityakw90/service-user/internal/core/port/security"
@@ -28,7 +26,6 @@ type userService struct {
 	pinHasher      portSec.Hasher
 	uidGen         portSec.UIDGenerator
 	tokenWhitelist portSec.TokenStore
-	userObserver   observer.ServiceObserver[signal.UserSignal]
 	eventPublisher portEvent.EventPublisher
 	resolvers      portResolver.ResolverProvider
 }
@@ -43,7 +40,6 @@ func NewUserService(
 	pinHasher portSec.Hasher,
 	uidGen portSec.UIDGenerator,
 	tokenWhitelist portSec.TokenStore,
-	userObserver observer.ServiceObserver[signal.UserSignal],
 	eventPublisher portEvent.EventPublisher,
 	resolvers portResolver.ResolverProvider,
 ) portSvc.UserService {
@@ -74,9 +70,6 @@ func NewUserService(
 	if tokenWhitelist == nil {
 		panic("tokenWhitelist is required")
 	}
-	if userObserver == nil {
-		panic("userObserver is required")
-	}
 	if eventPublisher == nil {
 		panic("eventPublisher is required")
 	}
@@ -93,94 +86,47 @@ func NewUserService(
 		pinHasher:      pinHasher,
 		uidGen:         uidGen,
 		tokenWhitelist: tokenWhitelist,
-		userObserver:   userObserver,
 		eventPublisher: eventPublisher,
 		resolvers:      resolvers,
 	}
 }
 
 func (s *userService) Get(ctx context.Context, uid string) (*model.User, error) {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &uid,
-		Operation: "get",
-	}, nil)
-
 	if uid == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Operation: "get",
-		}, domainerrors.ErrInvalidUID)
 		return nil, domainerrors.ErrInvalidUID
 	}
 
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{uid})
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "get",
-			}, err)
 			return nil, err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &uid,
-			Operation: "get",
-		}, err)
 		return nil, domainerrors.ErrUserGetFailed
 	}
 
 	id, exists := ids[uid]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &uid,
-			Operation: "get",
-		}, err)
 		return nil, err
 	}
 
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &uid,
-			Operation: "get",
-		}, err)
 		return nil, err
 	}
 
 	if user.IsDeleted() {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &uid,
-			Operation: "get",
-		}, domainerrors.ErrUserDeleted)
 		return nil, domainerrors.ErrUserDeleted
 	}
 
 	if !user.IsActive() {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &uid,
-			Operation: "get",
-		}, domainerrors.ErrUserInactive)
 		return nil, domainerrors.ErrUserInactive
 	}
-
-	active := user.IsActive()
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &uid,
-		Username:  &user.Username,
-		Email:     &user.Email,
-		Status:    &user.Status,
-		Active:    &active,
-		Operation: "get",
-	}, nil)
 
 	return user, nil
 }
 
 func (s *userService) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserListFilterParam) (*model.Users, error) {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		Operation: "list",
-	}, nil)
-
 	// Set defaults for pagination
 	if pagination == nil {
 		pagination = &param.PaginationParam{
@@ -193,82 +139,43 @@ func (s *userService) List(ctx context.Context, pagination *param.PaginationPara
 
 	users, err := s.userRepo.List(ctx, pagination, filter)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "list",
-		}, err)
 		return nil, err
 	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		Operation: "list",
-	}, nil)
 
 	return users, nil
 }
 
 func (s *userService) Create(ctx context.Context, createParam *param.UserCreateParam) (*model.User, error) {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		Username:  &createParam.Username,
-		Email:     &createParam.Email,
-		Operation: "create",
-	}, nil)
-
 	// Validate input
 	if createParam.Username == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Operation: "create",
-		}, domainerrors.ErrInvalidUsername)
 		return nil, domainerrors.ErrInvalidUsername
 	}
 	if createParam.Email == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Operation: "create",
-		}, domainerrors.ErrInvalidEmail)
 		return nil, domainerrors.ErrInvalidEmail
 	}
 	if createParam.Password == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Operation: "create",
-		}, domainerrors.ErrInvalidPassword)
 		return nil, domainerrors.ErrInvalidPassword
 	}
 
 	// Check for duplicate email
 	_, err := s.userRepo.GetByEmail(ctx, createParam.Email)
 	if err == nil {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Email:     &createParam.Email,
-			Operation: "create",
-		}, domainerrors.ErrDuplicateEmail)
 		return nil, domainerrors.ErrDuplicateEmail
 	} else if !errors.Is(err, domainerrors.ErrUserNotFound) {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "create",
-		}, err)
 		return nil, err
 	}
 
 	// Check for duplicate username
 	_, err = s.userRepo.GetByUsername(ctx, createParam.Username)
 	if err == nil {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			Username:  &createParam.Username,
-			Operation: "create",
-		}, domainerrors.ErrDuplicateUsername)
 		return nil, domainerrors.ErrDuplicateUsername
 	} else if !errors.Is(err, domainerrors.ErrUserNotFound) {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "create",
-		}, err)
 		return nil, err
 	}
 
 	// Hash password
 	hashedPassword, err := s.passwordHasher.Hash(createParam.Password)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "create",
-		}, err)
 		return nil, err
 	}
 
@@ -283,9 +190,6 @@ func (s *userService) Create(ctx context.Context, createParam *param.UserCreateP
 
 	user, err = s.userRepo.Create(ctx, user)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "create",
-		}, err)
 		return nil, err
 	}
 
@@ -308,55 +212,23 @@ func (s *userService) Create(ctx context.Context, createParam *param.UserCreateP
 		Email:    user.Email,
 		Status:   string(user.Status),
 	}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "create",
-		}, err)
-	}
-
-	active := user.IsActive()
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &user.UID,
-		Username:  &user.Username,
-		Email:     &user.Email,
-		Status:    &user.Status,
-		Active:    &active,
-		Operation: "create",
-	}, nil)
 
 	return user, nil
 }
 
 func (s *userService) Update(ctx context.Context, uid string, updateParam *param.UserUpdateParam) error {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &uid,
-		Operation: "update",
-	}, nil)
-
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{uid})
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, err)
 			return err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &uid,
-			Operation: "update",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	id, exists := ids[uid]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &uid,
-			Operation: "update",
-		}, err)
 		return err
 	}
 
@@ -364,25 +236,13 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, err)
 			return err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &uid,
-			Operation: "update",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	// Check if user is deleted
 	if user.IsDeleted() {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &uid,
-			Operation: "update",
-		}, domainerrors.ErrUserDeleted)
 		return domainerrors.ErrUserDeleted
 	}
 
@@ -391,25 +251,13 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	// Update username if provided
 	if updateParam.Username != nil {
 		if *updateParam.Username == "" {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, domainerrors.ErrInvalidUsername)
 			return domainerrors.ErrInvalidUsername
 		}
 		// Check for duplicate
 		existing, err := s.userRepo.GetByUsername(ctx, *updateParam.Username)
 		if err == nil && existing.UID != uid {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, domainerrors.ErrDuplicateUsername)
 			return domainerrors.ErrDuplicateUsername
 		} else if err != nil && !errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, err)
 			return err
 		}
 		user.Username = *updateParam.Username
@@ -419,25 +267,13 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	// Update email if provided
 	if updateParam.Email != nil {
 		if *updateParam.Email == "" {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, domainerrors.ErrInvalidEmail)
 			return domainerrors.ErrInvalidEmail
 		}
 		// Check for duplicate
 		existing, err := s.userRepo.GetByEmail(ctx, *updateParam.Email)
 		if err == nil && existing.UID != uid {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, domainerrors.ErrDuplicateEmail)
 			return domainerrors.ErrDuplicateEmail
 		} else if err != nil && !errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, err)
 			return err
 		}
 		user.Email = *updateParam.Email
@@ -447,18 +283,10 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	// Update password if provided
 	if updateParam.Password != nil {
 		if *updateParam.Password == "" {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, domainerrors.ErrInvalidPassword)
 			return domainerrors.ErrInvalidPassword
 		}
 		hashedPassword, err := s.passwordHasher.Hash(*updateParam.Password)
 		if err != nil {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &uid,
-				Operation: "update",
-			}, err)
 			return err
 		}
 		user.Password = hashedPassword
@@ -474,10 +302,6 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	// Save changes
 	err = s.userRepo.Update(ctx, user)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &uid,
-			Operation: "update",
-		}, err)
 		return err
 	}
 
@@ -488,69 +312,32 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatedData{
 		ChangesCount: changesCount,
 	}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "update",
-		}, err)
-	}
-
-	active := user.IsActive()
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:          &uid,
-		Username:     &user.Username,
-		Email:        &user.Email,
-		Status:       &user.Status,
-		Active:       &active,
-		Operation:    "update",
-		ChangesCount: changesCount,
-	}, nil)
 
 	return nil
 }
 
 func (s *userService) Delete(ctx context.Context, uid string) error {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &uid,
-		Operation: "delete",
-	}, nil)
-
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{uid})
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &uid,
-			Operation: "delete",
-		}, err)
 		return domainerrors.ErrUserDeleteFailed
 	}
 
 	id, exists := ids[uid]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &uid,
-			Operation: "delete",
-		}, err)
 		return err
 	}
 
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &uid,
-			Operation: "delete",
-		}, err)
 		return err
 	}
 
 	// Soft delete via repository
 	err = s.userRepo.Delete(ctx, user)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &uid,
-			Operation: "delete",
-		}, err)
 		return err
 	}
 
@@ -559,108 +346,51 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 
 	// Publish user deleted event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.NewUserEntity(user), Metadata: event.EventUserDeletedData{}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			Operation: "delete",
-		}, err)
-	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &uid,
-		Username:  &user.Username,
-		Email:     &user.Email,
-		Status:    &user.Status,
-		Operation: "delete",
-	}, nil)
 
 	return nil
 }
 
 func (s *userService) GetProfile(ctx context.Context, userUID string) (*model.UserProfile, error) {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &userUID,
-		Operation: "get_profile",
-	}, nil)
-
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{userUID})
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "get_profile",
-		}, err)
 		return nil, domainerrors.ErrUserGetFailed
 	}
 
 	id, exists := ids[userUID]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "get_profile",
-		}, err)
 		return nil, err
 	}
 
 	// Get user first to verify existence
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "get_profile",
-		}, err)
 		return nil, err
 	}
 
 	// Get profile
 	profile, err := s.profileRepo.GetByUserID(ctx, user.ID)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "get_profile",
-		}, domainerrors.ErrProfileNotFound)
 		return nil, domainerrors.ErrProfileNotFound
 	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &userUID,
-		Username:  &user.Username,
-		Operation: "get_profile",
-	}, nil)
 
 	return profile, nil
 }
 
 func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts param.UserProfileUpdateParam) error {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &userUID,
-		Operation: "update_profile",
-	}, nil)
-
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{userUID})
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "update_profile",
-			}, err)
 			return err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "update_profile",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	id, exists := ids[userUID]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "update_profile",
-		}, err)
 		return err
 	}
 
@@ -668,16 +398,8 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "update_profile",
-			}, err)
 			return err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "update_profile",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
@@ -692,17 +414,9 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 			}
 			profile, err = s.profileRepo.Create(ctx, profile)
 			if err != nil {
-				s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-					UID:       &userUID,
-					Operation: "update_profile",
-				}, err)
 				return err
 			}
 		} else {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "update_profile",
-			}, domainerrors.ErrProfileNotFound)
 			return domainerrors.ErrProfileNotFound
 		}
 	}
@@ -724,102 +438,53 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	if len(opts.Avatar) > 0 {
 		// Log that avatar was provided but not processed
 		// Avatar handling requires UserFileService dependency to be added to userService
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "update_profile",
-		}, errors.New("avatar file handling not yet implemented - requires UserFileService integration"))
 		// Continue without updating avatar - this is a non-breaking change
 	}
 
 	// Save changes
 	err = s.profileRepo.Update(ctx, profile)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "update_profile",
-		}, err)
 		return err
 	}
 
 	// Publish user update profile event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.NewUserProfileEntity(profile), Metadata: event.EventUserUpdateProfileData{}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "update_profile",
-		}, err)
-	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &userUID,
-		Username:  &user.Username,
-		Operation: "update_profile",
-	}, nil)
 
 	return nil
 }
 
 func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &userUID,
-		Operation: "set_pin",
-	}, nil)
-
 	// Validate PIN
 	if pin == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, domainerrors.ErrPinInvalid)
 		return domainerrors.ErrPinInvalid
 	}
 
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{userUID})
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	id, exists := ids[userUID]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, err)
 		return err
 	}
 
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, err)
 		return err
 	}
 
 	// Check if user is deleted
 	if user.IsDeleted() {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, domainerrors.ErrUserDeleted)
 		return domainerrors.ErrUserDeleted
 	}
 
 	// Hash PIN
 	hashedPin, err := s.pinHasher.Hash(pin)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, err)
 		return err
 	}
 
@@ -827,10 +492,6 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 	existingPin, err := s.pinRepo.GetByUserID(ctx, user.ID)
 	isNewPIN := errors.Is(err, domainerrors.ErrUserNotFound) || errors.Is(err, domainerrors.ErrPinNotSet)
 	if err != nil && !isNewPIN {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "set_pin",
-		}, err)
 		return err
 	}
 
@@ -844,10 +505,6 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 		}
 		userPin, err = s.pinRepo.Create(ctx, userPin)
 		if err != nil {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "set_pin",
-			}, err)
 			return err
 		}
 	} else {
@@ -855,10 +512,6 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 		userPin.Code = hashedPin
 		err = s.pinRepo.Update(ctx, userPin)
 		if err != nil {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "set_pin",
-			}, err)
 			return err
 		}
 	}
@@ -866,66 +519,29 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 	// Publish user update pin event
 	if isNewPIN {
 		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserCreatePinData{}})
-		if err != nil {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "set_pin",
-			}, err)
-			return err
-		}
 	} else {
 		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserUpdatePinData{}})
-		if err != nil {
-			s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "set_pin",
-			}, err)
-			return err
-		}
 	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &userUID,
-		Username:  &user.Username,
-		Operation: "set_pin",
-	}, nil)
 
 	return nil
 }
 
 func (s *userService) ListDevice(ctx context.Context, userUID string, pagination *param.PaginationParam, filter *param.UserDeviceListFilterParam) (*model.Devices, error) {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &userUID,
-		Operation: "list_device",
-	}, nil)
-
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{userUID})
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "list_device",
-		}, err)
 		return nil, domainerrors.ErrUserGetFailed
 	}
 
 	id, exists := ids[userUID]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "list_device",
-		}, err)
 		return nil, err
 	}
 
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "list_device",
-		}, err)
 		return nil, err
 	}
 
@@ -951,75 +567,40 @@ func (s *userService) ListDevice(ctx context.Context, userUID string, pagination
 	// Get devices
 	devices, err := s.deviceRepo.ListByUserID(ctx, user.ID, pagination, deviceFilter)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "list_device",
-		}, err)
 		return nil, err
 	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &userUID,
-		Username:  &user.Username,
-		Operation: "list_device",
-	}, nil)
 
 	return devices, nil
 }
 
 func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID string) error {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &userUID,
-		Operation: "revoke_device",
-	}, nil)
-
 	// Resolve UID to ID
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{userUID})
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	id, exists := ids[userUID]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
 		return err
 	}
 
 	// Get user
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
 		return err
 	}
 
 	// Get device
 	device, err := s.deviceRepo.GetByUID(ctx, deviceUID)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
 		return err
 	}
 
 	// Get the user-device relationship to retrieve the current session ID
 	userDevice, err := s.userDeviceRepo.GetByUserIDAndDeviceID(ctx, user.ID, device.ID)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
 		return err
 	}
 
@@ -1033,10 +614,6 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	// Revoke device
 	err = s.userDeviceRepo.Revoke(ctx, user.ID, device.ID)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
 		return err
 	}
 
@@ -1044,52 +621,19 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.NewDeviceEntity(device), Metadata: event.EventDeviceDeletedData{
 		UserUID: userUID,
 	}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
-		return err
-	}
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.NewDeviceEntity(device), Metadata: event.EventUserRevokeDeviceData{
 		UserUID: userUID,
 	}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "revoke_device",
-		}, err)
-		return err
-	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &userUID,
-		Username:  &user.Username,
-		Operation: "revoke_device",
-	}, nil)
 
 	return nil
 }
 
 func (s *userService) ChangePassword(ctx context.Context, userUID string, passwordParam *param.UserChangePasswordParam) error {
-	s.userObserver.OnSignal(ctx, signal.SignalStart, signal.UserSignal{
-		UID:       &userUID,
-		Operation: "change_password",
-	}, nil)
-
 	// Validate input
 	if passwordParam.CurrentPassword == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, domainerrors.ErrInvalidCurrentPassword)
 		return domainerrors.ErrInvalidCurrentPassword
 	}
 	if passwordParam.NewPassword == "" {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, domainerrors.ErrInvalidPassword)
 		return domainerrors.ErrInvalidPassword
 	}
 
@@ -1097,26 +641,14 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 	ids, err := s.resolvers.User().IDsByUIDs(ctx, []string{userUID})
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "change_password",
-			}, err)
 			return err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalError, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	id, exists := ids[userUID]
 	if !exists {
 		err := domainerrors.ErrUserNotFound
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, err)
 		return err
 	}
 
@@ -1124,44 +656,24 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, domainerrors.ErrUserNotFound) {
-			s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-				UID:       &userUID,
-				Operation: "change_password",
-			}, err)
 			return err
 		}
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, err)
 		return domainerrors.ErrUserUpdateFailed
 	}
 
 	// Check if user is deleted
 	if user.IsDeleted() {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, domainerrors.ErrUserDeleted)
 		return domainerrors.ErrUserDeleted
 	}
 
 	// Verify current password
 	if !s.passwordHasher.Compare(user.Password, passwordParam.CurrentPassword) {
-		s.userObserver.OnSignal(ctx, signal.SignalReject, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, domainerrors.ErrInvalidCurrentPassword)
 		return domainerrors.ErrInvalidCurrentPassword
 	}
 
 	// Hash new password
 	hashedPassword, err := s.passwordHasher.Hash(passwordParam.NewPassword)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, err)
 		return err
 	}
 
@@ -1169,28 +681,11 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 	user.Password = hashedPassword
 	err = s.userRepo.Update(ctx, user)
 	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, err)
 		return err
 	}
 
 	// Publish user update password event
 	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatePasswordData{}})
-	if err != nil {
-		s.userObserver.OnSignal(ctx, signal.SignalFail, signal.UserSignal{
-			UID:       &userUID,
-			Operation: "change_password",
-		}, err)
-		return err
-	}
-
-	s.userObserver.OnSignal(ctx, signal.SignalSuccess, signal.UserSignal{
-		UID:       &userUID,
-		Username:  &user.Username,
-		Operation: "change_password",
-	}, nil)
 
 	return nil
 }

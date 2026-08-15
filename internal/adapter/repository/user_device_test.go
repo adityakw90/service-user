@@ -2,11 +2,14 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +57,7 @@ func TestUserDeviceRepository_GetByUserIDAndDeviceID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID, tt.deviceID)
@@ -103,7 +106,7 @@ func TestUserDeviceRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			mockPool.ExpectExec(`INSERT INTO user_device`).
 				WithArgs(
@@ -159,7 +162,7 @@ func TestUserDeviceRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userDev)
@@ -206,7 +209,7 @@ func TestUserDeviceRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userDev)
@@ -252,7 +255,7 @@ func TestUserDeviceRepository_Revoke(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID, tt.deviceID)
@@ -437,7 +440,7 @@ func TestUserDeviceRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserDeviceRepository(mockPool)
+			repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)
@@ -457,4 +460,52 @@ func TestUserDeviceRepository_List(t *testing.T) {
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
 	}
+}
+
+type mockLogger struct {
+	infra.NoopLogger
+	LoggedErrors []struct {
+		Msg    string
+		Fields map[string]any
+	}
+}
+
+func (l *mockLogger) Error(message string, fields map[string]any) {
+	l.LoggedErrors = append(l.LoggedErrors, struct {
+		Msg    string
+		Fields map[string]any
+	}{Msg: message, Fields: fields})
+}
+
+func TestUserDeviceRepository_GetByUserIDAndDeviceID_Logging(t *testing.T) {
+	mockPool, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mockPool.Close()
+
+	logger := &mockLogger{}
+	repo := NewUserDeviceRepository(mockPool, infra.NewNoopTracer(), logger)
+
+	// Test scenario 1: ErrUserDeviceNotFound -> Should not log
+	mockPool.ExpectQuery(`SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at FROM user_device`).
+		WithArgs(int64(1), int64(2)).
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "device_id", "ip_address", "last_active_at", "session_id", "revoked_at", "created_at"}))
+
+	_, err = repo.GetByUserIDAndDeviceID(context.Background(), 1, 2)
+	assert.ErrorIs(t, err, errors.ErrUserDeviceNotFound)
+	assert.Empty(t, logger.LoggedErrors)
+
+	// Test scenario 2: Unexpected DB error -> Should log
+	mockPool.ExpectQuery(`SELECT user_id, device_id, ip_address::text, last_active_at, session_id, revoked_at, created_at FROM user_device`).
+		WithArgs(int64(1), int64(2)).
+		WillReturnError(fmt.Errorf("database query failure"))
+
+	_, err = repo.GetByUserIDAndDeviceID(context.Background(), 1, 2)
+	assert.Error(t, err)
+	assert.Len(t, logger.LoggedErrors, 1)
+	assert.Equal(t, "failed to get user device", logger.LoggedErrors[0].Msg)
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "userID")
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "deviceID")
+	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
+
+	assert.NoError(t, mockPool.ExpectationsWereMet())
 }

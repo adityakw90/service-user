@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	gomon "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
@@ -20,60 +21,100 @@ var allowedOrderByUserProfile = map[string]param.UserProfileOrderBy{
 
 // ProfileRepository implements port.ProfileRepository for PostgreSQL.
 type ProfileRepository struct {
-	db PostgrePool
+	db     PostgrePool
+	tracer gomon.Tracer
+	logger gomon.Logger
 }
 
 // NewProfileRepository creates a new ProfileRepository.
-func NewProfileRepository(db PostgrePool) repository.UserProfileRepository {
-	return &ProfileRepository{db: db}
+func NewProfileRepository(db PostgrePool, tracer gomon.Tracer, logger gomon.Logger) repository.UserProfileRepository {
+	if db == nil {
+		panic("db is required")
+	}
+	if tracer == nil {
+		panic("tracer is required")
+	}
+	return &ProfileRepository{
+		db:     db,
+		tracer: tracer,
+		logger: logger,
+	}
 }
 
 // GetByUserID retrieves a profile by user ID.
 func (r *ProfileRepository) GetByUserID(ctx context.Context, userID int64) (*model.UserProfile, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserProfile.GetByUserID")
+	defer span.End()
+
 	query := `
 		SELECT user_id, first_name, last_name, bio, avatar_file_id, attributes, created_at, updated_at
 		FROM user_profile
 		WHERE user_id = $1
 	`
-	return r.scanProfile(r.db.QueryRow(ctx, query, userID))
+	profile, err := r.scanProfile(r.db.QueryRow(newCtx, query, userID))
+	if err != nil && err != errors.ErrProfileNotFound && r.logger != nil {
+		r.logger.Error("failed to get user profile", map[string]any{"error": err})
+	}
+	return profile, err
 }
 
 // Create adds a new profile.
 func (r *ProfileRepository) Create(ctx context.Context, profile *model.UserProfile) (*model.UserProfile, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserProfile.Create")
+	defer span.End()
+
 	query := `
 		INSERT INTO user_profile (user_id, first_name, last_name, bio, avatar_file_id, attributes, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
-	_, err := r.db.Exec(ctx, query,
+	_, err := r.db.Exec(newCtx, query,
 		profile.UserID, profile.FirstName, profile.LastName, profile.Bio,
 		profile.AvatarFileID, profile.Attributes, profile.CreatedAt, profile.UpdatedAt,
 	)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to create user profile", map[string]any{"error": err, "userID": profile.UserID})
+	}
 	return profile, err
 }
 
 // Update modifies an existing profile.
 func (r *ProfileRepository) Update(ctx context.Context, profile *model.UserProfile) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserProfile.Update")
+	defer span.End()
+
 	query := `
 		UPDATE user_profile
 		SET first_name = $1, last_name = $2, bio = $3, avatar_file_id = $4, attributes = $5, updated_at = $6
 		WHERE user_id = $7
 	`
-	_, err := r.db.Exec(ctx, query,
+	_, err := r.db.Exec(newCtx, query,
 		profile.FirstName, profile.LastName, profile.Bio,
 		profile.AvatarFileID, profile.Attributes, profile.UpdatedAt, profile.UserID,
 	)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to update user profile", map[string]any{"error": err, "userID": profile.UserID})
+	}
 	return err
 }
 
 // Delete removes a profile.
 func (r *ProfileRepository) Delete(ctx context.Context, profile *model.UserProfile) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserProfile.Delete")
+	defer span.End()
+
 	query := `DELETE FROM user_profile WHERE user_id = $1`
-	_, err := r.db.Exec(ctx, query, profile.UserID)
+	_, err := r.db.Exec(newCtx, query, profile.UserID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to delete user profile", map[string]any{"error": err, "userID": profile.UserID})
+	}
 	return err
 }
 
 // List retrieves all profiles with pagination and filtering.
 func (r *ProfileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserProfileListFilterParam) (*model.UserProfiles, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserProfile.List")
+	defer span.End()
+
 	limit := 10
 	offset := 0
 	page := 1
@@ -90,7 +131,10 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 	// Get total count
 	countQuery := `SELECT COUNT(*) FROM user_profile`
 	var total int64
-	if err := r.db.QueryRow(ctx, countQuery).Scan(&total); err != nil {
+	if err := r.db.QueryRow(newCtx, countQuery).Scan(&total); err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to count user profiles", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 
@@ -115,8 +159,11 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 		ORDER BY %s
 		LIMIT $1 OFFSET $2
 	`, orderByClause)
-	rows, err := r.db.Query(ctx, query, limit, offset)
+	rows, err := r.db.Query(newCtx, query, limit, offset)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to list user profiles", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 	defer rows.Close()
@@ -129,6 +176,9 @@ func (r *ProfileRepository) List(ctx context.Context, pagination *param.Paginati
 			&m.AvatarFileID, &m.Attributes, &m.CreatedAt, &m.UpdatedAt,
 		)
 		if err != nil {
+			if r.logger != nil {
+				r.logger.Error("failed to scan user profile", map[string]any{"error": err})
+			}
 			return nil, err
 		}
 		profiles = append(profiles, &m)

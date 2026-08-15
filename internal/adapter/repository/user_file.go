@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	gomon "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
@@ -24,69 +25,117 @@ var allowedOrderByUserFile = map[string]param.UserFileOrderBy{
 
 // UserFileRepository implements repository.UserFileRepository for PostgreSQL.
 type UserFileRepository struct {
-	db PostgrePool
+	db     PostgrePool
+	tracer gomon.Tracer
+	logger gomon.Logger
 }
 
 // NewUserFileRepository creates a new UserFileRepository.
-func NewUserFileRepository(db PostgrePool) repository.UserFileRepository {
-	return &UserFileRepository{db: db}
+func NewUserFileRepository(db PostgrePool, tracer gomon.Tracer, logger gomon.Logger) repository.UserFileRepository {
+	if db == nil {
+		panic("db is required")
+	}
+	if tracer == nil {
+		panic("tracer is required")
+	}
+	return &UserFileRepository{
+		db:     db,
+		tracer: tracer,
+		logger: logger,
+	}
 }
 
 // GetByID retrieves a file by internal ID.
 func (r *UserFileRepository) GetByID(ctx context.Context, id int64) (*model.UserFile, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserFile.GetByID")
+	defer span.End()
+
 	query := `
 		SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at
 		FROM user_file
 		WHERE id = $1
 	`
-	return r.scanFile(r.db.QueryRow(ctx, query, id))
+	file, err := r.scanFile(r.db.QueryRow(newCtx, query, id))
+	if err != nil && err != errors.ErrFileNotFound && r.logger != nil {
+		r.logger.Error("failed to get user file by id", map[string]any{"error": err})
+	}
+	return file, err
 }
 
 // GetByUID retrieves a file by public UID.
 func (r *UserFileRepository) GetByUID(ctx context.Context, uid string) (*model.UserFile, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserFile.GetByUID")
+	defer span.End()
+
 	query := `
 		SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at
 		FROM user_file
 		WHERE uid = $1
 	`
-	return r.scanFile(r.db.QueryRow(ctx, query, uid))
+	file, err := r.scanFile(r.db.QueryRow(newCtx, query, uid))
+	if err != nil && err != errors.ErrFileNotFound && r.logger != nil {
+		r.logger.Error("failed to get user file by uid", map[string]any{"error": err})
+	}
+	return file, err
 }
 
 // Create adds a new file to the database.
 func (r *UserFileRepository) Create(ctx context.Context, file *model.UserFile) (*model.UserFile, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserFile.Create")
+	defer span.End()
+
 	query := `
 		INSERT INTO user_file (uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id
 	`
-	return file, r.db.QueryRow(ctx, query,
+	err := r.db.QueryRow(newCtx, query,
 		file.UID, file.UserID, file.FileType, file.FileName,
 		file.FilePath, file.MimeType, file.SizeBytes, file.Visibility, file.CreatedAt,
 	).Scan(&file.ID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to create user file", map[string]any{"error": err, "uid": file.UID})
+	}
+	return file, err
 }
 
 // Update modifies an existing file.
 func (r *UserFileRepository) Update(ctx context.Context, file *model.UserFile) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserFile.Update")
+	defer span.End()
+
 	query := `
 		UPDATE user_file
 		SET file_type = $1, file_name = $2, file_path = $3, mime_type = $4, size_bytes = $5, visibility = $6
 		WHERE id = $7
 	`
-	_, err := r.db.Exec(ctx, query,
+	_, err := r.db.Exec(newCtx, query,
 		file.FileType, file.FileName, file.FilePath, file.MimeType, file.SizeBytes, file.Visibility, file.ID,
 	)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to update user file", map[string]any{"error": err, "id": file.ID})
+	}
 	return err
 }
 
 // Delete removes a file from the database.
 func (r *UserFileRepository) Delete(ctx context.Context, file *model.UserFile) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserFile.Delete")
+	defer span.End()
+
 	query := `DELETE FROM user_file WHERE id = $1`
-	_, err := r.db.Exec(ctx, query, file.ID)
+	_, err := r.db.Exec(newCtx, query, file.ID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to delete user file", map[string]any{"error": err, "id": file.ID})
+	}
 	return err
 }
 
 // List retrieves files with pagination and filtering.
 func (r *UserFileRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserFileListFilterParam) (*model.UserFiles, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserFile.List")
+	defer span.End()
+
 	limit := 10
 	offset := 0
 	page := 1
@@ -101,7 +150,7 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 	}
 
 	var conditions []string
-	var args []interface{}
+	var args []any
 	argIdx := 1
 
 	if filter != nil {
@@ -117,15 +166,18 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 		if len(filter.UserUid) > 0 {
 			// First get user IDs from UIDs - use IN clause for simplicity
 			// Build separate args for the subquery to avoid index confusion
-			var userQueryArgs []interface{}
+			var userQueryArgs []any
 			placeholders := make([]string, len(filter.UserUid))
 			for i := range filter.UserUid {
 				placeholders[i] = fmt.Sprintf("$%d", i+1)
 				userQueryArgs = append(userQueryArgs, filter.UserUid[i])
 			}
 			userQuery := fmt.Sprintf(`SELECT id FROM "user" WHERE uid IN (%s)`, strings.Join(placeholders, ", "))
-			rows, err := r.db.Query(ctx, userQuery, userQueryArgs...)
+			rows, err := r.db.Query(newCtx, userQuery, userQueryArgs...)
 			if err != nil {
+				if r.logger != nil {
+					r.logger.Error("failed to query user IDs for file list", map[string]any{"error": err})
+				}
 				return nil, err
 			}
 			defer rows.Close()
@@ -134,11 +186,17 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 			for rows.Next() {
 				var userID int64
 				if err := rows.Scan(&userID); err != nil {
+					if r.logger != nil {
+						r.logger.Error("failed to scan user ID", map[string]any{"error": err})
+					}
 					return nil, err
 				}
 				userIDs = append(userIDs, userID)
 			}
 			if rows.Err() != nil {
+				if r.logger != nil {
+					r.logger.Error("error iterating user IDs", map[string]any{"error": rows.Err()})
+				}
 				return nil, rows.Err()
 			}
 
@@ -174,7 +232,10 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 	// Get total count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM user_file %s", whereClause)
 	var total int64
-	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := r.db.QueryRow(newCtx, countQuery, args...).Scan(&total); err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to count user files", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 
@@ -202,14 +263,20 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := r.db.Query(newCtx, query, args...)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to list user files", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 	defer rows.Close()
 
 	files, err := r.scanRows(rows)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to scan user files", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +52,7 @@ func TestPinRepository_GetByUserID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewPinRepository(mockPool)
+			repo := NewPinRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID)
@@ -98,7 +99,7 @@ func TestPinRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewPinRepository(mockPool)
+			repo := NewPinRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			mockPool.ExpectExec(`INSERT INTO user_pin`).
 				WithArgs(tt.pin.UserID, tt.pin.Code, pgxmock.AnyArg(), pgxmock.AnyArg()).
@@ -150,7 +151,7 @@ func TestPinRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewPinRepository(mockPool)
+			repo := NewPinRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pin)
@@ -196,7 +197,7 @@ func TestPinRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewPinRepository(mockPool)
+			repo := NewPinRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pin)
@@ -345,7 +346,7 @@ func TestPinRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewPinRepository(mockPool)
+			repo := NewPinRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)

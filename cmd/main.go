@@ -8,20 +8,16 @@ import (
 	"syscall"
 	"time"
 
-	gomon "github.com/adityakw90/go-monitoring"
 	grpcadapter "github.com/adityakw90/service-user/internal/adapter/api/grpc"
 	"github.com/adityakw90/service-user/internal/adapter/event"
 	"github.com/adityakw90/service-user/internal/adapter/executor"
 	"github.com/adityakw90/service-user/internal/adapter/oauth"
-	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
 	"github.com/adityakw90/service-user/internal/config"
-	domainSignal "github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
 	portOAuth "github.com/adityakw90/service-user/internal/core/port/oauth"
-	portobserver "github.com/adityakw90/service-user/internal/core/port/observer"
 	"github.com/adityakw90/service-user/internal/core/service"
 	"github.com/adityakw90/service-user/internal/infra"
 )
@@ -120,12 +116,12 @@ func main() {
 	})
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(dbPool)
-	profileRepo := repository.NewProfileRepository(dbPool)
-	pinRepo := repository.NewPinRepository(dbPool)
-	deviceRepo := repository.NewDeviceRepository(dbPool)
-	userDeviceRepo := repository.NewUserDeviceRepository(dbPool)
-	_ = repository.NewUserFileRepository(dbPool)
+	userRepo := repository.NewUserRepository(dbPool, iMon.Tracer, iMon.Logger)
+	profileRepo := repository.NewProfileRepository(dbPool, iMon.Tracer, iMon.Logger)
+	pinRepo := repository.NewPinRepository(dbPool, iMon.Tracer, iMon.Logger)
+	deviceRepo := repository.NewDeviceRepository(dbPool, iMon.Tracer, iMon.Logger)
+	userDeviceRepo := repository.NewUserDeviceRepository(dbPool, iMon.Tracer, iMon.Logger)
+	_ = repository.NewUserFileRepository(dbPool, iMon.Tracer, iMon.Logger)
 
 	// Initialize resolvers
 	resolverProvider := resolver.NewResolverProvider(
@@ -176,8 +172,8 @@ func main() {
 	)
 
 	// Initialize cache adapters (using *redis.Client directly from infra)
-	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "token-blacklist:", 24*time.Hour)
-	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "token-whitelist:", 15*time.Minute)
+	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "token-blacklist:", 24*time.Hour, iMon.Tracer, iMon.Logger)
+	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "token-whitelist:", 15*time.Minute, iMon.Tracer, iMon.Logger)
 
 	// Initialize security adapters
 	securityAdapters, err := security.NewSecurityAdapters(ctx, security.SecurityConfig{
@@ -198,7 +194,7 @@ func main() {
 			Limit:      cfg.Security.RateLimiter.Limit,
 			WindowSize: cfg.Security.RateLimiter.WindowSize,
 		},
-	}, redisClient)
+	}, redisClient, iMon.Tracer, iMon.Logger)
 	if err != nil {
 		logger.Fatal("failed to initialize security adapters", map[string]interface{}{
 			"error": err.Error(),
@@ -286,7 +282,7 @@ func main() {
 		oauthProvider, err = oauth.NewGoogleOAuth(&oauth.GoogleOAuthConfig{
 			ClientID:     cfg.OAuth.Google.ClientID,
 			ClientSecret: cfg.OAuth.Google.ClientSecret,
-		}, redisClient)
+		}, redisClient, iMon.Tracer, iMon.Logger)
 		if err != nil {
 			logger.Fatal("failed to initialize OAuth provider", map[string]interface{}{
 				"error": err.Error(),
@@ -297,12 +293,6 @@ func main() {
 	// create executor
 	exc := executor.NewServiceExecutor(iMon.Logger, iMon.Tracer)
 	defer exc.Close()
-
-	// Create observers based on config
-	userObserver := createUserObserver(cfg, iMon.Logger, iMon.Tracer)
-	deviceObserver := createDeviceObserver(cfg, iMon.Logger, iMon.Tracer)
-	userFileObserver := createUserFileObserver(cfg, iMon.Logger, iMon.Tracer)
-	_ = createPinObserver(cfg, iMon.Logger, iMon.Tracer) // PIN operations handled in UserService
 
 	// Initialize services
 	uidGen := security.NewUIDGenerator()
@@ -316,7 +306,6 @@ func main() {
 		pinHasher,
 		uidGen,
 		tokenWhitelist,
-		userObserver,
 		eventPublisher,
 		resolverProvider,
 	)
@@ -336,7 +325,6 @@ func main() {
 		tokenBlacklist,
 		exc,
 		eventPublisher,
-		// authObserver,
 		securityAdapters.LoginTracker,
 		securityAdapters.RateLimiter,
 	)
@@ -345,13 +333,12 @@ func main() {
 	deviceService := service.NewDeviceService(
 		deviceRepo,
 		userDeviceRepo,
-		deviceObserver,
 		eventPublisher,
 	)
 
 	// Initialize user file service
-	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := service.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
+	userFileRepo := repository.NewUserFileRepository(dbPool, iMon.Tracer, iMon.Logger)
+	userFileService := service.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, eventPublisher)
 
 	// Create gRPC server with centralized setup
 	srv := grpcadapter.NewServer(
@@ -378,32 +365,4 @@ func main() {
 			"error": err.Error(),
 		})
 	}
-}
-
-func createUserObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserSignal] {
-	if cfg.Observer.User {
-		return observer.NewUserObserver(logger, tracer)
-	}
-	return observer.NewNoopObserver[domainSignal.UserSignal]()
-}
-
-func createDeviceObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.DeviceSignal] {
-	if cfg.Observer.Device {
-		return observer.NewDeviceObserver(logger, tracer)
-	}
-	return observer.NewNoopObserver[domainSignal.DeviceSignal]()
-}
-
-func createUserFileObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.UserFileSignal] {
-	if cfg.Observer.UserFile {
-		return observer.NewUserFileObserver(logger, tracer)
-	}
-	return observer.NewNoopObserver[domainSignal.UserFileSignal]()
-}
-
-func createPinObserver(cfg *config.Config, logger gomon.Logger, tracer gomon.Tracer) portobserver.ServiceObserver[domainSignal.PinSignal] {
-	if cfg.Observer.Pin {
-		return observer.NewPinObserver(logger, tracer)
-	}
-	return observer.NewNoopObserver[domainSignal.PinSignal]()
 }

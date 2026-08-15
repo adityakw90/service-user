@@ -8,6 +8,7 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pashagolub/pgxmock/v2"
@@ -40,7 +41,7 @@ func TestUserRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			// Expect the INSERT query with RETURNING id, created_at, updated_at
 			// Database handles timestamps via DEFAULT NOW()
@@ -124,7 +125,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.id)
@@ -195,7 +196,7 @@ func TestUserRepository_GetByUID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.uid)
@@ -268,7 +269,7 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.email)
@@ -341,7 +342,7 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.username)
@@ -397,7 +398,7 @@ func TestUserRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.user)
@@ -445,7 +446,7 @@ func TestUserRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.user)
@@ -686,7 +687,7 @@ func TestUserRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewUserRepository(mockPool)
+			repo := NewUserRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)
@@ -715,7 +716,7 @@ func TestUserRepository_Create_DuplicateEmail(t *testing.T) {
 	}
 	defer mock.Close()
 
-	repo := NewUserRepository(mock)
+	repo := NewUserRepository(mock, infra.NewNoopTracer(), nil)
 
 	user := &model.User{
 		UID:      "test-uid",
@@ -757,7 +758,7 @@ func TestUserRepository_Create_DuplicateUsername(t *testing.T) {
 	}
 	defer mock.Close()
 
-	repo := NewUserRepository(mock)
+	repo := NewUserRepository(mock, infra.NewNoopTracer(), nil)
 
 	user := &model.User{
 		UID:      "test-uid",

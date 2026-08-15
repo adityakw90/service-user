@@ -142,14 +142,3 @@ packages:
       OAuthProvider:
         config:
           dir: mocks/oauth
-
-  # Observer ports - mocks/observer/
-  github.com/adityakw90/service-user/internal/core/port/observer:
-    config:
-      with-expecter: true
-      outpkg: mocks
-      filename: "mock_{{.InterfaceName}}.go"
-    interfaces:
-      ServiceObserver:
-        config:
-          dir: mocks/observer

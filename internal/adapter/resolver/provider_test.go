@@ -15,6 +15,18 @@ import (
 
 // TestNewResolverProvider tests the creation of a new ResolverProvider
 func TestNewResolverProvider(t *testing.T) {
+	// Setup mock database
+	mockDB, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mockDB.Close()
+
+	// Setup miniredis
+	s := miniredis.RunT(t)
+	defer s.Close()
+
+	redisClient := redis.NewClient(&redis.Options{Addr: s.Addr()})
+	defer redisClient.Close()
+
 	tests := []struct {
 		name               string
 		db                 PostgrePool
@@ -26,8 +38,8 @@ func TestNewResolverProvider(t *testing.T) {
 	}{
 		{
 			name:               "Valid creation with all dependencies",
-			db:                 nil, // nil is acceptable for this test
-			redisClient:        nil,
+			db:                 mockDB,
+			redisClient:        redisClient,
 			redisPrefix:        "test",
 			redisCacheDuration: time.Hour,
 			logger:             infra.NewNoopLogger(),

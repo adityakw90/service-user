@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	gomon "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
@@ -23,57 +24,99 @@ var allowedOrderByDevice = map[string]param.DeviceOrderBy{
 
 // DeviceRepository implements repository.DeviceRepository for PostgreSQL.
 type DeviceRepository struct {
-	db PostgrePool
+	db     PostgrePool
+	tracer gomon.Tracer
+	logger gomon.Logger
 }
 
 // NewDeviceRepository creates a new DeviceRepository.
-func NewDeviceRepository(db PostgrePool) repository.DeviceRepository {
-	return &DeviceRepository{db: db}
+func NewDeviceRepository(db PostgrePool, tracer gomon.Tracer, logger gomon.Logger) repository.DeviceRepository {
+	if db == nil {
+		panic("db is required")
+	}
+	if tracer == nil {
+		panic("tracer is required")
+	}
+	return &DeviceRepository{
+		db:     db,
+		tracer: tracer,
+		logger: logger,
+	}
 }
 
 // GetByID retrieves a device by internal ID.
 func (r *DeviceRepository) GetByID(ctx context.Context, id int64) (*model.Device, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.GetByID")
+	defer span.End()
+
 	query := `SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE id = $1`
-	return r.scanDevice(r.db.QueryRow(ctx, query, id))
+	return r.scanDevice(r.db.QueryRow(newCtx, query, id))
 }
 
 // GetByUID retrieves a device by public UID.
 func (r *DeviceRepository) GetByUID(ctx context.Context, uid string) (*model.Device, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.GetByUID")
+	defer span.End()
+
 	query := `SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE uid = $1`
-	return r.scanDevice(r.db.QueryRow(ctx, query, uid))
+	return r.scanDevice(r.db.QueryRow(newCtx, query, uid))
 }
 
 // GetByFingerprint retrieves a device by fingerprint.
 func (r *DeviceRepository) GetByFingerprint(ctx context.Context, fingerprint string) (*model.Device, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.GetByFingerprint")
+	defer span.End()
+
 	query := `SELECT id, uid, device_fingerprint, device_name, created_at FROM device WHERE device_fingerprint = $1`
-	return r.scanDevice(r.db.QueryRow(ctx, query, fingerprint))
+	return r.scanDevice(r.db.QueryRow(newCtx, query, fingerprint))
 }
 
 // Create adds a new device.
 func (r *DeviceRepository) Create(ctx context.Context, device *model.Device) (*model.Device, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.Create")
+	defer span.End()
+
 	query := `INSERT INTO device (uid, device_fingerprint, device_name, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
-	err := r.db.QueryRow(ctx, query,
+	err := r.db.QueryRow(newCtx, query,
 		device.UID, device.DeviceFingerprint, device.DeviceName, device.CreatedAt,
 	).Scan(&device.ID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to create device", map[string]any{"error": err})
+	}
 	return device, err
 }
 
 // Update modifies an existing device.
 func (r *DeviceRepository) Update(ctx context.Context, device *model.Device) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.Update")
+	defer span.End()
+
 	query := `UPDATE device SET device_name = $1 WHERE id = $2`
-	_, err := r.db.Exec(ctx, query, device.DeviceName, device.ID)
+	_, err := r.db.Exec(newCtx, query, device.DeviceName, device.ID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to update device", map[string]any{"error": err})
+	}
 	return err
 }
 
 // Delete removes a device.
 func (r *DeviceRepository) Delete(ctx context.Context, device *model.Device) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.Delete")
+	defer span.End()
+
 	query := `DELETE FROM device WHERE id = $1`
-	_, err := r.db.Exec(ctx, query, device.ID)
+	_, err := r.db.Exec(newCtx, query, device.ID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to delete device", map[string]any{"error": err})
+	}
 	return err
 }
 
 // List retrieves all devices with pagination and filtering.
 func (r *DeviceRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.List")
+	defer span.End()
+
 	limit := 10
 	offset := 0
 	page := 1
@@ -111,7 +154,10 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 	// Get total count
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM device %s", whereClause)
 	var total int64
-	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := r.db.QueryRow(newCtx, countQuery, args...).Scan(&total); err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to count devices", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 
@@ -139,14 +185,20 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := r.db.Query(newCtx, query, args...)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to list devices", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 	defer rows.Close()
 
 	devices, err := r.scanRows(rows)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to scan devices", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 
@@ -164,6 +216,9 @@ func (r *DeviceRepository) List(ctx context.Context, pagination *param.Paginatio
 
 // ListByUserID lists all devices for a user.
 func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagination *param.PaginationParam, filter *param.DeviceListFilterParam) (*model.Devices, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.Device.ListByUserID")
+	defer span.End()
+
 	limit := 10
 	offset := 0
 	page := 1
@@ -213,7 +268,10 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 		%s
 	`, whereClause)
 	var total int64
-	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := r.db.QueryRow(newCtx, countQuery, args...).Scan(&total); err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to count user devices", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 
@@ -244,14 +302,20 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	`, whereClause, orderByClause, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
-	rows, err := r.db.Query(ctx, query, args...)
+	rows, err := r.db.Query(newCtx, query, args...)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to list user devices", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 	defer rows.Close()
 
 	devices, err := r.scanRows(rows)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to scan user devices", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 

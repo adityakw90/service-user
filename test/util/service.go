@@ -10,7 +10,6 @@ import (
 	"github.com/adityakw90/service-user/internal/adapter/event"
 	"github.com/adityakw90/service-user/internal/adapter/executor"
 	"github.com/adityakw90/service-user/internal/adapter/oauth"
-	"github.com/adityakw90/service-user/internal/adapter/observer"
 	"github.com/adityakw90/service-user/internal/adapter/repository"
 	"github.com/adityakw90/service-user/internal/adapter/resolver"
 	"github.com/adityakw90/service-user/internal/adapter/security"
@@ -86,11 +85,11 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	}
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(dbPool)
-	profileRepo := repository.NewProfileRepository(dbPool)
-	pinRepo := repository.NewPinRepository(dbPool)
-	deviceRepo := repository.NewDeviceRepository(dbPool)
-	userDeviceRepo := repository.NewUserDeviceRepository(dbPool)
+	userRepo := repository.NewUserRepository(dbPool, monitoring.Tracer, monitoring.Logger)
+	profileRepo := repository.NewProfileRepository(dbPool, monitoring.Tracer, monitoring.Logger)
+	pinRepo := repository.NewPinRepository(dbPool, monitoring.Tracer, monitoring.Logger)
+	deviceRepo := repository.NewDeviceRepository(dbPool, monitoring.Tracer, monitoring.Logger)
+	userDeviceRepo := repository.NewUserDeviceRepository(dbPool, monitoring.Tracer, monitoring.Logger)
 
 	// Initialize resolver
 	resolverProvider := resolver.NewResolverProvider(
@@ -137,19 +136,14 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	)
 
 	// Initialize token blacklist/whitelist
-	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "test-token-blacklist:", 24*time.Hour)
-	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "test-token-whitelist:", 15*time.Minute)
+	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "test-token-blacklist:", 24*time.Hour, monitoring.Tracer, monitoring.Logger)
+	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "test-token-whitelist:", 15*time.Minute, monitoring.Tracer, monitoring.Logger)
 
 	// Create event publishers (no-op for tests)
 	eventPublisher := event.NewNoOpPublisher()
 
 	// Initialize UID generator
 	uidGen := security.NewUIDGenerator()
-
-	// Initialize Observer
-	userObserver := observer.NewUserObserver(monitoring.Logger, monitoring.Tracer)
-	deviceObserver := observer.NewDeviceObserver(monitoring.Logger, monitoring.Tracer)
-	userFileObserver := observer.NewUserFileObserver(monitoring.Logger, monitoring.Tracer)
 
 	// Initialize Executor
 	serviceExecutor := executor.NewServiceExecutor(monitoring.Logger, monitoring.Tracer)
@@ -166,7 +160,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		pinHasher,
 		uidGen,
 		tokenWhitelist,
-		userObserver,
 		eventPublisher,
 		resolverProvider,
 	)
@@ -199,7 +192,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 			}
 		}
 
-		oauthProvider, err = oauth.NewGoogleOAuth(oauthConfig, redisClient)
+		oauthProvider, err = oauth.NewGoogleOAuth(oauthConfig, redisClient, monitoring.Tracer, monitoring.Logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize OAuth provider: %w", err)
 		}
@@ -219,7 +212,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		tokenBlacklist,
 		serviceExecutor,
 		eventPublisher,
-		// authObserver,
 		security.NewNoopAttemptTracker(),
 		security.NewNoopRateLimiter(),
 	)
@@ -228,13 +220,12 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 	deviceService := svc.NewDeviceService(
 		deviceRepo,
 		userDeviceRepo,
-		deviceObserver,
 		eventPublisher,
 	)
 
 	// Initialize user file service with resolver
-	userFileRepo := repository.NewUserFileRepository(dbPool)
-	userFileService := svc.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, userFileObserver, eventPublisher)
+	userFileRepo := repository.NewUserFileRepository(dbPool, monitoring.Tracer, monitoring.Logger)
+	userFileService := svc.NewUserFileService(userFileRepo, userRepo, resolverProvider.User(), uidGen, eventPublisher)
 
 	// prepare db and redis
 	// TruncateTestTables(t, ctx, dbPool)

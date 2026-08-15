@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	gomon "github.com/adityakw90/go-monitoring"
 	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
@@ -20,16 +21,31 @@ var allowedOrderByUserPin = map[string]param.UserPinOrderBy{
 
 // PinRepository implements port.PinRepository for PostgreSQL.
 type PinRepository struct {
-	db PostgrePool
+	db     PostgrePool
+	tracer gomon.Tracer
+	logger gomon.Logger
 }
 
 // NewPinRepository creates a new PinRepository.
-func NewPinRepository(db PostgrePool) repository.UserPinRepository {
-	return &PinRepository{db: db}
+func NewPinRepository(db PostgrePool, tracer gomon.Tracer, logger gomon.Logger) repository.UserPinRepository {
+	if db == nil {
+		panic("db is required")
+	}
+	if tracer == nil {
+		panic("tracer is required")
+	}
+	return &PinRepository{
+		db:     db,
+		tracer: tracer,
+		logger: logger,
+	}
 }
 
 // GetByUserID retrieves a PIN by user ID.
 func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.UserPin, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserPin.GetByUserID")
+	defer span.End()
+
 	query := `
 		SELECT user_pin.user_id, "user".uid, user_pin.code, user_pin.created_at, user_pin.updated_at
 		FROM user_pin
@@ -37,13 +53,16 @@ func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.U
 		WHERE user_pin.user_id = $1
 	`
 	var m model.UserPin
-	err := r.db.QueryRow(ctx, query, userID).Scan(
+	err := r.db.QueryRow(newCtx, query, userID).Scan(
 		&m.UserID, &m.UserUID, &m.Code, &m.CreatedAt, &m.UpdatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, errors.ErrPinNotSet
 	}
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to get user PIN", map[string]any{"error": err, "userID": userID})
+		}
 		return nil, err
 	}
 	return &m, nil
@@ -51,34 +70,55 @@ func (r *PinRepository) GetByUserID(ctx context.Context, userID int64) (*model.U
 
 // Create adds a new PIN.
 func (r *PinRepository) Create(ctx context.Context, pin *model.UserPin) (*model.UserPin, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserPin.Create")
+	defer span.End()
+
 	query := `
 		INSERT INTO user_pin (user_id, code, created_at, updated_at)
 		VALUES ($1, $2, $3, $4)
 	`
-	_, err := r.db.Exec(ctx, query, pin.UserID, pin.Code, pin.CreatedAt, pin.UpdatedAt)
+	_, err := r.db.Exec(newCtx, query, pin.UserID, pin.Code, pin.CreatedAt, pin.UpdatedAt)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to create user PIN", map[string]any{"error": err, "userID": pin.UserID})
+	}
 	return pin, err
 }
 
 // Update modifies an existing PIN.
 func (r *PinRepository) Update(ctx context.Context, pin *model.UserPin) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserPin.Update")
+	defer span.End()
+
 	query := `
 		UPDATE user_pin
 		SET code = $1, updated_at = $2
 		WHERE user_id = $3
 	`
-	_, err := r.db.Exec(ctx, query, pin.Code, pin.UpdatedAt, pin.UserID)
+	_, err := r.db.Exec(newCtx, query, pin.Code, pin.UpdatedAt, pin.UserID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to update user PIN", map[string]any{"error": err, "userID": pin.UserID})
+	}
 	return err
 }
 
 // Delete removes a PIN.
 func (r *PinRepository) Delete(ctx context.Context, pin *model.UserPin) error {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserPin.Delete")
+	defer span.End()
+
 	query := `DELETE FROM user_pin WHERE user_id = $1`
-	_, err := r.db.Exec(ctx, query, pin.UserID)
+	_, err := r.db.Exec(newCtx, query, pin.UserID)
+	if err != nil && r.logger != nil {
+		r.logger.Error("failed to delete user PIN", map[string]any{"error": err, "userID": pin.UserID})
+	}
 	return err
 }
 
 // List retrieves all PINs with pagination and filtering.
 func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationParam, filter *param.UserPinListFilterParam) (*model.UserPins, error) {
+	newCtx, span := r.tracer.StartSpan(ctx, "repository.UserPin.List")
+	defer span.End()
+
 	limit := 10
 	offset := 0
 	page := 1
@@ -95,7 +135,10 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 	// Get total count
 	countQuery := `SELECT COUNT(*) FROM user_pin`
 	var total int64
-	if err := r.db.QueryRow(ctx, countQuery).Scan(&total); err != nil {
+	if err := r.db.QueryRow(newCtx, countQuery).Scan(&total); err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to count user PINs", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 
@@ -120,8 +163,11 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 		ORDER BY %s
 		LIMIT $1 OFFSET $2
 	`, orderByClause)
-	rows, err := r.db.Query(ctx, query, limit, offset)
+	rows, err := r.db.Query(newCtx, query, limit, offset)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to list user PINs", map[string]any{"error": err})
+		}
 		return nil, err
 	}
 	defer rows.Close()
@@ -131,6 +177,9 @@ func (r *PinRepository) List(ctx context.Context, pagination *param.PaginationPa
 		var m model.UserPin
 		err := rows.Scan(&m.UserID, &m.Code, &m.CreatedAt, &m.UpdatedAt)
 		if err != nil {
+			if r.logger != nil {
+				r.logger.Error("failed to scan user PIN", map[string]any{"error": err})
+			}
 			return nil, err
 		}
 		pins = append(pins, &m)

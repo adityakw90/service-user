@@ -13,6 +13,7 @@ import (
 
 	domainErrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,11 @@ func TestAdapter_Oauth_NewGoogleOAuth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewGoogleOAuth(tt.config, nil)
+			redisClient, cleanup, err := newMockRedis()
+			require.NoError(t, err)
+			defer cleanup()
+
+			got, err := NewGoogleOAuth(tt.config, redisClient, infra.NewNoopTracer(), infra.NewNoopLogger())
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Equal(t, tt.wantErrType, err)
@@ -130,6 +135,8 @@ func TestAdapter_Oauth_GetAuthorizationURL(t *testing.T) {
 					ClientSecret: "test-client-secret",
 				},
 				redisClient,
+				infra.NewNoopTracer(),
+				infra.NewNoopLogger(),
 			)
 			require.NoError(t, err)
 
@@ -296,6 +303,8 @@ func TestAdapter_Oauth_ExchangeCode(t *testing.T) {
 					HttpTimeout: 5 * time.Second,
 				},
 				redisClient,
+				infra.NewNoopTracer(),
+				infra.NewNoopLogger(),
 			)
 			require.NoError(t, err)
 
@@ -438,6 +447,8 @@ func TestAdapter_Oauth_GetUserInfo(t *testing.T) {
 					HttpTimeout:  5 * time.Second,
 				},
 				redisClient,
+				infra.NewNoopTracer(),
+				infra.NewNoopLogger(),
 			)
 			require.NoError(t, err)
 
@@ -497,6 +508,8 @@ func TestAdapter_Oauth_GetUserInfo_NetworkError(t *testing.T) {
 			HttpTimeout:  1 * time.Millisecond, // Very short timeout
 		},
 		redisClient,
+		infra.NewNoopTracer(),
+		infra.NewNoopLogger(),
 	)
 	require.NoError(t, err)
 
@@ -522,4 +535,371 @@ func TestAdapter_Oauth_GetUserInfo_NetworkError(t *testing.T) {
 	cause := errors.Unwrap(err)
 	require.NotNil(t, cause, "underlying cause should be retained")
 	assert.Contains(t, cause.Error(), "failed to get user info", "cause error should contain network failure description")
+}
+
+func TestAdapter_Oauth_createCodeChallenge(t *testing.T) {
+	tests := []struct {
+		name            string
+		config          *GoogleOAuthConfig
+		wantErr         bool
+		wantErrMsg      string
+		verifyChallenge func(t *testing.T, challenge string)
+	}{
+		{
+			name: "Happy Path - Valid Challenge Generation",
+			config: &GoogleOAuthConfig{
+				ClientID:          "test-client-id",
+				ClientSecret:      "test-client-secret",
+				MinVerifierLength: 43,
+				MaxVerifierLength: 128,
+			},
+			wantErr: false,
+			verifyChallenge: func(t *testing.T, challenge string) {
+				// Verify challenge is base64url encoded (no padding)
+				assert.NotEmpty(t, challenge)
+				assert.Regexp(t, "^[A-Za-z0-9_-]+$", challenge, "challenge should be base64url encoded")
+				// SHA-256 produces 32 bytes, encoded as 43 chars in base64url
+				assert.Len(t, challenge, 43, "SHA-256 base64url encoded should be 43 chars")
+			},
+		},
+		{
+			name: "Custom Verifier Length - Minimum",
+			config: &GoogleOAuthConfig{
+				ClientID:          "test-client-id",
+				ClientSecret:      "test-client-secret",
+				MinVerifierLength: 43,
+				MaxVerifierLength: 50,
+			},
+			wantErr: false,
+			verifyChallenge: func(t *testing.T, challenge string) {
+				assert.NotEmpty(t, challenge)
+				assert.Len(t, challenge, 43)
+			},
+		},
+		{
+			name: "Produces Different Challenges",
+			config: &GoogleOAuthConfig{
+				ClientID:          "test-client-id",
+				ClientSecret:      "test-client-secret",
+				MinVerifierLength: 43,
+				MaxVerifierLength: 128,
+			},
+			wantErr: false,
+			verifyChallenge: func(t *testing.T, challenge string) {
+				// This test verifies randomness by checking that two calls produce different results
+				// The actual randomness is tested below in a separate test
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			redisClient, cleanup, err := newMockRedis()
+			require.NoError(t, err)
+			defer cleanup()
+
+			oauth, err := NewGoogleOAuth(tt.config, redisClient, infra.NewNoopTracer(), infra.NewNoopLogger())
+			require.NoError(t, err)
+
+			challenge, err := oauth.createCodeChallenge()
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
+			} else {
+				require.NoError(t, err)
+				assert.NotEmpty(t, challenge)
+				if tt.verifyChallenge != nil {
+					tt.verifyChallenge(t, challenge)
+				}
+			}
+		})
+	}
+}
+
+func TestAdapter_Oauth_createCodeChallenge_Randomness(t *testing.T) {
+	redisClient, cleanup, err := newMockRedis()
+	require.NoError(t, err)
+	defer cleanup()
+
+	oauth, err := NewGoogleOAuth(
+		&GoogleOAuthConfig{
+			ClientID:          "test-client-id",
+			ClientSecret:      "test-client-secret",
+			MinVerifierLength: 43,
+			MaxVerifierLength: 128,
+		},
+		redisClient,
+		infra.NewNoopTracer(),
+		infra.NewNoopLogger(),
+	)
+	require.NoError(t, err)
+
+	// Generate multiple challenges and verify they're different
+	challenges := make(map[string]bool)
+	for i := 0; i < 10; i++ {
+		challenge, err := oauth.createCodeChallenge()
+		require.NoError(t, err)
+		challenges[challenge] = true
+	}
+
+	// All 10 challenges should be unique
+	assert.Len(t, challenges, 10, "all generated challenges should be unique")
+}
+
+func TestAdapter_Oauth_storeChallenge(t *testing.T) {
+	tests := []struct {
+		name        string
+		state       string
+		challenge   string
+		setupRedis  func(t *testing.T, ctx context.Context, redisClient *redis.Client)
+		wantErr     bool
+		wantErrMsg  string
+		verifyRedis func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string)
+	}{
+		{
+			name:      "Happy Path - Store and Verify",
+			state:     "test-state",
+			challenge: "test-challenge",
+			setupRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client) {
+				// No setup - testing fresh store
+			},
+			wantErr: false,
+			verifyRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string) {
+				val, err := redisClient.Get(ctx, "oauth:pkce:"+state).Result()
+				require.NoError(t, err)
+				assert.Equal(t, "test-challenge", val)
+			},
+		},
+		{
+			name:      "Overwrite Existing Challenge",
+			state:     "existing-state",
+			challenge: "new-challenge",
+			setupRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client) {
+				err := redisClient.Set(ctx, "oauth:pkce:existing-state", "old-challenge", 10*time.Minute).Err()
+				require.NoError(t, err)
+			},
+			wantErr: false,
+			verifyRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string) {
+				val, err := redisClient.Get(ctx, "oauth:pkce:"+state).Result()
+				require.NoError(t, err)
+				assert.Equal(t, "new-challenge", val, "challenge should be overwritten")
+			},
+		},
+		{
+			name:      "Empty State",
+			state:     "",
+			challenge: "test-challenge",
+			setupRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client) {
+				// No setup
+			},
+			wantErr: false,
+			verifyRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string) {
+				val, err := redisClient.Get(ctx, "oauth:pkce:").Result()
+				require.NoError(t, err)
+				assert.Equal(t, "test-challenge", val)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			redisClient, cleanup, err := newMockRedis()
+			require.NoError(t, err)
+			defer cleanup()
+
+			tt.setupRedis(t, ctx, redisClient)
+
+			oauth, err := NewGoogleOAuth(
+				&GoogleOAuthConfig{
+					ClientID:     "test-client-id",
+					ClientSecret: "test-client-secret",
+				},
+				redisClient,
+				infra.NewNoopTracer(),
+				infra.NewNoopLogger(),
+			)
+			require.NoError(t, err)
+
+			err = oauth.storeChallenge(ctx, tt.state, tt.challenge)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
+			} else {
+				require.NoError(t, err)
+				if tt.verifyRedis != nil {
+					tt.verifyRedis(t, ctx, redisClient, tt.state)
+				}
+			}
+		})
+	}
+}
+
+func TestAdapter_Oauth_storeChallenge_TTL(t *testing.T) {
+	ctx := context.Background()
+	redisClient, cleanup, err := newMockRedis()
+	require.NoError(t, err)
+	defer cleanup()
+
+	customTTL := 5 * time.Minute
+	oauth, err := NewGoogleOAuth(
+		&GoogleOAuthConfig{
+			ClientID:     "test-client-id",
+			ClientSecret: "test-client-secret",
+			RedisPKCETTL: customTTL,
+		},
+		redisClient,
+		infra.NewNoopTracer(),
+		infra.NewNoopLogger(),
+	)
+	require.NoError(t, err)
+
+	err = oauth.storeChallenge(ctx, "test-state", "test-challenge")
+	require.NoError(t, err)
+
+	// Verify TTL is set (miniredis supports TTL)
+	ttl := redisClient.TTL(ctx, "oauth:pkce:test-state").Val()
+	assert.Equal(t, customTTL, ttl, "TTL should match configured value")
+}
+
+func TestAdapter_Oauth_getChallenge(t *testing.T) {
+	tests := []struct {
+		name          string
+		state         string
+		setupRedis    func(t *testing.T, ctx context.Context, redisClient *redis.Client)
+		wantErr       bool
+		wantErrType   error
+		wantErrMsg    string
+		wantChallenge string
+		verifyRedis   func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string)
+	}{
+		{
+			name:  "Happy Path - Retrieve and Delete",
+			state: "test-state",
+			setupRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client) {
+				err := redisClient.Set(ctx, "oauth:pkce:test-state", "test-challenge", 10*time.Minute).Err()
+				require.NoError(t, err)
+			},
+			wantErr:       false,
+			wantChallenge: "test-challenge",
+			verifyRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client, state string) {
+				// Verify challenge was deleted (single-use)
+				_, err := redisClient.Get(ctx, "oauth:pkce:"+state).Result()
+				assert.Equal(t, redis.Nil, err, "challenge should be deleted after retrieval")
+			},
+		},
+		{
+			name:  "Missing Challenge - Redis Nil",
+			state: "missing-state",
+			setupRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client) {
+				// Don't set anything
+			},
+			wantErr:     true,
+			wantErrType: ErrGoogleCodeChallengeNotFound,
+			wantErrMsg:  "google code challenge not found",
+		},
+		{
+			name:  "State Mismatch - Wrong Key",
+			state: "wrong-state",
+			setupRedis: func(t *testing.T, ctx context.Context, redisClient *redis.Client) {
+				err := redisClient.Set(ctx, "oauth:pkce:different-state", "test-challenge", 10*time.Minute).Err()
+				require.NoError(t, err)
+			},
+			wantErr:     true,
+			wantErrType: ErrGoogleCodeChallengeNotFound,
+			wantErrMsg:  "google code challenge not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			redisClient, cleanup, err := newMockRedis()
+			require.NoError(t, err)
+			defer cleanup()
+
+			tt.setupRedis(t, ctx, redisClient)
+
+			oauth, err := NewGoogleOAuth(
+				&GoogleOAuthConfig{
+					ClientID:     "test-client-id",
+					ClientSecret: "test-client-secret",
+				},
+				redisClient,
+				infra.NewNoopTracer(),
+				infra.NewNoopLogger(),
+			)
+			require.NoError(t, err)
+
+			got, err := oauth.getChallenge(ctx, tt.state)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Equal(t, tt.wantErrType, err)
+				assert.Contains(t, err.Error(), tt.wantErrMsg)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantChallenge, got)
+				if tt.verifyRedis != nil {
+					tt.verifyRedis(t, ctx, redisClient, tt.state)
+				}
+			}
+		})
+	}
+}
+
+func TestAdapter_Oauth_buildKey(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   string
+		prefix  string
+		wantKey string
+	}{
+		{
+			name:    "Normal State",
+			state:   "test-state",
+			prefix:  "oauth:pkce:",
+			wantKey: "oauth:pkce:test-state",
+		},
+		{
+			name:    "State With Special Characters",
+			state:   "state-with-dashes_and_underscores",
+			prefix:  "oauth:pkce:",
+			wantKey: "oauth:pkce:state-with-dashes_and_underscores",
+		},
+		{
+			name:    "Empty State",
+			state:   "",
+			prefix:  "oauth:pkce:",
+			wantKey: "oauth:pkce:",
+		},
+		{
+			name:    "Custom Prefix",
+			state:   "test-state",
+			prefix:  "custom:prefix:",
+			wantKey: "custom:prefix:test-state",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			redisClient, cleanup, err := newMockRedis()
+			require.NoError(t, err)
+			defer cleanup()
+
+			oauth, err := NewGoogleOAuth(
+				&GoogleOAuthConfig{
+					ClientID:        "test-client-id",
+					ClientSecret:    "test-client-secret",
+					RedisPKCEPrefix: tt.prefix,
+				},
+				redisClient,
+				infra.NewNoopTracer(),
+				infra.NewNoopLogger(),
+			)
+			require.NoError(t, err)
+
+			got := oauth.buildKey(tt.state)
+			assert.Equal(t, tt.wantKey, got)
+		})
+	}
 }

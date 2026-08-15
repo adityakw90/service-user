@@ -8,14 +8,11 @@ import (
 	domainerrors "github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
-	"github.com/adityakw90/service-user/internal/core/domain/signal"
 	portEvent "github.com/adityakw90/service-user/internal/core/port/event"
-	portObserver "github.com/adityakw90/service-user/internal/core/port/observer"
 	portRepository "github.com/adityakw90/service-user/internal/core/port/repository"
 	portResolver "github.com/adityakw90/service-user/internal/core/port/resolver"
 	portSecurity "github.com/adityakw90/service-user/internal/core/port/security"
 	eventMocks "github.com/adityakw90/service-user/mocks/event"
-	observermocks "github.com/adityakw90/service-user/mocks/observer"
 	repomocks "github.com/adityakw90/service-user/mocks/repository"
 	resolvermocks "github.com/adityakw90/service-user/mocks/resolver"
 	securitymocks "github.com/adityakw90/service-user/mocks/security"
@@ -38,14 +35,6 @@ func setupResolverMocks(t *testing.T) (*resolvermocks.MockResolverProvider, *res
 	return mockResolverProvider, mockUserResolver
 }
 
-// setupObserverAny allows any OnSignal calls on the observer (useful when not testing signal behavior)
-func setupObserverAny(t *testing.T, observer *observermocks.MockServiceObserver[signal.UserSignal]) {
-	// Allow any OnSignal call without checking parameters
-	// Use Maybe() to make the expectation optional (can be called 0 or more times)
-	// Note: Using EXPECT().OnSignal() pattern for better type safety
-	observer.EXPECT().OnSignal(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Maybe()
-}
-
 func TestCoreService_NewUserService(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -58,7 +47,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 		pinHasher        portSecurity.Hasher
 		uidGen           portSecurity.UIDGenerator
 		tokenWhitelist   portSecurity.TokenStore
-		userObserver     portObserver.ServiceObserver[signal.UserSignal]
 		eventPublisher   portEvent.EventPublisher
 		resolverProvider portResolver.ResolverProvider
 		shouldPanic      bool
@@ -74,7 +62,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      false,
@@ -90,7 +77,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -106,7 +92,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -122,7 +107,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -138,7 +122,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -154,7 +137,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -170,7 +152,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -186,7 +167,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        nil,
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -202,7 +182,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           nil,
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -218,13 +197,12 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   nil,
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
 		},
 		{
-			name:             "Nil userObserver panics",
+			name:             "All dependencies provided successfully",
 			userRepo:         repomocks.NewMockUserRepository(t),
 			profileRepo:      repomocks.NewMockUserProfileRepository(t),
 			pinRepo:          repomocks.NewMockUserPinRepository(t),
@@ -234,10 +212,9 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     nil,
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
-			shouldPanic:      true,
+			shouldPanic:      false,
 		},
 		{
 			name:             "Nil eventPublisher panics",
@@ -250,7 +227,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   nil,
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -266,7 +242,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
 			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
-			userObserver:     observermocks.NewMockServiceObserver[signal.UserSignal](t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: nil,
 			shouldPanic:      true,
@@ -287,7 +262,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 						tt.pinHasher,
 						tt.uidGen,
 						tt.tokenWhitelist,
-						tt.userObserver,
 						tt.eventPublisher,
 						tt.resolverProvider,
 					)
@@ -303,7 +277,6 @@ func TestCoreService_NewUserService(t *testing.T) {
 					tt.pinHasher,
 					tt.uidGen,
 					tt.tokenWhitelist,
-					tt.userObserver,
 					tt.eventPublisher,
 					tt.resolverProvider,
 				)
@@ -380,8 +353,6 @@ func TestUserService_Get(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -401,7 +372,6 @@ func TestUserService_Get(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -521,8 +491,6 @@ func TestUserService_List(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, _ := setupResolverMocks(t)
 
@@ -542,7 +510,6 @@ func TestUserService_List(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -642,8 +609,6 @@ func TestUserService_Create(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -663,7 +628,6 @@ func TestUserService_Create(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -789,8 +753,6 @@ func TestUserService_Update(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -810,7 +772,6 @@ func TestUserService_Update(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -872,8 +833,6 @@ func TestUserService_Delete(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -893,7 +852,6 @@ func TestUserService_Delete(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -966,8 +924,6 @@ func TestUserService_GetProfile(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -987,7 +943,6 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1086,8 +1041,6 @@ func TestUserService_UpdateProfile(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -1107,7 +1060,6 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1194,8 +1146,6 @@ func TestUserService_SetPin(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -1215,7 +1165,6 @@ func TestUserService_SetPin(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1288,8 +1237,6 @@ func TestUserService_ListDevice(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -1309,7 +1256,6 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1392,8 +1338,6 @@ func TestUserService_RevokeDevice(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockObserver := observermocks.NewMockServiceObserver[signal.UserSignal](t)
-			setupObserverAny(t, mockObserver)
 			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
@@ -1413,7 +1357,6 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockPinHasher,
 				mockUIDGen,
 				mockTokenWhitelist,
-				mockObserver,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)

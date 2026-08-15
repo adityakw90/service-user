@@ -4,16 +4,20 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/adityakw90/service-user/internal/infra"
 )
 
 func TestRedisAttemptTracker_Track(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 3
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	tests := []struct {
@@ -87,11 +91,13 @@ func TestRedisAttemptTracker_Track(t *testing.T) {
 func TestRedisAttemptTracker_IsLocked(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 3
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	// Initially not locked
@@ -121,11 +127,13 @@ func TestRedisAttemptTracker_IsLocked(t *testing.T) {
 func TestRedisAttemptTracker_Reset(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 3
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	// Track attempts until lockout
@@ -166,11 +174,13 @@ func TestRedisAttemptTracker_Reset(t *testing.T) {
 func TestRedisAttemptTracker_LockoutExpiry(t *testing.T) {
 	client, mini := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 2
 	lockoutDuration := 1 * time.Second // Redis truncates to minimum 1s
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	// Track attempts until lockout
@@ -197,11 +207,13 @@ func TestRedisAttemptTracker_LockoutExpiry(t *testing.T) {
 func TestRedisAttemptTracker_CounterExpiry(t *testing.T) {
 	client, mini := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 3
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 1 * time.Second // Redis truncates to minimum 1s
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	// Make 2 attempts (below threshold)
@@ -226,11 +238,13 @@ func TestRedisAttemptTracker_CounterExpiry(t *testing.T) {
 func TestRedisAttemptTracker_MultipleUsers(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 3
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 
 	user1 := "user-1"
 	user2 := "user-2"
@@ -256,11 +270,13 @@ func TestRedisAttemptTracker_MultipleUsers(t *testing.T) {
 func TestRedisAttemptTracker_Concurrent(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 100
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-concurrent"
 
 	// Launch concurrent attempts
@@ -287,11 +303,13 @@ func TestRedisAttemptTracker_Concurrent(t *testing.T) {
 func TestRedisAttemptTracker_GetFailedAttempts(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 5
 	lockoutDuration := 5 * time.Minute
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	// No attempts initially
@@ -320,11 +338,13 @@ func TestRedisAttemptTracker_GetFailedAttempts(t *testing.T) {
 func TestRedisAttemptTracker_GetLockoutRemaining(t *testing.T) {
 	client, _ := newMockRedis(t)
 	ctx := context.Background()
+	tracer := infra.NewNoopTracer()
+	logger := infra.NewNoopLogger()
 
 	threshold := 2
 	lockoutDuration := 2 * time.Second
 	counterTTL := 30 * time.Minute
-	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL)
+	tracker := NewRedisAttemptTracker(client, threshold, lockoutDuration, counterTTL, tracer, logger)
 	userUID := "user-123"
 
 	// No lockout initially

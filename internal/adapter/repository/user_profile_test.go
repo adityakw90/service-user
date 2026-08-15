@@ -2,11 +2,14 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
+	"github.com/adityakw90/service-user/internal/infra"
 	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/pashagolub/pgxmock/v3"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +54,7 @@ func TestProfileRepository_GetByUserID(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.userID)
@@ -101,7 +104,7 @@ func TestProfileRepository_Create(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			mockPool.ExpectExec(`INSERT INTO user_profile`).
 				WithArgs(
@@ -163,7 +166,7 @@ func TestProfileRepository_Update(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.profile)
@@ -209,7 +212,7 @@ func TestProfileRepository_Delete(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.profile)
@@ -358,7 +361,7 @@ func TestProfileRepository_List(t *testing.T) {
 			require.NoError(t, err)
 			defer mockPool.Close()
 
-			repo := NewProfileRepository(mockPool)
+			repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), nil)
 
 			if tt.setupMock != nil {
 				tt.setupMock(mockPool, tt.pagination, tt.filter)
@@ -378,4 +381,36 @@ func TestProfileRepository_List(t *testing.T) {
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestProfileRepository_GetByUserID_Logging(t *testing.T) {
+	mockPool, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mockPool.Close()
+
+	logger := &mockLogger{}
+	repo := NewProfileRepository(mockPool, infra.NewNoopTracer(), logger)
+
+	// Test scenario 1: ErrProfileNotFound -> Should not log
+	mockPool.ExpectQuery(`SELECT user_id, first_name, last_name, bio, avatar_file_id, attributes, created_at, updated_at FROM user_profile WHERE user_id = \$1`).
+		WithArgs(int64(1)).
+		WillReturnRows(pgxmock.NewRows([]string{"user_id", "first_name", "last_name", "bio", "avatar_file_id", "attributes", "created_at", "updated_at"}))
+
+	_, err = repo.GetByUserID(context.Background(), 1)
+	assert.ErrorIs(t, err, errors.ErrProfileNotFound)
+	assert.Empty(t, logger.LoggedErrors)
+
+	// Test scenario 2: Unexpected DB error -> Should log
+	mockPool.ExpectQuery(`SELECT user_id, first_name, last_name, bio, avatar_file_id, attributes, created_at, updated_at FROM user_profile WHERE user_id = \$1`).
+		WithArgs(int64(1)).
+		WillReturnError(fmt.Errorf("database query failure"))
+
+	_, err = repo.GetByUserID(context.Background(), 1)
+	assert.Error(t, err)
+	assert.Len(t, logger.LoggedErrors, 1)
+	assert.Equal(t, "failed to get user profile", logger.LoggedErrors[0].Msg)
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "userID")
+	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
+
+	assert.NoError(t, mockPool.ExpectationsWereMet())
 }
