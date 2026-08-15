@@ -545,7 +545,7 @@ func TestUserFileRepository_GetByID_Logging(t *testing.T) {
 	assert.Error(t, err)
 	assert.Len(t, logger.LoggedErrors, 1)
 	assert.Equal(t, "failed to get user file by id", logger.LoggedErrors[0].Msg)
-	assert.Equal(t, int64(1), logger.LoggedErrors[0].Fields["id"])
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "id")
 	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
 
 	assert.NoError(t, mockPool.ExpectationsWereMet())
@@ -577,7 +577,7 @@ func TestUserFileRepository_GetByUID_Logging(t *testing.T) {
 	assert.Error(t, err)
 	assert.Len(t, logger.LoggedErrors, 1)
 	assert.Equal(t, "failed to get user file by uid", logger.LoggedErrors[0].Msg)
-	assert.Equal(t, "uid-1", logger.LoggedErrors[0].Fields["uid"])
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "uid")
 	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
 
 	assert.NoError(t, mockPool.ExpectationsWereMet())

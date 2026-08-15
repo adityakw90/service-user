@@ -57,7 +57,7 @@ func (r *UserFileRepository) GetByID(ctx context.Context, id int64) (*model.User
 	`
 	file, err := r.scanFile(r.db.QueryRow(newCtx, query, id))
 	if err != nil && err != errors.ErrFileNotFound && r.logger != nil {
-		r.logger.Error("failed to get user file by id", map[string]any{"error": err, "id": id})
+		r.logger.Error("failed to get user file by id", map[string]any{"error": err})
 	}
 	return file, err
 }
@@ -74,7 +74,7 @@ func (r *UserFileRepository) GetByUID(ctx context.Context, uid string) (*model.U
 	`
 	file, err := r.scanFile(r.db.QueryRow(newCtx, query, uid))
 	if err != nil && err != errors.ErrFileNotFound && r.logger != nil {
-		r.logger.Error("failed to get user file by uid", map[string]any{"error": err, "uid": uid})
+		r.logger.Error("failed to get user file by uid", map[string]any{"error": err})
 	}
 	return file, err
 }

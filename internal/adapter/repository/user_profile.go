@@ -53,7 +53,7 @@ func (r *ProfileRepository) GetByUserID(ctx context.Context, userID int64) (*mod
 	`
 	profile, err := r.scanProfile(r.db.QueryRow(newCtx, query, userID))
 	if err != nil && err != errors.ErrProfileNotFound && r.logger != nil {
-		r.logger.Error("failed to get user profile", map[string]any{"error": err, "userID": userID})
+		r.logger.Error("failed to get user profile", map[string]any{"error": err})
 	}
 	return profile, err
 }

@@ -56,7 +56,7 @@ func (r *UserDeviceRepository) GetByUserIDAndDeviceID(ctx context.Context, userI
 	`
 	ud, err := r.scanUserDevice(r.db.QueryRow(newCtx, query, userID, deviceID))
 	if err != nil && err != errors.ErrUserDeviceNotFound && r.logger != nil {
-		r.logger.Error("failed to get user device", map[string]any{"error": err, "userID": userID, "deviceID": deviceID})
+		r.logger.Error("failed to get user device", map[string]any{"error": err})
 	}
 	return ud, err
 }

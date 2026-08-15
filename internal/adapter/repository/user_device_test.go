@@ -503,8 +503,8 @@ func TestUserDeviceRepository_GetByUserIDAndDeviceID_Logging(t *testing.T) {
 	assert.Error(t, err)
 	assert.Len(t, logger.LoggedErrors, 1)
 	assert.Equal(t, "failed to get user device", logger.LoggedErrors[0].Msg)
-	assert.Equal(t, int64(1), logger.LoggedErrors[0].Fields["userID"])
-	assert.Equal(t, int64(2), logger.LoggedErrors[0].Fields["deviceID"])
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "userID")
+	assert.NotContains(t, logger.LoggedErrors[0].Fields, "deviceID")
 	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
 
 	assert.NoError(t, mockPool.ExpectationsWereMet())
