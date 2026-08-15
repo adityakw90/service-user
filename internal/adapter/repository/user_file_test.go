@@ -2,9 +2,11 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	"github.com/adityakw90/service-user/internal/core/domain/errors"
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	"github.com/adityakw90/service-user/internal/infra"
@@ -515,4 +517,68 @@ func TestUserFileRepository_List(t *testing.T) {
 			assert.NoError(t, mockPool.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestUserFileRepository_GetByID_Logging(t *testing.T) {
+	mockPool, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mockPool.Close()
+
+	logger := &mockLogger{}
+	repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), logger)
+
+	// Test scenario 1: ErrFileNotFound -> Should not log
+	mockPool.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file WHERE id = \$1`).
+		WithArgs(int64(1)).
+		WillReturnRows(pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}))
+
+	_, err = repo.GetByID(context.Background(), 1)
+	assert.ErrorIs(t, err, errors.ErrFileNotFound)
+	assert.Empty(t, logger.LoggedErrors)
+
+	// Test scenario 2: Unexpected DB error -> Should log
+	mockPool.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file WHERE id = \$1`).
+		WithArgs(int64(1)).
+		WillReturnError(fmt.Errorf("database query failure"))
+
+	_, err = repo.GetByID(context.Background(), 1)
+	assert.Error(t, err)
+	assert.Len(t, logger.LoggedErrors, 1)
+	assert.Equal(t, "failed to get user file by id", logger.LoggedErrors[0].Msg)
+	assert.Equal(t, int64(1), logger.LoggedErrors[0].Fields["id"])
+	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
+
+	assert.NoError(t, mockPool.ExpectationsWereMet())
+}
+
+func TestUserFileRepository_GetByUID_Logging(t *testing.T) {
+	mockPool, err := pgxmock.NewPool()
+	require.NoError(t, err)
+	defer mockPool.Close()
+
+	logger := &mockLogger{}
+	repo := NewUserFileRepository(mockPool, infra.NewNoopTracer(), logger)
+
+	// Test scenario 1: ErrFileNotFound -> Should not log
+	mockPool.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file WHERE uid = \$1`).
+		WithArgs("uid-1").
+		WillReturnRows(pgxmock.NewRows([]string{"id", "uid", "user_id", "file_type", "file_name", "file_path", "mime_type", "size_bytes", "visibility", "created_at"}))
+
+	_, err = repo.GetByUID(context.Background(), "uid-1")
+	assert.ErrorIs(t, err, errors.ErrFileNotFound)
+	assert.Empty(t, logger.LoggedErrors)
+
+	// Test scenario 2: Unexpected DB error -> Should log
+	mockPool.ExpectQuery(`SELECT id, uid, user_id, file_type, file_name, file_path, mime_type, size_bytes, visibility, created_at FROM user_file WHERE uid = \$1`).
+		WithArgs("uid-1").
+		WillReturnError(fmt.Errorf("database query failure"))
+
+	_, err = repo.GetByUID(context.Background(), "uid-1")
+	assert.Error(t, err)
+	assert.Len(t, logger.LoggedErrors, 1)
+	assert.Equal(t, "failed to get user file by uid", logger.LoggedErrors[0].Msg)
+	assert.Equal(t, "uid-1", logger.LoggedErrors[0].Fields["uid"])
+	assert.NotNil(t, logger.LoggedErrors[0].Fields["error"])
+
+	assert.NoError(t, mockPool.ExpectationsWereMet())
 }

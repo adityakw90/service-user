@@ -54,7 +54,11 @@ func (r *UserDeviceRepository) GetByUserIDAndDeviceID(ctx context.Context, userI
 		FROM user_device
 		WHERE user_id = $1 AND device_id = $2
 	`
-	return r.scanUserDevice(r.db.QueryRow(newCtx, query, userID, deviceID))
+	ud, err := r.scanUserDevice(r.db.QueryRow(newCtx, query, userID, deviceID))
+	if err != nil && err != errors.ErrUserDeviceNotFound && r.logger != nil {
+		r.logger.Error("failed to get user device", map[string]any{"error": err, "userID": userID, "deviceID": deviceID})
+	}
+	return ud, err
 }
 
 // Create adds a new user-device relationship.

@@ -55,7 +55,11 @@ func (r *UserFileRepository) GetByID(ctx context.Context, id int64) (*model.User
 		FROM user_file
 		WHERE id = $1
 	`
-	return r.scanFile(r.db.QueryRow(newCtx, query, id))
+	file, err := r.scanFile(r.db.QueryRow(newCtx, query, id))
+	if err != nil && err != errors.ErrFileNotFound && r.logger != nil {
+		r.logger.Error("failed to get user file by id", map[string]any{"error": err, "id": id})
+	}
+	return file, err
 }
 
 // GetByUID retrieves a file by public UID.
@@ -68,7 +72,11 @@ func (r *UserFileRepository) GetByUID(ctx context.Context, uid string) (*model.U
 		FROM user_file
 		WHERE uid = $1
 	`
-	return r.scanFile(r.db.QueryRow(newCtx, query, uid))
+	file, err := r.scanFile(r.db.QueryRow(newCtx, query, uid))
+	if err != nil && err != errors.ErrFileNotFound && r.logger != nil {
+		r.logger.Error("failed to get user file by uid", map[string]any{"error": err, "uid": uid})
+	}
+	return file, err
 }
 
 // Create adds a new file to the database.
@@ -142,7 +150,7 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 	}
 
 	var conditions []string
-	var args []interface{}
+	var args []any
 	argIdx := 1
 
 	if filter != nil {
@@ -158,7 +166,7 @@ func (r *UserFileRepository) List(ctx context.Context, pagination *param.Paginat
 		if len(filter.UserUid) > 0 {
 			// First get user IDs from UIDs - use IN clause for simplicity
 			// Build separate args for the subquery to avoid index confusion
-			var userQueryArgs []interface{}
+			var userQueryArgs []any
 			placeholders := make([]string, len(filter.UserUid))
 			for i := range filter.UserUid {
 				placeholders[i] = fmt.Sprintf("$%d", i+1)
