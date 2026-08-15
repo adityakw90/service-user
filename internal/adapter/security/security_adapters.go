@@ -74,6 +74,10 @@ func NewSecurityAdapters(ctx context.Context, cfg SecurityConfig, redisClient *r
 		return nil, fmt.Errorf("redis client is required for redis backend")
 	}
 
+	if needsRedis && tracer == nil {
+		return nil, fmt.Errorf("tracer is required for redis backend")
+	}
+
 	// Create login tracker
 	loginTracker, err := newAttemptTracker(ctx, redisClient, cfg.LoginTracker, tracer, logger)
 	if err != nil {
