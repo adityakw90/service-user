@@ -60,7 +60,7 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) (*model.U
 
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("failed to create user", map[string]any{"error": err, "uid": user.UID})
+			r.logger.Error("failed to create user", map[string]any{"error": err})
 		}
 		return nil, HandlePgError(err)
 	}
@@ -127,7 +127,7 @@ func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 		user.Username, user.Email, user.Password, user.Status, user.UpdatedAt, user.ID,
 	)
 	if err != nil && r.logger != nil {
-		r.logger.Error("failed to update user", map[string]any{"error": err, "id": user.ID})
+		r.logger.Error("failed to update user", map[string]any{"error": err})
 	}
 	return err
 }
@@ -140,7 +140,7 @@ func (r *UserRepository) Delete(ctx context.Context, user *model.User) error {
 	query := `UPDATE "user" SET deleted_at = $1 WHERE id = $2`
 	_, err := r.db.Exec(newCtx, query, time.Now().UTC(), user.ID)
 	if err != nil && r.logger != nil {
-		r.logger.Error("failed to delete user", map[string]any{"error": err, "id": user.ID})
+		r.logger.Error("failed to delete user", map[string]any{"error": err})
 	}
 	return err
 }

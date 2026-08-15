@@ -81,7 +81,7 @@ func (r *DeviceRepository) Create(ctx context.Context, device *model.Device) (*m
 		device.UID, device.DeviceFingerprint, device.DeviceName, device.CreatedAt,
 	).Scan(&device.ID)
 	if err != nil && r.logger != nil {
-		r.logger.Error("failed to create device", map[string]any{"error": err, "uid": device.UID})
+		r.logger.Error("failed to create device", map[string]any{"error": err})
 	}
 	return device, err
 }
@@ -94,7 +94,7 @@ func (r *DeviceRepository) Update(ctx context.Context, device *model.Device) err
 	query := `UPDATE device SET device_name = $1 WHERE id = $2`
 	_, err := r.db.Exec(newCtx, query, device.DeviceName, device.ID)
 	if err != nil && r.logger != nil {
-		r.logger.Error("failed to update device", map[string]any{"error": err, "id": device.ID})
+		r.logger.Error("failed to update device", map[string]any{"error": err})
 	}
 	return err
 }
@@ -107,7 +107,7 @@ func (r *DeviceRepository) Delete(ctx context.Context, device *model.Device) err
 	query := `DELETE FROM device WHERE id = $1`
 	_, err := r.db.Exec(newCtx, query, device.ID)
 	if err != nil && r.logger != nil {
-		r.logger.Error("failed to delete device", map[string]any{"error": err, "id": device.ID})
+		r.logger.Error("failed to delete device", map[string]any{"error": err})
 	}
 	return err
 }
@@ -270,7 +270,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	var total int64
 	if err := r.db.QueryRow(newCtx, countQuery, args...).Scan(&total); err != nil {
 		if r.logger != nil {
-			r.logger.Error("failed to count user devices", map[string]any{"error": err, "userID": userID})
+			r.logger.Error("failed to count user devices", map[string]any{"error": err})
 		}
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	rows, err := r.db.Query(newCtx, query, args...)
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("failed to list user devices", map[string]any{"error": err, "userID": userID})
+			r.logger.Error("failed to list user devices", map[string]any{"error": err})
 		}
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (r *DeviceRepository) ListByUserID(ctx context.Context, userID int64, pagin
 	devices, err := r.scanRows(rows)
 	if err != nil {
 		if r.logger != nil {
-			r.logger.Error("failed to scan user devices", map[string]any{"error": err, "userID": userID})
+			r.logger.Error("failed to scan user devices", map[string]any{"error": err})
 		}
 		return nil, err
 	}
