@@ -324,9 +324,8 @@ func (g *GoogleOAuth) getChallenge(ctx context.Context, state string) (string, e
 		span.RecordError(err)
 		if err == redis.Nil {
 			logger.Error("failed to get code challenge", map[string]any{
-				"challenge.state": state,
-				"error.type":      fmt.Sprintf("%T", err),
-				"error.message":   err.Error(),
+				"error.type":    fmt.Sprintf("%T", err),
+				"error.message": err.Error(),
 			})
 			return "", ErrGoogleCodeChallengeNotFound
 		}
@@ -339,10 +338,8 @@ func (g *GoogleOAuth) getChallenge(ctx context.Context, state string) (string, e
 		// Log but don't fail - verifier is already consumed
 		// In production, this should be logged
 		logger.Error("failed to delete code challenge for one time use", map[string]any{
-			"challenge.state": state,
-			"challenge.key":   key,
-			"error.type":      fmt.Sprintf("%T", err),
-			"error.message":   err.Error(),
+			"error.type":    fmt.Sprintf("%T", err),
+			"error.message": err.Error(),
 		})
 	}
 	return code, nil
