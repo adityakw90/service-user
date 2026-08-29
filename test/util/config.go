@@ -86,9 +86,11 @@ func LoadTestConfig(t *testing.T) (*config.Config, error) {
 			},
 		},
 		Jwt: config.JWTConfig{
-			SecretKey:     "test-secret-key",
-			AccessExpiry:  15 * time.Minute,
-			RefreshExpiry: 24 * time.Hour,
+			SecretKey:       "test-secret-key",
+			AccessExpiry:    15 * time.Minute,
+			RefreshExpiry:   24 * time.Hour,
+			AccessStrategy:  "blacklist",
+			RefreshStrategy: "whitelist",
 		},
 		PasswordHasher: config.HasherConfig{
 			Type:        "bcrypt",

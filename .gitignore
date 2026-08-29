@@ -53,3 +53,4 @@ config.yaml
 docker-compose.yml
 /docs
 /backup
+/release.sh

@@ -315,6 +315,7 @@ func main() {
 		passwordHasher,
 		pinHasher,
 		uidGen,
+		accessTokenManager,
 		refreshTokenManager,
 		eventPublisher,
 		resolverProvider,

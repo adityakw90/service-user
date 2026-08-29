@@ -7,7 +7,6 @@ import (
 	"github.com/adityakw90/service-user/internal/core/domain/model"
 	"github.com/adityakw90/service-user/internal/core/domain/param"
 	eventMocks "github.com/adityakw90/service-user/mocks/event"
-	"github.com/adityakw90/service-user/pkg/util"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -52,6 +51,7 @@ func createTestDevice(id int64, uid, name, fingerprint string) *model.Device {
 	}
 }
 
+/*
 // Helper function to create a test user device
 func createUserDevice(userID, deviceID int64, ipAddress string) *model.UserDevice {
 	now := time.Now().UTC()
@@ -62,6 +62,7 @@ func createUserDevice(userID, deviceID int64, ipAddress string) *model.UserDevic
 		CreatedAt: now,
 	}
 }
+*/
 
 // Helper function to create a test user file
 func createUserFile(id int64, uid, userUID, fileType string) *model.UserFile {
@@ -93,6 +94,7 @@ func createUserPin(userID int64, userUID string, code string) *model.UserPin {
 	}
 }
 
+/*
 // Helper function to create auth params
 func createAuthParams(identifier, identifierType, password, deviceName, deviceFingerprint, deviceIP string) *param.AuthParams {
 	return &param.AuthParams{
@@ -104,6 +106,7 @@ func createAuthParams(identifier, identifierType, password, deviceName, deviceFi
 		DeviceIP:          util.Ptr(deviceIP),
 	}
 }
+*/
 
 // Helper function to create user create params
 func createUserCreateParams(username, email, password string) *param.UserCreateParam {

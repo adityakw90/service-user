@@ -1053,6 +1053,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 					return claims.Uid == refreshClaims.Uid && claims.Sid == "new-session-id-789" && claims.Type == domainModel.TokenTypeRefresh
 				})).Return("new-refresh-token-123", nil).Once()
 
+				m.accessTokenManager.EXPECT().RevokeSession(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(nil).Once()
 				m.refreshTokenManager.EXPECT().RevokeSession(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.refresh_token", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
@@ -1092,6 +1093,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("new-access-token-123", nil).Once()
 				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("new-refresh-token-123", nil).Once()
 
+				m.accessTokenManager.EXPECT().RevokeSession(mock.Anything, claimsWithDevice.Uid, claimsWithDevice.Sid).Return(nil).Once()
 				m.refreshTokenManager.EXPECT().RevokeSession(mock.Anything, claimsWithDevice.Uid, claimsWithDevice.Sid).Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.refresh_token", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {

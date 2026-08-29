@@ -24,9 +24,10 @@ type userService struct {
 	userDeviceRepo repository.UserDeviceRepository
 	passwordHasher portSec.Hasher
 	pinHasher      portSec.Hasher
-	uidGen              portSec.UIDGenerator
+	uidGen               portSec.UIDGenerator
+	accessTokenManager  portSec.TokenManager
 	refreshTokenManager portSec.TokenManager
-	eventPublisher      portEvent.EventPublisher
+	eventPublisher       portEvent.EventPublisher
 	resolvers      portResolver.ResolverProvider
 }
 
@@ -38,9 +39,10 @@ func NewUserService(
 	userDeviceRepo repository.UserDeviceRepository,
 	passwordHasher portSec.Hasher,
 	pinHasher portSec.Hasher,
-	uidGen              portSec.UIDGenerator,
+	uidGen               portSec.UIDGenerator,
+	accessTokenManager  portSec.TokenManager,
 	refreshTokenManager portSec.TokenManager,
-	eventPublisher      portEvent.EventPublisher,
+	eventPublisher       portEvent.EventPublisher,
 	resolvers portResolver.ResolverProvider,
 ) portSvc.UserService {
 	if userRepo == nil {
@@ -67,6 +69,9 @@ func NewUserService(
 	if uidGen == nil {
 		panic("uidGen is required")
 	}
+	if accessTokenManager == nil {
+		panic("accessTokenManager is required")
+	}
 	if refreshTokenManager == nil {
 		panic("refreshTokenManager is required")
 	}
@@ -84,9 +89,10 @@ func NewUserService(
 		userDeviceRepo: userDeviceRepo,
 		passwordHasher: passwordHasher,
 		pinHasher:      pinHasher,
-		uidGen:              uidGen,
+		uidGen:               uidGen,
+		accessTokenManager:  accessTokenManager,
 		refreshTokenManager: refreshTokenManager,
-		eventPublisher:      eventPublisher,
+		eventPublisher:       eventPublisher,
 		resolvers:      resolvers,
 	}
 }
@@ -201,13 +207,10 @@ func (s *userService) Create(ctx context.Context, createParam *param.UserCreateP
 		UserID:  user.ID,
 		UserUID: user.UID,
 	}
-	_, err = s.profileRepo.Create(ctx, profile)
-	if err != nil {
-		// Log error but don't fail user creation
-	}
+	_, _ = s.profileRepo.Create(ctx, profile)
 
 	// Publish user created event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.NewUserEntity(user), Metadata: event.EventUserCreatedData{
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreated, Entity: event.NewUserEntity(user), Metadata: event.EventUserCreatedData{
 		Username: user.Username,
 		Email:    user.Email,
 		Status:   string(user.Status),
@@ -309,7 +312,7 @@ func (s *userService) Update(ctx context.Context, uid string, updateParam *param
 	_ = s.resolvers.User().Invalidate(ctx, param.WithUIDs(user.UID), param.WithIDs(user.ID))
 
 	// Publish user updated event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatedData{
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdated, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatedData{
 		ChangesCount: changesCount,
 	}})
 
@@ -345,7 +348,7 @@ func (s *userService) Delete(ctx context.Context, uid string) error {
 	_ = s.resolvers.User().Invalidate(ctx, param.WithUIDs(user.UID), param.WithIDs(user.ID))
 
 	// Publish user deleted event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.NewUserEntity(user), Metadata: event.EventUserDeletedData{}})
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserDeleted, Entity: event.NewUserEntity(user), Metadata: event.EventUserDeletedData{}})
 
 	return nil
 }
@@ -436,9 +439,9 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	}
 	// Handle avatar file if opts.Avatar is provided
 	if len(opts.Avatar) > 0 {
-		// Log that avatar was provided but not processed
 		// Avatar handling requires UserFileService dependency to be added to userService
 		// Continue without updating avatar - this is a non-breaking change
+		_ = opts.Avatar
 	}
 
 	// Save changes
@@ -448,7 +451,7 @@ func (s *userService) UpdateProfile(ctx context.Context, userUID string, opts pa
 	}
 
 	// Publish user update profile event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.NewUserProfileEntity(profile), Metadata: event.EventUserUpdateProfileData{}})
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdateProfile, Entity: event.NewUserProfileEntity(profile), Metadata: event.EventUserUpdateProfileData{}})
 
 	return nil
 }
@@ -518,9 +521,9 @@ func (s *userService) SetPin(ctx context.Context, userUID, pin string) error {
 
 	// Publish user update pin event
 	if isNewPIN {
-		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserCreatePinData{}})
+		_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserCreatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserCreatePinData{}})
 	} else {
-		err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserUpdatePinData{}})
+		_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePin, Entity: event.NewUserPinEntity(userPin), Metadata: event.EventUserUpdatePinData{}})
 	}
 
 	return nil
@@ -604,11 +607,10 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 		return err
 	}
 
-	// Remove the session from token manager before revoking the device
+	// Remove the session from both token managers before revoking the device
 	if userDevice.SessionID != "" {
-		if err := s.refreshTokenManager.RevokeSession(ctx, userUID, userDevice.SessionID); err != nil {
-			// Log error but don't fail - device will still be revoked
-		}
+		_ = s.accessTokenManager.RevokeSession(ctx, userUID, userDevice.SessionID)
+		_ = s.refreshTokenManager.RevokeSession(ctx, userUID, userDevice.SessionID)
 	}
 
 	// Revoke device
@@ -618,10 +620,10 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 	}
 
 	// Publish device revoked event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.NewDeviceEntity(device), Metadata: event.EventDeviceDeletedData{
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventDeviceDeleted, Entity: event.NewDeviceEntity(device), Metadata: event.EventDeviceDeletedData{
 		UserUID: userUID,
 	}})
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.NewDeviceEntity(device), Metadata: event.EventUserRevokeDeviceData{
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserRevokeDevice, Entity: event.NewDeviceEntity(device), Metadata: event.EventUserRevokeDeviceData{
 		UserUID: userUID,
 	}})
 
@@ -685,7 +687,7 @@ func (s *userService) ChangePassword(ctx context.Context, userUID string, passwo
 	}
 
 	// Publish user update password event
-	err = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatePasswordData{}})
+	_ = s.eventPublisher.Publish(ctx, event.Message{Type: event.EventUserUpdatePassword, Entity: event.NewUserEntity(user), Metadata: event.EventUserUpdatePasswordData{}})
 
 	return nil
 }

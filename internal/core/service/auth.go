@@ -112,7 +112,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 	}
 	if locked {
 		// Publish login locked event
-		s.executor.DoAsync(ctx, "auth.publish.locked", func(newCtx context.Context) error {
+		_ = s.executor.DoAsync(ctx, "auth.publish.locked", func(newCtx context.Context) error {
 			eventMessage, errExc := domainEvent.NewMessage(
 				domainEvent.EventLoginLocked,
 				domainEvent.NewUserEntity(user),
@@ -139,7 +139,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 		_ = s.attemptTracker.Track(ctx, user.UID)
 
 		// Publish login failed event
-		s.executor.DoAsync(ctx, "auth.publish.failed", func(newCtx context.Context) error {
+		_ = s.executor.DoAsync(ctx, "auth.publish.failed", func(newCtx context.Context) error {
 			eventMessage, errExc := domainEvent.NewMessage(
 				domainEvent.EventLoginFailed,
 				domainEvent.NewUserEntity(user),
@@ -230,7 +230,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 		return nil, err
 	}
 
-	s.executor.DoAsync(ctx, "auth.publish", func(newCtx context.Context) error {
+	_ = s.executor.DoAsync(ctx, "auth.publish", func(newCtx context.Context) error {
 		// Publish login event
 		loginEventData := domainEvent.EventLoginData{
 			Identifier:     payload.Identifier,
@@ -353,7 +353,7 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	}
 
 	// Publish OAuth login event
-	s.executor.DoAsync(ctx, "auth.publish.oauth", func(newCtx context.Context) error {
+	_ = s.executor.DoAsync(ctx, "auth.publish.oauth", func(newCtx context.Context) error {
 		eventMessage, err := domainEvent.NewMessage(
 			domainEvent.EventOAuthLogin,
 			domainEvent.NewUserEntity(user),
@@ -416,9 +416,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 				device, err := s.deviceRepo.GetByUID(ctx, deviceUIDStr)
 				if err == nil {
 					// Update the session ID for this user-device pair
-					if err := s.userDeviceRepo.UpdateSessionID(ctx, user.ID, device.ID, newSid); err != nil {
-						// Log error but don't fail refresh
-					}
+					_ = s.userDeviceRepo.UpdateSessionID(ctx, user.ID, device.ID, newSid)
 				}
 			}
 		}
@@ -449,13 +447,12 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, err
 	}
 
-	// Revoke old session (single-use refresh token for security)
-	if err := s.refreshTokenManager.RevokeSession(ctx, claims.Uid, claims.Sid); err != nil {
-		// Log error but don't fail
-	}
+	// Revoke old session from both token managers (single-use refresh token for security)
+	_ = s.accessTokenManager.RevokeSession(ctx, claims.Uid, claims.Sid)
+	_ = s.refreshTokenManager.RevokeSession(ctx, claims.Uid, claims.Sid)
 
 	// Publish token refresh event
-	s.executor.DoAsync(ctx, "auth.publish.refresh_token", func(newCtx context.Context) error {
+	_ = s.executor.DoAsync(ctx, "auth.publish.refresh_token", func(newCtx context.Context) error {
 		eventMessage, errExc := domainEvent.NewMessage(
 			domainEvent.EventTokenRefresh,
 			domainEvent.NewTokenEntity(claims),
@@ -512,7 +509,7 @@ func (s *authService) RevokeToken(ctx context.Context, token string, tokenType s
 	}
 
 	// Publish revoke event
-	s.executor.DoAsync(ctx, "auth.publish.revoke_token", func(newCtx context.Context) error {
+	_ = s.executor.DoAsync(ctx, "auth.publish.revoke_token", func(newCtx context.Context) error {
 		errExc := s.eventPublisher.Publish(
 			newCtx,
 			domainEvent.Message{
@@ -557,7 +554,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 	// Verify PIN hash
 	if !s.pinHasher.Compare(userPin.Code, pin) {
 		// Publish PIN verify failed event
-		s.executor.DoAsync(ctx, "auth.publish.pin_fail", func(newCtx context.Context) error {
+		_ = s.executor.DoAsync(ctx, "auth.publish.pin_fail", func(newCtx context.Context) error {
 			err := s.eventPublisher.Publish(
 				newCtx,
 				domainEvent.Message{
@@ -578,7 +575,7 @@ func (s *authService) VerifyPin(ctx context.Context, userUid string, pin string)
 	}
 
 	// Publish PIN verify success event
-	s.executor.DoAsync(ctx, "auth.publish.pin_verified", func(newCtx context.Context) error {
+	_ = s.executor.DoAsync(ctx, "auth.publish.pin_verified", func(newCtx context.Context) error {
 		errExc := s.eventPublisher.Publish(
 			newCtx,
 			domainEvent.Message{
@@ -643,9 +640,7 @@ func (s *authService) findOrCreateUserDevice(ctx context.Context, user *domainMo
 		return nil, err
 	}
 	// Update existing device with new session ID
-	if err := s.userDeviceRepo.UpdateSessionID(ctx, user.ID, device.ID, sessionID); err != nil {
-		// Log error but don't fail
-	}
+	_ = s.userDeviceRepo.UpdateSessionID(ctx, user.ID, device.ID, sessionID)
 	// Re-fetch to get the updated session ID
 	userDevice, err := s.userDeviceRepo.GetByUserIDAndDeviceID(ctx, user.ID, device.ID)
 	if err != nil {
