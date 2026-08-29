@@ -21,21 +21,20 @@ import (
 )
 
 type authService struct {
-	userRepo       repository.UserRepository
-	deviceRepo     repository.DeviceRepository
-	userDeviceRepo repository.UserDeviceRepository
-	pinRepo        repository.UserPinRepository
-	passwordHasher portSec.Hasher
-	pinHasher      portSec.Hasher
-	tokenGen       portSec.TokenGenerator
-	uidGen         portSec.UIDGenerator
-	oauthProvider  portOAuth.OAuthProvider
-	tokenWhitelist portSec.TokenStore
-	tokenBlacklist portSec.TokenStore
-	executor       portExecutor.Executor
-	eventPublisher portEvent.EventPublisher
-	attemptTracker portSec.AttemptTracker
-	rateLimiter    portSec.RateLimiter
+	userRepo            repository.UserRepository
+	deviceRepo          repository.DeviceRepository
+	userDeviceRepo      repository.UserDeviceRepository
+	pinRepo             repository.UserPinRepository
+	passwordHasher      portSec.Hasher
+	pinHasher           portSec.Hasher
+	accessTokenManager  portSec.TokenManager
+	refreshTokenManager portSec.TokenManager
+	uidGen              portSec.UIDGenerator
+	oauthProvider       portOAuth.OAuthProvider
+	executor            portExecutor.Executor
+	eventPublisher      portEvent.EventPublisher
+	attemptTracker      portSec.AttemptTracker
+	rateLimiter         portSec.RateLimiter
 }
 
 func NewAuthService(
@@ -45,32 +44,30 @@ func NewAuthService(
 	pinRepo repository.UserPinRepository,
 	passwordHasher portSec.Hasher,
 	pinHasher portSec.Hasher,
-	tokenGen portSec.TokenGenerator,
+	accessTokenManager portSec.TokenManager,
+	refreshTokenManager portSec.TokenManager,
 	uidGen portSec.UIDGenerator,
 	oauthProvider portOAuth.OAuthProvider,
-	tokenWhitelist portSec.TokenStore,
-	tokenBlacklist portSec.TokenStore,
 	executor portExecutor.Executor,
 	eventPublisher portEvent.EventPublisher,
 	attemptTracker portSec.AttemptTracker,
 	rateLimiter portSec.RateLimiter,
 ) portSvc.AuthService {
 	return &authService{
-		userRepo:       userRepo,
-		deviceRepo:     deviceRepo,
-		userDeviceRepo: userDeviceRepo,
-		pinRepo:        pinRepo,
-		passwordHasher: passwordHasher,
-		pinHasher:      pinHasher,
-		tokenGen:       tokenGen,
-		uidGen:         uidGen,
-		oauthProvider:  oauthProvider,
-		tokenWhitelist: tokenWhitelist,
-		tokenBlacklist: tokenBlacklist,
-		executor:       executor,
-		eventPublisher: eventPublisher,
-		attemptTracker: attemptTracker,
-		rateLimiter:    rateLimiter,
+		userRepo:            userRepo,
+		deviceRepo:          deviceRepo,
+		userDeviceRepo:      userDeviceRepo,
+		pinRepo:             pinRepo,
+		passwordHasher:      passwordHasher,
+		pinHasher:           pinHasher,
+		accessTokenManager:  accessTokenManager,
+		refreshTokenManager: refreshTokenManager,
+		uidGen:              uidGen,
+		oauthProvider:       oauthProvider,
+		executor:            executor,
+		eventPublisher:      eventPublisher,
+		attemptTracker:      attemptTracker,
+		rateLimiter:         rateLimiter,
 	}
 }
 
@@ -210,7 +207,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 	}
 
 	// Generate tokens
-	accessToken, err := s.tokenGen.GenerateToken(&domainModel.TokenClaims{
+	accessToken, err := s.accessTokenManager.Generate(ctx, &domainModel.TokenClaims{
 		Uid:            user.UID,
 		Sid:            sid,
 		Type:           domainModel.TokenTypeAccess,
@@ -221,7 +218,7 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 	if err != nil {
 		return nil, err
 	}
-	refreshToken, err := s.tokenGen.GenerateToken(&domainModel.TokenClaims{
+	refreshToken, err := s.refreshTokenManager.Generate(ctx, &domainModel.TokenClaims{
 		Uid:            user.UID,
 		Sid:            sid,
 		Type:           domainModel.TokenTypeRefresh,
@@ -230,11 +227,6 @@ func (s *authService) Authenticate(ctx context.Context, payload *domainParam.Aut
 		Extra:          extaClaims,
 	})
 	if err != nil {
-		return nil, err
-	}
-
-	// Add refresh token to whitelist
-	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
 		return nil, err
 	}
 
@@ -332,7 +324,7 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 	sid := s.uidGen.New()
 
 	// Generate tokens
-	accessToken, err := s.tokenGen.GenerateToken(&domainModel.TokenClaims{
+	accessToken, err := s.accessTokenManager.Generate(ctx, &domainModel.TokenClaims{
 		Uid:            user.UID,
 		Sid:            sid,
 		Type:           domainModel.TokenTypeAccess,
@@ -346,7 +338,7 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 		return nil, err
 	}
 
-	refreshToken, err := s.tokenGen.GenerateToken(&domainModel.TokenClaims{
+	refreshToken, err := s.refreshTokenManager.Generate(ctx, &domainModel.TokenClaims{
 		Uid:            user.UID,
 		Sid:            sid,
 		Type:           domainModel.TokenTypeRefresh,
@@ -357,11 +349,6 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 		},
 	})
 	if err != nil {
-		return nil, err
-	}
-
-	// Add refresh token to whitelist
-	if err := s.tokenWhitelist.Add(ctx, user.UID, sid); err != nil {
 		return nil, err
 	}
 
@@ -390,8 +377,8 @@ func (s *authService) HandleGoogleOAuth(ctx context.Context, code, state, redire
 }
 
 func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*domainModel.Token, error) {
-	// Validate refresh token
-	claims, err := s.tokenGen.ValidateToken(refreshToken)
+	// Validate refresh token (manager handles whitelist check internally)
+	claims, err := s.refreshTokenManager.Validate(ctx, refreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -399,15 +386,6 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	// Check if it's a refresh token
 	if !claims.IsRefresh() {
 		return nil, domainerrors.ErrTokenInvalid
-	}
-
-	// Check if token is in whitelist
-	allowed, err := s.tokenWhitelist.IsAllowed(ctx, claims.Uid, claims.Sid)
-	if err != nil {
-		return nil, err
-	}
-	if !allowed {
-		return nil, domainerrors.ErrTokenRevoked
 	}
 
 	// Get user to verify they exist and are active
@@ -447,7 +425,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 	}
 
 	// Generate new tokens
-	newAccessToken, err := s.tokenGen.GenerateToken(&domainModel.TokenClaims{
+	newAccessToken, err := s.accessTokenManager.Generate(ctx, &domainModel.TokenClaims{
 		Uid:            claims.Uid,
 		Sid:            newSid,
 		Type:           domainModel.TokenTypeAccess,
@@ -459,7 +437,7 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, err
 	}
 
-	newRefreshToken, err := s.tokenGen.GenerateToken(&domainModel.TokenClaims{
+	newRefreshToken, err := s.refreshTokenManager.Generate(ctx, &domainModel.TokenClaims{
 		Uid:            claims.Uid,
 		Sid:            newSid,
 		Type:           domainModel.TokenTypeRefresh,
@@ -471,13 +449,8 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		return nil, err
 	}
 
-	// Add new refresh token to whitelist
-	if err := s.tokenWhitelist.Add(ctx, claims.Uid, newSid); err != nil {
-		return nil, err
-	}
-
-	// Remove old session from whitelist (single-use refresh token for security)
-	if err := s.tokenWhitelist.Remove(ctx, claims.Uid, claims.Sid); err != nil {
+	// Revoke old session (single-use refresh token for security)
+	if err := s.refreshTokenManager.RevokeSession(ctx, claims.Uid, claims.Sid); err != nil {
 		// Log error but don't fail
 	}
 
@@ -507,8 +480,8 @@ func (s *authService) RefreshToken(ctx context.Context, refreshToken string) (*d
 }
 
 func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*domainModel.TokenClaims, error) {
-	// Validate token signature and expiration
-	claims, err := s.tokenGen.ValidateToken(accessToken)
+	// Validate token (manager handles whitelist/blacklist checks internally)
+	claims, err := s.accessTokenManager.Validate(ctx, accessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -518,41 +491,23 @@ func (s *authService) ValidateToken(ctx context.Context, accessToken string) (*d
 		return nil, domainerrors.ErrTokenInvalid
 	}
 
-	// Check if token's session is in the whitelist (for device revocation support)
-	allowed, err := s.tokenWhitelist.IsAllowed(ctx, claims.Uid, claims.Sid)
-	if err != nil {
-		return nil, err
-	}
-	if !allowed {
-		return nil, domainerrors.ErrTokenRevoked
-	}
-
-	// Check if token's session is in the blacklist (for immediate revocation)
-	blacklisted, err := s.tokenBlacklist.IsAllowed(ctx, claims.Uid, claims.Sid)
-	if err != nil {
-		return nil, err
-	}
-	if !blacklisted {
-		return nil, domainerrors.ErrTokenRevoked
-	}
-
 	return claims, nil
 }
 
 func (s *authService) RevokeToken(ctx context.Context, token string, tokenType string) error {
-	// Validate token to extract claims
-	claims, err := s.tokenGen.ValidateToken(token)
+	// Validate to get claims
+	claims, err := s.accessTokenManager.Validate(ctx, token)
 	if err != nil {
 		return err
 	}
 
-	// Remove from whitelist
-	if err := s.tokenWhitelist.Remove(ctx, claims.Uid, claims.Sid); err != nil {
+	// Revoke access token
+	if err := s.accessTokenManager.Revoke(ctx, token); err != nil {
 		return err
 	}
 
-	// Add to blacklist
-	if err := s.tokenBlacklist.Add(ctx, claims.Uid, claims.Sid); err != nil {
+	// Revoke refresh session
+	if err := s.refreshTokenManager.RevokeSession(ctx, claims.Uid, claims.Sid); err != nil {
 		return err
 	}
 

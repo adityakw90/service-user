@@ -92,6 +92,9 @@ packages:
       TokenStore:
         config:
           dir: mocks/security
+      TokenManager:
+        config:
+          dir: mocks/security
       RateLimiter:
         config:
           dir: mocks/security

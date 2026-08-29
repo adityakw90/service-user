@@ -21,40 +21,38 @@ import (
 )
 
 type authServiceMocks struct {
-	userRepo       *repomocks.MockUserRepository
-	deviceRepo     *repomocks.MockDeviceRepository
-	userDeviceRepo *repomocks.MockUserDeviceRepository
-	pinRepo        *repomocks.MockUserPinRepository
-	passwordHasher *securitymocks.MockHasher
-	pinHasher      *securitymocks.MockHasher
-	tokenGen       *securitymocks.MockTokenGenerator
-	uidGen         *securitymocks.MockUIDGenerator
-	oauthProvider  *oauthmocks.MockOAuthProvider
-	tokenWhitelist *securitymocks.MockTokenStore
-	tokenBlacklist *securitymocks.MockTokenStore
-	executor       *executormocks.MockExecutor
-	eventPublisher *eventmocks.MockEventPublisher
-	attemptTracker *securitymocks.MockAttemptTracker
-	rateLimiter    *securitymocks.MockRateLimiter
+	userRepo            *repomocks.MockUserRepository
+	deviceRepo          *repomocks.MockDeviceRepository
+	userDeviceRepo      *repomocks.MockUserDeviceRepository
+	pinRepo             *repomocks.MockUserPinRepository
+	passwordHasher      *securitymocks.MockHasher
+	pinHasher           *securitymocks.MockHasher
+	accessTokenManager  *securitymocks.MockTokenManager
+	refreshTokenManager *securitymocks.MockTokenManager
+	uidGen              *securitymocks.MockUIDGenerator
+	oauthProvider       *oauthmocks.MockOAuthProvider
+	executor            *executormocks.MockExecutor
+	eventPublisher      *eventmocks.MockEventPublisher
+	attemptTracker      *securitymocks.MockAttemptTracker
+	rateLimiter         *securitymocks.MockRateLimiter
 }
 
 func newAuthServiceMocks(t *testing.T) authServiceMocks {
 	return authServiceMocks{
-		userRepo:       repomocks.NewMockUserRepository(t),
-		deviceRepo:     repomocks.NewMockDeviceRepository(t),
-		userDeviceRepo: repomocks.NewMockUserDeviceRepository(t),
-		pinRepo:        repomocks.NewMockUserPinRepository(t),
-		passwordHasher: securitymocks.NewMockHasher(t),
-		pinHasher:      securitymocks.NewMockHasher(t),
-		tokenGen:       securitymocks.NewMockTokenGenerator(t),
-		uidGen:         securitymocks.NewMockUIDGenerator(t),
-		oauthProvider:  oauthmocks.NewMockOAuthProvider(t),
-		tokenWhitelist: securitymocks.NewMockTokenStore(t),
-		tokenBlacklist: securitymocks.NewMockTokenStore(t),
-		executor:       executormocks.NewMockExecutor(t),
-		eventPublisher: eventmocks.NewMockEventPublisher(t),
-		attemptTracker: securitymocks.NewMockAttemptTracker(t),
-		rateLimiter:    securitymocks.NewMockRateLimiter(t),
+		userRepo:            repomocks.NewMockUserRepository(t),
+		deviceRepo:          repomocks.NewMockDeviceRepository(t),
+		userDeviceRepo:      repomocks.NewMockUserDeviceRepository(t),
+		pinRepo:             repomocks.NewMockUserPinRepository(t),
+		passwordHasher:      securitymocks.NewMockHasher(t),
+		pinHasher:           securitymocks.NewMockHasher(t),
+		accessTokenManager:  securitymocks.NewMockTokenManager(t),
+		refreshTokenManager: securitymocks.NewMockTokenManager(t),
+		uidGen:              securitymocks.NewMockUIDGenerator(t),
+		oauthProvider:       oauthmocks.NewMockOAuthProvider(t),
+		executor:            executormocks.NewMockExecutor(t),
+		eventPublisher:      eventmocks.NewMockEventPublisher(t),
+		attemptTracker:      securitymocks.NewMockAttemptTracker(t),
+		rateLimiter:         securitymocks.NewMockRateLimiter(t),
 	}
 }
 
@@ -111,9 +109,8 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
 			mockOAuthProvider := oauthmocks.NewMockOAuthProvider(t)
-			mockTokenGen := securitymocks.NewMockTokenGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
-			mockTokenBlacklist := securitymocks.NewMockTokenStore(t)
+			mockAccessMgr := securitymocks.NewMockTokenManager(t)
+			mockRefreshMgr := securitymocks.NewMockTokenManager(t)
 			mockExecutor := executormocks.NewMockExecutor(t)
 			mockEventPublisher := eventmocks.NewMockEventPublisher(t)
 
@@ -128,11 +125,10 @@ func TestAuthService_GoogleOAuth(t *testing.T) {
 				mockPinRepo,
 				mockPasswordHasher,
 				mockPinHasher,
-				mockTokenGen,
+				mockAccessMgr,
+				mockRefreshMgr,
 				mockUIDGen,
 				mockOAuthProvider,
-				mockTokenWhitelist,
-				mockTokenBlacklist,
 				mockExecutor,
 				mockEventPublisher,
 				nil,
@@ -302,9 +298,8 @@ func TestAuthService_generateUsername(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
 				mockUIDGen,
-				nil,
-				nil,
 				nil,
 				nil,
 				nil,
@@ -466,7 +461,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 			wantErr: domainerrors.ErrInvalidCredentials,
 		},
 		{
-			name: "Token generator access token error",
+			name: "Access token manager generate error",
 			payload: &domainParam.AuthParams{
 				Identifier:     "john@example.com",
 				IdentifierType: "email",
@@ -479,14 +474,14 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess
 				})).Return("", errors.New("access token err")).Once()
 			},
 			wantErr: errors.New("access token err"),
 		},
 		{
-			name: "Token generator refresh token error",
+			name: "Refresh token manager generate error",
 			payload: &domainParam.AuthParams{
 				Identifier:     "john@example.com",
 				IdentifierType: "email",
@@ -499,8 +494,8 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("access-token", nil).Once()
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("access-token", nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeRefresh
 				})).Return("", errors.New("refresh token err")).Once()
 			},
@@ -521,15 +516,13 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess && claims.Extra["custom"] == "value"
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeRefresh
 				})).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -577,7 +570,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 					return ud.UserID == testUser.ID && ud.DeviceID == newDevice.ID && ud.SessionID == "session-id-123"
 				})).Return(userDevice, nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					deviceClaim := claims.Extra["device"].(map[string]any)
 					return claims.Uid == testUser.UID &&
 						claims.Sid == "session-id-123" &&
@@ -586,9 +579,7 @@ func TestAuthService_Authenticate(t *testing.T) {
 						deviceClaim["ip_address"] == "192.168.1.100"
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("refresh-token-123", nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -631,10 +622,8 @@ func TestAuthService_Authenticate(t *testing.T) {
 				updatedUserDevice := &domainModel.UserDevice{UserID: testUser.ID, DeviceID: existingDevice.ID, IPAddress: "192.168.1.100", SessionID: "session-id-123"}
 				m.userDeviceRepo.EXPECT().GetByUserIDAndDeviceID(mock.Anything, testUser.ID, existingDevice.ID).Return(updatedUserDevice, nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("access-token-123", nil).Once()
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("access-token-123", nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("refresh-token-123", nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -663,13 +652,11 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
 				// No device repo calls - device handling skipped because DeviceName is nil
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("refresh-token-123", nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -703,13 +690,11 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
 				// No device repo calls - device handling skipped because DeviceFingerprint is nil
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("refresh-token-123", nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -738,16 +723,14 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.attemptTracker.EXPECT().Reset(mock.Anything, testUser.UID).Return(nil).Once()
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Type == domainModel.TokenTypeAccess
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				// Refresh manager Generate fails - simulates whitelist storage error
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Type == domainModel.TokenTypeRefresh
-				})).Return("refresh-token-123", nil).Once()
-
-				// Whitelist Add fails - should return error
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(errors.New("whitelist storage error")).Once()
+				})).Return("", errors.New("whitelist storage error")).Once()
 			},
 			wantErr: errors.New("whitelist storage error"),
 		},
@@ -777,11 +760,10 @@ func TestAuthService_Authenticate(t *testing.T) {
 				m.pinRepo,
 				m.passwordHasher,
 				m.pinHasher,
-				m.tokenGen,
+				m.accessTokenManager,
+				m.refreshTokenManager,
 				m.uidGen,
 				m.oauthProvider,
-				m.tokenWhitelist,
-				m.tokenBlacklist,
 				m.executor,
 				m.eventPublisher,
 				m.attemptTracker,
@@ -838,15 +820,13 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeAccess
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == testUser.UID && claims.Sid == "session-id-123" && claims.Type == domainModel.TokenTypeRefresh
 				})).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.oauth", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -880,10 +860,8 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 
 				m.uidGen.EXPECT().New().Return("session-id-456").Once() // session id for login
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("access-token-123", nil).Once()
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("refresh-token-123", nil).Once()
-
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, "new-user-uid", "session-id-456").Return(nil).Once()
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("access-token-123", nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("refresh-token-123", nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.oauth", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -926,16 +904,14 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 
 				m.uidGen.EXPECT().New().Return("session-id-123").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Type == domainModel.TokenTypeAccess
 				})).Return("access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				// Refresh manager Generate fails - simulates whitelist storage error
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Type == domainModel.TokenTypeRefresh
-				})).Return("refresh-token-123", nil).Once()
-
-				// Whitelist Add fails - should return error
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, testUser.UID, "session-id-123").Return(errors.New("whitelist storage error")).Once()
+				})).Return("", errors.New("whitelist storage error")).Once()
 			},
 			wantErr: errors.New("whitelist storage error"),
 		},
@@ -955,11 +931,10 @@ func TestAuthService_HandleGoogleOAuth(t *testing.T) {
 				m.pinRepo,
 				m.passwordHasher,
 				m.pinHasher,
-				m.tokenGen,
+				m.accessTokenManager,
+				m.refreshTokenManager,
 				m.uidGen,
 				m.oauthProvider,
-				m.tokenWhitelist,
-				m.tokenBlacklist,
 				m.executor,
 				m.eventPublisher,
 				m.attemptTracker,
@@ -1005,7 +980,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "token validation error",
 			refreshToken: "invalid-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("invalid-token").Return(nil, errors.New("invalid signature")).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "invalid-token").Return(nil, errors.New("invalid signature")).Once()
 			},
 			wantErr: errors.New("invalid signature"),
 		},
@@ -1014,7 +989,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			refreshToken: "access-token",
 			setupMocks: func(m authServiceMocks) {
 				accessClaims := &domainModel.TokenClaims{Type: domainModel.TokenTypeAccess}
-				m.tokenGen.EXPECT().ValidateToken("access-token").Return(accessClaims, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "access-token").Return(accessClaims, nil).Once()
 			},
 			wantErr: domainerrors.ErrTokenInvalid,
 		},
@@ -1022,8 +997,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "token not whitelisted/revoked",
 			refreshToken: "revoked-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("revoked-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(false, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "revoked-token").Return(nil, domainerrors.ErrTokenRevoked).Once()
 			},
 			wantErr: domainerrors.ErrTokenRevoked,
 		},
@@ -1031,8 +1005,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "database error during whitelist check",
 			refreshToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(false, errors.New("whitelist error")).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(nil, errors.New("whitelist error")).Once()
 			},
 			wantErr: errors.New("whitelist error"),
 		},
@@ -1040,8 +1013,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "user not found",
 			refreshToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(true, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(refreshClaims, nil).Once()
 				m.userRepo.EXPECT().GetByUID(mock.Anything, refreshClaims.Uid).Return(nil, domainerrors.ErrUserNotFound).Once()
 			},
 			wantErr: domainerrors.ErrTokenInvalid,
@@ -1050,8 +1022,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "user deleted",
 			refreshToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(true, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(refreshClaims, nil).Once()
 				m.userRepo.EXPECT().GetByUID(mock.Anything, refreshClaims.Uid).Return(deletedUser, nil).Once()
 			},
 			wantErr: domainerrors.ErrUserDeleted,
@@ -1060,8 +1031,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "user inactive",
 			refreshToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(true, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(refreshClaims, nil).Once()
 				m.userRepo.EXPECT().GetByUID(mock.Anything, refreshClaims.Uid).Return(inactiveUser, nil).Once()
 			},
 			wantErr: domainerrors.ErrUserInactive,
@@ -1070,22 +1040,20 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "Happy Path - refreshes tokens successfully without device",
 			refreshToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(true, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(refreshClaims, nil).Once()
 				m.userRepo.EXPECT().GetByUID(mock.Anything, refreshClaims.Uid).Return(testUser, nil).Once()
 
 				m.uidGen.EXPECT().New().Return("new-session-id-789").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == refreshClaims.Uid && claims.Sid == "new-session-id-789" && claims.Type == domainModel.TokenTypeAccess
 				})).Return("new-access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Uid == refreshClaims.Uid && claims.Sid == "new-session-id-789" && claims.Type == domainModel.TokenTypeRefresh
 				})).Return("new-refresh-token-123", nil).Once()
 
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, refreshClaims.Uid, "new-session-id-789").Return(nil).Once()
-				m.tokenWhitelist.EXPECT().Remove(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(nil).Once()
+				m.refreshTokenManager.EXPECT().RevokeSession(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.refresh_token", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -1111,8 +1079,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 					IdentifierType: "email",
 					Extra:          map[string]any{"device": map[string]any{"uid": "device-uid-xyz"}},
 				}
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(claimsWithDevice, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, claimsWithDevice.Uid, claimsWithDevice.Sid).Return(true, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(claimsWithDevice, nil).Once()
 				m.userRepo.EXPECT().GetByUID(mock.Anything, claimsWithDevice.Uid).Return(testUser, nil).Once()
 
 				m.uidGen.EXPECT().New().Return("new-session-id-789").Once()
@@ -1122,11 +1089,10 @@ func TestAuthService_RefreshToken(t *testing.T) {
 				m.deviceRepo.EXPECT().GetByUID(mock.Anything, "device-uid-xyz").Return(existingDevice, nil).Once()
 				m.userDeviceRepo.EXPECT().UpdateSessionID(mock.Anything, testUser.ID, existingDevice.ID, "new-session-id-789").Return(nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("new-access-token-123", nil).Once()
-				m.tokenGen.EXPECT().GenerateToken(mock.Anything).Return("new-refresh-token-123", nil).Once()
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("new-access-token-123", nil).Once()
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.Anything).Return("new-refresh-token-123", nil).Once()
 
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, claimsWithDevice.Uid, "new-session-id-789").Return(nil).Once()
-				m.tokenWhitelist.EXPECT().Remove(mock.Anything, claimsWithDevice.Uid, claimsWithDevice.Sid).Return(nil).Once()
+				m.refreshTokenManager.EXPECT().RevokeSession(mock.Anything, claimsWithDevice.Uid, claimsWithDevice.Sid).Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.refresh_token", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -1140,22 +1106,19 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			name:         "Whitelist add error during token refresh",
 			refreshToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, refreshClaims.Uid, refreshClaims.Sid).Return(true, nil).Once()
+				m.refreshTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(refreshClaims, nil).Once()
 				m.userRepo.EXPECT().GetByUID(mock.Anything, refreshClaims.Uid).Return(testUser, nil).Once()
 
 				m.uidGen.EXPECT().New().Return("new-session-id-789").Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				m.accessTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Type == domainModel.TokenTypeAccess
 				})).Return("new-access-token-123", nil).Once()
 
-				m.tokenGen.EXPECT().GenerateToken(mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
+				// Refresh manager Generate fails - simulates whitelist storage error
+				m.refreshTokenManager.EXPECT().Generate(mock.Anything, mock.MatchedBy(func(claims *domainModel.TokenClaims) bool {
 					return claims.Type == domainModel.TokenTypeRefresh
-				})).Return("new-refresh-token-123", nil).Once()
-
-				// Whitelist Add fails - should return error
-				m.tokenWhitelist.EXPECT().Add(mock.Anything, refreshClaims.Uid, "new-session-id-789").Return(errors.New("whitelist storage error")).Once()
+				})).Return("", errors.New("whitelist storage error")).Once()
 			},
 			wantErr: errors.New("whitelist storage error"),
 		},
@@ -1175,11 +1138,10 @@ func TestAuthService_RefreshToken(t *testing.T) {
 				m.pinRepo,
 				m.passwordHasher,
 				m.pinHasher,
-				m.tokenGen,
+				m.accessTokenManager,
+				m.refreshTokenManager,
 				m.uidGen,
 				m.oauthProvider,
-				m.tokenWhitelist,
-				m.tokenBlacklist,
 				m.executor,
 				m.eventPublisher,
 				m.attemptTracker,
@@ -1219,7 +1181,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			name:        "validation error",
 			accessToken: "invalid-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("invalid-token").Return(nil, errors.New("expired")).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "invalid-token").Return(nil, errors.New("expired")).Once()
 			},
 			wantErr: errors.New("expired"),
 		},
@@ -1228,7 +1190,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			accessToken: "refresh-token",
 			setupMocks: func(m authServiceMocks) {
 				refreshClaims := &domainModel.TokenClaims{Type: domainModel.TokenTypeRefresh}
-				m.tokenGen.EXPECT().ValidateToken("refresh-token").Return(refreshClaims, nil).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "refresh-token").Return(refreshClaims, nil).Once()
 			},
 			wantErr: domainerrors.ErrTokenInvalid,
 		},
@@ -1236,8 +1198,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			name:        "token not in whitelist (session revoked)",
 			accessToken: "access-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("access-token").Return(validClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, validClaims.Uid, validClaims.Sid).Return(false, nil).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "access-token").Return(nil, domainerrors.ErrTokenRevoked).Once()
 			},
 			wantErr: domainerrors.ErrTokenRevoked,
 		},
@@ -1245,10 +1206,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			name:        "token in blacklist (immediate revocation)",
 			accessToken: "access-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("access-token").Return(validClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, validClaims.Uid, validClaims.Sid).Return(true, nil).Once()
-				// blacklisted is true if IsAllowed returns FALSE (due to blacklist storage semantics)
-				m.tokenBlacklist.EXPECT().IsAllowed(mock.Anything, validClaims.Uid, validClaims.Sid).Return(false, nil).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "access-token").Return(nil, domainerrors.ErrTokenRevoked).Once()
 			},
 			wantErr: domainerrors.ErrTokenRevoked,
 		},
@@ -1256,9 +1214,7 @@ func TestAuthService_ValidateToken(t *testing.T) {
 			name:        "Happy Path - valid token",
 			accessToken: "access-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("access-token").Return(validClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().IsAllowed(mock.Anything, validClaims.Uid, validClaims.Sid).Return(true, nil).Once()
-				m.tokenBlacklist.EXPECT().IsAllowed(mock.Anything, validClaims.Uid, validClaims.Sid).Return(true, nil).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "access-token").Return(validClaims, nil).Once()
 			},
 			wantErr: nil,
 		},
@@ -1278,11 +1234,10 @@ func TestAuthService_ValidateToken(t *testing.T) {
 				m.pinRepo,
 				m.passwordHasher,
 				m.pinHasher,
-				m.tokenGen,
+				m.accessTokenManager,
+				m.refreshTokenManager,
 				m.uidGen,
 				m.oauthProvider,
-				m.tokenWhitelist,
-				m.tokenBlacklist,
 				m.executor,
 				m.eventPublisher,
 				m.attemptTracker,
@@ -1322,7 +1277,7 @@ func TestAuthService_RevokeToken(t *testing.T) {
 			name:  "validation error",
 			token: "invalid-token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("invalid-token").Return(nil, errors.New("invalid signature")).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "invalid-token").Return(nil, errors.New("invalid signature")).Once()
 			},
 			wantErr: errors.New("invalid signature"),
 		},
@@ -1330,8 +1285,8 @@ func TestAuthService_RevokeToken(t *testing.T) {
 			name:  "whitelist removal error",
 			token: "token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("token").Return(validClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().Remove(mock.Anything, validClaims.Uid, validClaims.Sid).Return(errors.New("redis remove error")).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "token").Return(validClaims, nil).Once()
+				m.accessTokenManager.EXPECT().Revoke(mock.Anything, "token").Return(errors.New("redis remove error")).Once()
 			},
 			wantErr: errors.New("redis remove error"),
 		},
@@ -1339,9 +1294,9 @@ func TestAuthService_RevokeToken(t *testing.T) {
 			name:  "blacklist addition error",
 			token: "token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("token").Return(validClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().Remove(mock.Anything, validClaims.Uid, validClaims.Sid).Return(nil).Once()
-				m.tokenBlacklist.EXPECT().Add(mock.Anything, validClaims.Uid, validClaims.Sid).Return(errors.New("redis add error")).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "token").Return(validClaims, nil).Once()
+				m.accessTokenManager.EXPECT().Revoke(mock.Anything, "token").Return(nil).Once()
+				m.refreshTokenManager.EXPECT().RevokeSession(mock.Anything, validClaims.Uid, validClaims.Sid).Return(errors.New("redis add error")).Once()
 			},
 			wantErr: errors.New("redis add error"),
 		},
@@ -1349,9 +1304,9 @@ func TestAuthService_RevokeToken(t *testing.T) {
 			name:  "Happy Path - successfully revokes token",
 			token: "token",
 			setupMocks: func(m authServiceMocks) {
-				m.tokenGen.EXPECT().ValidateToken("token").Return(validClaims, nil).Once()
-				m.tokenWhitelist.EXPECT().Remove(mock.Anything, validClaims.Uid, validClaims.Sid).Return(nil).Once()
-				m.tokenBlacklist.EXPECT().Add(mock.Anything, validClaims.Uid, validClaims.Sid).Return(nil).Once()
+				m.accessTokenManager.EXPECT().Validate(mock.Anything, "token").Return(validClaims, nil).Once()
+				m.accessTokenManager.EXPECT().Revoke(mock.Anything, "token").Return(nil).Once()
+				m.refreshTokenManager.EXPECT().RevokeSession(mock.Anything, validClaims.Uid, validClaims.Sid).Return(nil).Once()
 
 				m.executor.EXPECT().DoAsync(mock.Anything, "auth.publish.revoke_token", mock.Anything).Run(func(ctx context.Context, name string, fn func(context.Context) error) {
 					_ = fn(ctx)
@@ -1381,11 +1336,10 @@ func TestAuthService_RevokeToken(t *testing.T) {
 				m.pinRepo,
 				m.passwordHasher,
 				m.pinHasher,
-				m.tokenGen,
+				m.accessTokenManager,
+				m.refreshTokenManager,
 				m.uidGen,
 				m.oauthProvider,
-				m.tokenWhitelist,
-				m.tokenBlacklist,
 				m.executor,
 				m.eventPublisher,
 				m.attemptTracker,
@@ -1509,11 +1463,10 @@ func TestAuthService_VerifyPin(t *testing.T) {
 				m.pinRepo,
 				m.passwordHasher,
 				m.pinHasher,
-				m.tokenGen,
+				m.accessTokenManager,
+				m.refreshTokenManager,
 				m.uidGen,
 				m.oauthProvider,
-				m.tokenWhitelist,
-				m.tokenBlacklist,
 				m.executor,
 				m.eventPublisher,
 				m.attemptTracker,
