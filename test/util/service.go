@@ -31,7 +31,6 @@ type TestServices struct {
 	Redis           *redis.Client
 	Hasher          coreportsec.Hasher
 	PINHasher       coreportsec.Hasher
-	TokenGen        coreportsec.TokenGenerator
 	UserService     coreportsvc.UserService
 	AuthService     coreportsvc.AuthService
 	DeviceService   coreportsvc.DeviceService
@@ -137,7 +136,16 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 
 	// Initialize token blacklist/whitelist
 	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "test-token-blacklist:", 24*time.Hour, monitoring.Tracer, monitoring.Logger)
-	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "test-token-whitelist:", 15*time.Minute, monitoring.Tracer, monitoring.Logger)
+	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "test-token-whitelist:", cfg.Jwt.RefreshExpiry, monitoring.Tracer, monitoring.Logger)
+
+	accessTokenManager, err := security.NewTokenManager(cfg.Jwt.AccessStrategy, tokenGen, tokenBlacklist)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize access token manager: %w", err)
+	}
+	refreshTokenManager, err := security.NewTokenManager(cfg.Jwt.RefreshStrategy, tokenGen, tokenWhitelist)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize refresh token manager: %w", err)
+	}
 
 	// Create event publishers (no-op for tests)
 	eventPublisher := event.NewNoOpPublisher()
@@ -159,7 +167,7 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		passwordHasher,
 		pinHasher,
 		uidGen,
-		tokenWhitelist,
+		refreshTokenManager,
 		eventPublisher,
 		resolverProvider,
 	)
@@ -205,11 +213,10 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		pinRepo,
 		passwordHasher,
 		pinHasher,
-		tokenGen,
+		accessTokenManager,
+		refreshTokenManager,
 		uidGen,
 		oauthProvider,
-		tokenWhitelist,
-		tokenBlacklist,
 		serviceExecutor,
 		eventPublisher,
 		security.NewNoopAttemptTracker(),
@@ -243,7 +250,6 @@ func SetupTestServices(t *testing.T, ctx context.Context) (*TestServices, error)
 		Redis:           redisClient,
 		Hasher:          passwordHasher,
 		PINHasher:       pinHasher,
-		TokenGen:        tokenGen,
 		UserService:     userService,
 		AuthService:     authService,
 		DeviceService:   deviceService,
