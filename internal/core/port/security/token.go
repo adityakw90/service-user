@@ -19,3 +19,13 @@ type TokenStore interface {
 	RemoveAll(ctx context.Context, user_uid string) error
 	IsAllowed(ctx context.Context, user_uid string, tid string) (bool, error)
 }
+
+// TokenManager is a unified port for token generation, validation, and revocation.
+// Use two separate instances (access, refresh) wired to concrete strategy adapters.
+type TokenManager interface {
+	Generate(ctx context.Context, claims *model.TokenClaims) (string, error)
+	Validate(ctx context.Context, tokenStr string) (*model.TokenClaims, error)
+	Revoke(ctx context.Context, tokenStr string) error
+	RevokeSession(ctx context.Context, userUID string, sid string) error
+	RevokeAllSessions(ctx context.Context, userUID string) error
+}
