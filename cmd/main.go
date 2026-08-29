@@ -173,7 +173,17 @@ func main() {
 
 	// Initialize cache adapters (using *redis.Client directly from infra)
 	tokenBlacklist := security.NewTokenBlacklistAdapter(redisClient, "token-blacklist:", 24*time.Hour, iMon.Tracer, iMon.Logger)
-	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "token-whitelist:", 15*time.Minute, iMon.Tracer, iMon.Logger)
+	tokenWhitelist := security.NewTokenWhitelistAdapter(redisClient, "token-whitelist:", cfg.Jwt.RefreshExpiry, iMon.Tracer, iMon.Logger)
+
+	accessTokenManager, err := security.NewTokenManager(cfg.Jwt.AccessStrategy, tokenGen, tokenBlacklist)
+	if err != nil {
+		logger.Fatal("failed to initialize access token manager", map[string]interface{}{"error": err.Error()})
+	}
+
+	refreshTokenManager, err := security.NewTokenManager(cfg.Jwt.RefreshStrategy, tokenGen, tokenWhitelist)
+	if err != nil {
+		logger.Fatal("failed to initialize refresh token manager", map[string]interface{}{"error": err.Error()})
+	}
 
 	// Initialize security adapters
 	securityAdapters, err := security.NewSecurityAdapters(ctx, security.SecurityConfig{
@@ -305,7 +315,7 @@ func main() {
 		passwordHasher,
 		pinHasher,
 		uidGen,
-		tokenWhitelist,
+		refreshTokenManager,
 		eventPublisher,
 		resolverProvider,
 	)
@@ -318,11 +328,10 @@ func main() {
 		pinRepo,
 		passwordHasher,
 		pinHasher,
-		tokenGen,
+		accessTokenManager,
+		refreshTokenManager,
 		uidGen,
 		oauthProvider,
-		tokenWhitelist,
-		tokenBlacklist,
 		exc,
 		eventPublisher,
 		securityAdapters.LoginTracker,
