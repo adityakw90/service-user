@@ -328,6 +328,35 @@ func TestJWTGenerator_ExpiredToken(t *testing.T) {
 	}
 }
 
+func TestJWTGenerator_ValidateToken_PopulatesExpiresAt(t *testing.T) {
+	gen := NewJWTGenerator("test-secret-key-256bits-long!!!!", 15*time.Minute, 7*24*time.Hour)
+
+	tokenStr, err := gen.GenerateToken(&model.TokenClaims{
+		Uid:            "user-uid-1",
+		Sid:            "session-1",
+		Type:           model.TokenTypeAccess,
+		Identifier:     "user@example.com",
+		IdentifierType: "email",
+	})
+	if err != nil {
+		t.Fatalf("GenerateToken failed: %v", err)
+	}
+
+	claims, err := gen.ValidateToken(tokenStr)
+	if err != nil {
+		t.Fatalf("ValidateToken failed: %v", err)
+	}
+
+	if claims.ExpiresAt.IsZero() {
+		t.Error("expected ExpiresAt to be populated, got zero value")
+	}
+
+	expectedExpiry := time.Now().Add(15 * time.Minute)
+	if claims.ExpiresAt.After(expectedExpiry.Add(5*time.Second)) || claims.ExpiresAt.Before(expectedExpiry.Add(-5*time.Second)) {
+		t.Errorf("ExpiresAt %v not within 5s of expected %v", claims.ExpiresAt, expectedExpiry)
+	}
+}
+
 func TestJWTGenerator_ValidateInvalidTokenType(t *testing.T) {
 	generator := NewJWTGenerator(testSecretKey, testAccessExpiry, testRefreshExpiry)
 

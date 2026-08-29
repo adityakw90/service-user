@@ -95,6 +95,11 @@ func (g *JWTGenerator) ValidateToken(tokenString string) (*model.TokenClaims, er
 		return nil, domainerrors.ErrTokenInvalidClaim
 	}
 
+	var expiresAt time.Time
+	if claims.ExpiresAt != nil {
+		expiresAt = claims.ExpiresAt.Time
+	}
+
 	return &model.TokenClaims{
 		Uid:            claims.Uid,
 		Sid:            claims.Sid,
@@ -102,5 +107,6 @@ func (g *JWTGenerator) ValidateToken(tokenString string) (*model.TokenClaims, er
 		Identifier:     claims.Identifier,
 		IdentifierType: claims.IdentifierType,
 		Extra:          claims.Extra,
+		ExpiresAt:      expiresAt,
 	}, nil
 }
