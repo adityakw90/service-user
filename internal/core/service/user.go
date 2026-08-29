@@ -24,9 +24,9 @@ type userService struct {
 	userDeviceRepo repository.UserDeviceRepository
 	passwordHasher portSec.Hasher
 	pinHasher      portSec.Hasher
-	uidGen         portSec.UIDGenerator
-	tokenWhitelist portSec.TokenStore
-	eventPublisher portEvent.EventPublisher
+	uidGen              portSec.UIDGenerator
+	refreshTokenManager portSec.TokenManager
+	eventPublisher      portEvent.EventPublisher
 	resolvers      portResolver.ResolverProvider
 }
 
@@ -38,9 +38,9 @@ func NewUserService(
 	userDeviceRepo repository.UserDeviceRepository,
 	passwordHasher portSec.Hasher,
 	pinHasher portSec.Hasher,
-	uidGen portSec.UIDGenerator,
-	tokenWhitelist portSec.TokenStore,
-	eventPublisher portEvent.EventPublisher,
+	uidGen              portSec.UIDGenerator,
+	refreshTokenManager portSec.TokenManager,
+	eventPublisher      portEvent.EventPublisher,
 	resolvers portResolver.ResolverProvider,
 ) portSvc.UserService {
 	if userRepo == nil {
@@ -67,8 +67,8 @@ func NewUserService(
 	if uidGen == nil {
 		panic("uidGen is required")
 	}
-	if tokenWhitelist == nil {
-		panic("tokenWhitelist is required")
+	if refreshTokenManager == nil {
+		panic("refreshTokenManager is required")
 	}
 	if eventPublisher == nil {
 		panic("eventPublisher is required")
@@ -84,9 +84,9 @@ func NewUserService(
 		userDeviceRepo: userDeviceRepo,
 		passwordHasher: passwordHasher,
 		pinHasher:      pinHasher,
-		uidGen:         uidGen,
-		tokenWhitelist: tokenWhitelist,
-		eventPublisher: eventPublisher,
+		uidGen:              uidGen,
+		refreshTokenManager: refreshTokenManager,
+		eventPublisher:      eventPublisher,
 		resolvers:      resolvers,
 	}
 }
@@ -604,9 +604,9 @@ func (s *userService) RevokeDevice(ctx context.Context, userUID, deviceUID strin
 		return err
 	}
 
-	// Remove the session from token whitelist before revoking the device
+	// Remove the session from token manager before revoking the device
 	if userDevice.SessionID != "" {
-		if err := s.tokenWhitelist.Remove(ctx, userUID, userDevice.SessionID); err != nil {
+		if err := s.refreshTokenManager.RevokeSession(ctx, userUID, userDevice.SessionID); err != nil {
 			// Log error but don't fail - device will still be revoked
 		}
 	}

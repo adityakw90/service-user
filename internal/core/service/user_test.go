@@ -46,7 +46,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 		passwordHasher   portSecurity.Hasher
 		pinHasher        portSecurity.Hasher
 		uidGen           portSecurity.UIDGenerator
-		tokenWhitelist   portSecurity.TokenStore
+		refreshTokenManager portSecurity.TokenManager
 		eventPublisher   portEvent.EventPublisher
 		resolverProvider portResolver.ResolverProvider
 		shouldPanic      bool
@@ -61,7 +61,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      false,
@@ -76,7 +76,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -91,7 +91,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -106,7 +106,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -121,7 +121,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -136,7 +136,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -151,7 +151,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   nil,
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -166,7 +166,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        nil,
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -181,13 +181,13 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           nil,
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
 		},
 		{
-			name:             "Nil tokenWhitelist panics",
+			name:             "Nil refreshTokenManager panics",
 			userRepo:         repomocks.NewMockUserRepository(t),
 			profileRepo:      repomocks.NewMockUserProfileRepository(t),
 			pinRepo:          repomocks.NewMockUserPinRepository(t),
@@ -196,7 +196,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   nil,
+			refreshTokenManager:   nil,
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -211,7 +211,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      false,
@@ -226,7 +226,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   nil,
 			resolverProvider: resolvermocks.NewMockResolverProvider(t),
 			shouldPanic:      true,
@@ -241,7 +241,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 			passwordHasher:   securitymocks.NewMockHasher(t),
 			pinHasher:        securitymocks.NewMockHasher(t),
 			uidGen:           securitymocks.NewMockUIDGenerator(t),
-			tokenWhitelist:   securitymocks.NewMockTokenStore(t),
+			refreshTokenManager:   securitymocks.NewMockTokenManager(t),
 			eventPublisher:   eventMocks.NewMockEventPublisher(t),
 			resolverProvider: nil,
 			shouldPanic:      true,
@@ -261,7 +261,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 						tt.passwordHasher,
 						tt.pinHasher,
 						tt.uidGen,
-						tt.tokenWhitelist,
+						tt.refreshTokenManager,
 						tt.eventPublisher,
 						tt.resolverProvider,
 					)
@@ -276,7 +276,7 @@ func TestCoreService_NewUserService(t *testing.T) {
 					tt.passwordHasher,
 					tt.pinHasher,
 					tt.uidGen,
-					tt.tokenWhitelist,
+					tt.refreshTokenManager,
 					tt.eventPublisher,
 					tt.resolverProvider,
 				)
@@ -353,7 +353,7 @@ func TestUserService_Get(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -371,7 +371,7 @@ func TestUserService_Get(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -491,7 +491,7 @@ func TestUserService_List(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, _ := setupResolverMocks(t)
 
 			// Setup expectations
@@ -509,7 +509,7 @@ func TestUserService_List(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -609,7 +609,7 @@ func TestUserService_Create(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -627,7 +627,7 @@ func TestUserService_Create(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -753,7 +753,7 @@ func TestUserService_Update(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -771,7 +771,7 @@ func TestUserService_Update(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -833,7 +833,7 @@ func TestUserService_Delete(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -851,7 +851,7 @@ func TestUserService_Delete(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -924,7 +924,7 @@ func TestUserService_GetProfile(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -942,7 +942,7 @@ func TestUserService_GetProfile(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1041,7 +1041,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -1059,7 +1059,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1146,7 +1146,7 @@ func TestUserService_SetPin(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -1164,7 +1164,7 @@ func TestUserService_SetPin(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1237,7 +1237,7 @@ func TestUserService_ListDevice(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
@@ -1255,7 +1255,7 @@ func TestUserService_ListDevice(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
@@ -1283,14 +1283,14 @@ func TestUserService_ListDevice(t *testing.T) {
 func TestUserService_RevokeDevice(t *testing.T) {
 	tests := []struct {
 		name       string
-		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockDeviceRepository, *repomocks.MockUserDeviceRepository, *securitymocks.MockTokenStore, *resolvermocks.MockUserResolver)
+		setupMocks func(*repomocks.MockUserRepository, *repomocks.MockDeviceRepository, *repomocks.MockUserDeviceRepository, *securitymocks.MockTokenManager, *resolvermocks.MockUserResolver)
 		userUID    string
 		deviceUID  string
 		wantErr    error
 	}{
 		{
 			name: "Happy Path",
-			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository, tw *securitymocks.MockTokenStore, userResolver *resolvermocks.MockUserResolver) {
+			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository, tw *securitymocks.MockTokenManager, userResolver *resolvermocks.MockUserResolver) {
 				userResolver.EXPECT().IDsByUIDs(mock.Anything, []string{"test-uid"}).Return(map[string]int64{"test-uid": 1}, nil).Once()
 				ur.EXPECT().GetByID(mock.Anything, int64(1)).Return(createTestUser(1, "test-uid", "testuser", "test@example.com", "pass", model.UserStatusActive), nil).Once()
 				dr.EXPECT().GetByUID(mock.Anything, "device-uid").Return(createTestDevice(1, "device-uid", "iPhone", "fp123"), nil).Once()
@@ -1299,7 +1299,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 					DeviceID:  1,
 					SessionID: "session-123",
 				}, nil).Once()
-				tw.EXPECT().Remove(mock.Anything, "test-uid", "session-123").Return(nil).Once()
+				tw.EXPECT().RevokeSession(mock.Anything, "test-uid", "session-123").Return(nil).Once()
 				udr.EXPECT().Revoke(mock.Anything, int64(1), int64(1)).Return(nil).Once()
 			},
 			userUID:   "test-uid",
@@ -1307,7 +1307,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 		},
 		{
 			name: "Error - user not found",
-			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository, tw *securitymocks.MockTokenStore, userResolver *resolvermocks.MockUserResolver) {
+			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository, tw *securitymocks.MockTokenManager, userResolver *resolvermocks.MockUserResolver) {
 				userResolver.EXPECT().IDsByUIDs(mock.Anything, []string{"nonexistent-uid"}).Return(map[string]int64{}, nil).Once()
 			},
 			userUID:   "nonexistent-uid",
@@ -1316,7 +1316,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 		},
 		{
 			name: "Error - device not found",
-			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository, tw *securitymocks.MockTokenStore, userResolver *resolvermocks.MockUserResolver) {
+			setupMocks: func(ur *repomocks.MockUserRepository, dr *repomocks.MockDeviceRepository, udr *repomocks.MockUserDeviceRepository, tw *securitymocks.MockTokenManager, userResolver *resolvermocks.MockUserResolver) {
 				userResolver.EXPECT().IDsByUIDs(mock.Anything, []string{"test-uid"}).Return(map[string]int64{"test-uid": 1}, nil).Once()
 				ur.EXPECT().GetByID(mock.Anything, int64(1)).Return(createTestUser(1, "test-uid", "testuser", "test@example.com", "pass", model.UserStatusActive), nil).Once()
 				dr.EXPECT().GetByUID(mock.Anything, "nonexistent-device").Return(nil, domainerrors.ErrDeviceNotFound).Once()
@@ -1338,12 +1338,12 @@ func TestUserService_RevokeDevice(t *testing.T) {
 			mockPasswordHasher := securitymocks.NewMockHasher(t)
 			mockPinHasher := securitymocks.NewMockHasher(t)
 			mockUIDGen := securitymocks.NewMockUIDGenerator(t)
-			mockTokenWhitelist := securitymocks.NewMockTokenStore(t)
+			mockRefreshTokenManager := securitymocks.NewMockTokenManager(t)
 			mockResolverProvider, mockUserResolver := setupResolverMocks(t)
 
 			// Setup expectations
 			if tt.setupMocks != nil {
-				tt.setupMocks(mockUserRepo, mockDeviceRepo, mockUserDeviceRepo, mockTokenWhitelist, mockUserResolver)
+				tt.setupMocks(mockUserRepo, mockDeviceRepo, mockUserDeviceRepo, mockRefreshTokenManager, mockUserResolver)
 			}
 
 			// Create service
@@ -1356,7 +1356,7 @@ func TestUserService_RevokeDevice(t *testing.T) {
 				mockPasswordHasher,
 				mockPinHasher,
 				mockUIDGen,
-				mockTokenWhitelist,
+				mockRefreshTokenManager,
 				func() *eventMocks.MockEventPublisher {
 					ep := eventMocks.NewMockEventPublisher(t)
 					setupEventPublisherAny(t, ep)
