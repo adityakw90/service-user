@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 const (
 	TokenTypeAccess  = "access"
 	TokenTypeRefresh = "refresh"
@@ -17,6 +19,7 @@ type TokenClaims struct {
 	Identifier     string         // identifier (username, email, phone)
 	IdentifierType string         // identifier type (username, email, phone)
 	Extra          map[string]any // extra data
+	ExpiresAt      time.Time      // token expiration time (populated from JWT claims)
 }
 
 func (t *TokenClaims) IsAccess() bool {
