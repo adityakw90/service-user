@@ -17,7 +17,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pashagolub/pgxmock/v2 v2.12.0
 	github.com/pashagolub/pgxmock/v3 v3.4.0
-	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rabbitmq/amqp091-go v1.13.0
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
