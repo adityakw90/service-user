@@ -72,13 +72,28 @@ jobs:
       - name: Run Migrations
         working-directory: service-user-db
         run: |
-          echo "DATABASE_URL=jdbc:postgresql://localhost:5432/service_db" > .env
-          echo "DATABASE_USER=postgres" >> .env
-          echo "DATABASE_PASSWORD=postgres" >> .env
-          # Patch Makefile to use host network for CI
-          sed -i 's/docker run --rm/docker run --rm --network host/g' Makefile
-          make build
-          make update
+          # LPM can report HTTP error responses as checksum failures. Fetch the
+          # pinned driver from Maven Central with retries and fail-closed SHA-256
+          # verification instead. Update the version and checksum together.
+          driver="${RUNNER_TEMP}/postgresql-42.7.14.jar"
+          curl --fail --show-error --silent --location --retry 5 \
+            --connect-timeout 15 --max-time 120 \
+            https://repo.maven.apache.org/maven2/org/postgresql/postgresql/42.7.14/postgresql-42.7.14.jar \
+            --output "$driver"
+          echo "73914527305a40cce504b0d3d90b23caf565136912d607ae8ae7c5895512332c  $driver" | sha256sum --check --strict
+
+          # Pin the same official Liquibase 5.0-alpine image used by the DB repo.
+          # Mount the verified JDBC driver without rebuilding its LPM-based image.
+          docker run --rm --network host \
+            --volume "$PWD:/liquibase/changes:ro" \
+            --volume "$driver:/liquibase/lib/postgresql.jar:ro" \
+            --workdir /liquibase/changes \
+            liquibase/liquibase:5.0-alpine@sha256:9ebeda802be73ea8c04b203701307ed6e976952ca798b6126e1b0e651eed7a17 \
+            --changelog-file=master.yml \
+            --url=jdbc:postgresql://localhost:5432/service_db \
+            --username=postgres \
+            --password=postgres \
+            update
 
       - name: Run tests
         env:
