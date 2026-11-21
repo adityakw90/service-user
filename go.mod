@@ -1,8 +1,6 @@
 module github.com/adityakw90/service-user
 
-go 1.26.0
-
-toolchain go1.26.9
+go 1.26.11
 
 require (
 	github.com/IBM/sarama v1.46.3
@@ -57,7 +55,7 @@ require (
 	github.com/jcmturner/gofork v1.7.6 // indirect
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
-	github.com/klauspost/compress v1.18.7 // indirect
+	github.com/klauspost/compress v1.20.2 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.28 // indirect
